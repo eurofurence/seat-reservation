@@ -1,7 +1,10 @@
 <script setup>
 defineProps({
     seatNumber: String,
-    taken: Boolean,
+    taken: {
+        type: Boolean,
+        default: false,
+    },
     selected: Boolean
 })
 </script>
@@ -10,9 +13,10 @@ defineProps({
     <div
         :class="{
             'taken': taken,
-            'bg-green-400': selected && !taken,
+            'bg-green-400': selected && taken === false,
+            'bg-white': selected === false && taken === false,
         }"
-        class="bg-white duration-200 text-center h-8 w-8 flex justify-center items-center">
+        class="duration-200 text-center h-8 w-8 flex justify-center items-center">
         {{ seatNumber }}
     </div>
 </template>
