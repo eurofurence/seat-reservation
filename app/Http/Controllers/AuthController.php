@@ -17,11 +17,11 @@ class AuthController extends Controller
 
     public function login()
     {
-       $url = Socialite::driver('identity')
+        $url = Socialite::driver('identity')
             ->scopes(['openid', 'profile', 'email', 'groups'])
             ->redirect();
 
-       // Use Interia location instead
+        // Use Interia location instead
         return Inertia::location($url->getTargetUrl());
     }
 
@@ -34,6 +34,8 @@ class AuthController extends Controller
             'remote_id' => $user->getId(),
             'name' => $user->getName(),
             'avatar' => $user->getAvatar(),
+            'is_admin' => in_array('N9OY0K8OJVXR1P7L', $user->user['groups'], true),
+            // Fixed Admin Group ID
         ]);
         Auth::login($user);
         return redirect()->route('dashboard');
@@ -41,7 +43,7 @@ class AuthController extends Controller
 
     public function logout()
     {
-        return Socialite::driver('identity');
+        return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout');
     }
 
 

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('remote_id')->unique();
             $table->string('name');
             $table->text('avatar')->nullable();
+            $table->boolean('is_admin')->default(false);
             $table->timestamps();
         });
     }

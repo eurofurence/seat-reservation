@@ -1,8 +1,9 @@
 <script setup>
-import {Link} from '@inertiajs/vue3'
+import {Link,Head} from '@inertiajs/vue3'
 </script>
 
 <template>
+    <Head title="Login" />
     <div class="flex flex-col justify-between min-h-screen py-4 px-6">
         <div class="mb-4">
             <h1 class="text-2xl font-semibold">Seat Reservation System</h1>

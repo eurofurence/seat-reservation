@@ -8,6 +8,6 @@ class DashboardController extends Controller
 {
     public function show()
     {
-        return Inertia::render('Dashboard');
+        return Inertia::location(route('bookings.index'));
     }
 }

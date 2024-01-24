@@ -12,11 +12,26 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
+        // Create an Room and an Event for Eurofurence
+        $room = \App\Models\Room::create(['name' => 'CCH Hall 1']);
+        $event = \App\Models\Event::create(['name' => 'Eurofurence 2024', 'room_id' => $room->id,'starts_at' => now()->addDay()->addHour(),'reservation_ends_at' => now()->addDay()]);
 
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        // Create two blocks with 8 rows and 12 seats each
+        $blocks = [[
+            "name" => "Left Block",
+        ],[
+            "name" => "Right Block",
+        ]];
+        foreach($blocks as $block) {
+            $block = \App\Models\Block::create(['name' => $block['name'], 'room_id' => $room->id]);
+            for($i = 1; $i <= 4; $i++) {
+                $row = \App\Models\Row::create(['name' => $i, 'block_id' => $block->id]);
+                for($j = 1; $j <= 6; $j++) {
+                    $seat = \App\Models\Seat::create(['name' => $j, 'row_id' => $row->id]);
+                }
+            }
+        }
+
+
     }
 }
