@@ -6,7 +6,9 @@ import List from "@/Components/List/List.vue";
 import ListItem from "@/Components/List/ListItem.vue";
 import dayjs from "dayjs";
 import BackButton from "@/Components/BackButton.vue";
-
+import Layout from "@/Layouts/Layout.vue";
+import LinkButton from "@/Components/LinkButton.vue";
+defineOptions({layout: Layout})
 defineProps({
     bookings: Array
 })
@@ -52,10 +54,9 @@ defineProps({
         </div>
         <!-- Tailwind UI Login Button -->
         <div>
-            <Link :href="route('events.index')"
-                  class="bg-blue-500 block text-center hover:bg-blue-700 text-white font-bold py-2 px-4 w-full">
+            <LinkButton :href="route('events.index')">
                 Make a new Booking
-            </Link>
+            </LinkButton>
         </div>
     </div>
 </template>

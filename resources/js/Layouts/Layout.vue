@@ -3,7 +3,7 @@
 </script>
 
 <template>
-<div class="w-full md:max-w-lg sm:mx-auto bg-white sm:drop-shadow min-h-screen">
+<div class="w-full md:max-w-lg sm:mx-auto bg-white sm:drop-shadow !min-h-[calc(100dvh)] min-h-screen">
     <slot></slot>
 </div>
 </template>

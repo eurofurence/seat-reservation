@@ -4,7 +4,9 @@ import {Head, Link, useForm} from "@inertiajs/vue3";
 import ChevronRight from "@/Components/Icons/ChevronRight.vue";
 import BackButton from "@/Components/BackButton.vue";
 import dayjs from "dayjs";
+import Layout from "@/Layouts/Layout.vue";
 
+defineOptions({layout: Layout})
 const props = defineProps({
     booking: Object,
     event: Object

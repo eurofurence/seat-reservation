@@ -1,5 +1,7 @@
 <script setup>
 import {Link,Head} from '@inertiajs/vue3'
+import Layout from "@/Layouts/Layout.vue";
+defineOptions({layout: Layout})
 </script>
 
 <template>

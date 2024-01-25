@@ -15,6 +15,9 @@ import {Head, Link} from "@inertiajs/vue3";
 import Seat from "@/Components/Seat.vue";
 import LinkButton from "@/Components/LinkButton.vue";
 import StageBox from "@/Components/StageBox.vue";
+import FullWidthLayout from "@/Layouts/FullWidthLayout.vue";
+
+defineOptions({layout: FullWidthLayout})
 
 const selectedSeats = ref(props.seats);
 
@@ -35,8 +38,8 @@ onMounted(() => {
 </script>
 
 <template>
-    <Head title="Create Booking" />
-    <div class="flex flex-col justify-between">
+    <div class="flex flex-col h-full justify-between">
+        <Head title="Create Booking" />
         <div>
             <div>
                 <BackButton :href="route('events.index')">Back to Events</BackButton>
@@ -78,11 +81,3 @@ onMounted(() => {
     width: max-content;
 }
 </style>
-
-<script>
-import FullWidthLayout from "@/Layouts/FullWidthLayout.vue";
-
-export default {
-    layout: FullWidthLayout,
-}
-</script>

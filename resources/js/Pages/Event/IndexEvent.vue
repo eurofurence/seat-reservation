@@ -1,6 +1,6 @@
 <script setup>
 import ListItem from "@/Components/List/ListItem.vue";
-
+defineOptions({layout: Layout})
 defineProps({
     events: Array
 })
@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import {computed} from "vue";
 import ChevronRight from "@/Components/Icons/ChevronRight.vue";
 import {Head} from "@inertiajs/vue3";
+import Layout from "@/Layouts/Layout.vue";
 
 const seatColor = (seatCount) => {
     return seatCount < 10 ? 'text-red-500' : 'text-green-500';

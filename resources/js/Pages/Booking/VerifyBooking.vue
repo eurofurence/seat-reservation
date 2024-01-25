@@ -7,7 +7,8 @@ import ListItem from "@/Components/List/ListItem.vue";
 import dayjs from "dayjs";
 import {reactive} from "vue";
 import LinkButton from "@/Components/LinkButton.vue";
-
+import Layout from "@/Layouts/Layout.vue";
+defineOptions({layout: Layout})
 const props = defineProps({
     event: Object,
     seats: Array,
@@ -75,18 +76,18 @@ function confirmBooking() {
                                     <label for="name" class="text-sm">Name on the Reservation</label>
                                     <input id="name" name="name" class="form form-input w-full rounded"
                                            v-model="formModel[seat.id].name">
-                                    <button @click="copyNameToAllSeats(formModel[seat.id].name)"
+                                    <a @click="copyNameToAllSeats(formModel[seat.id].name)"
                                             class="font-semibold text-xs text-blue-600 mt-0 pt-0">Copy name to all seats
-                                    </button>
+                                    </a>
                                 </div>
 
                                 <div class="w-full mt-2">
                                     <label for="name" class="text-sm">Additional Comment</label>
                                     <textarea id="name" name="name" class="form form-textarea w-full rounded"
                                               v-model="formModel[seat.id].comment"></textarea>
-                                    <button @click="copyCommentToAllSeats(formModel[seat.id].comment)"
+                                    <a @click="copyCommentToAllSeats(formModel[seat.id].comment)"
                                             class="font-semibold text-xs text-blue-600 mt-0 pt-0">Copy comment to all seats
-                                    </button>
+                                    </a>
                                 </div>
 
                             </div>
