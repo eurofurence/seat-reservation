@@ -34,7 +34,7 @@ class SocialiteIdentityProvider extends AbstractProvider
     public function getIdentityConfig()
     {
         // Get from cache if exists
-        if (isset($this->issuet)) {
+        if (isset($this->issuer)) {
             return $this;
         }
         // Get from services.identity.openid_configuration url and cache it
