@@ -28,6 +28,9 @@ class AuthController extends Controller
     public function loginCallback()
     {
         $user = Socialite::driver('identity')->user();
+        if (!in_array('54ZYODX15G2K1M76', $user->user['groups'], true)) {
+            return redirect()->route('auth.login')->with('error', 'You are not allowed to access this application');
+        }
         $user = User::updateOrCreate([
             'remote_id' => $user->getId(),
         ], [
