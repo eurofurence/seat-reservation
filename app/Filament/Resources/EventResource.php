@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\EventResource\Pages;
+use App\Filament\Resources\EventResource\RelationManagers\BookingsRelationManager;
 use App\Models\Event;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -29,6 +30,11 @@ class EventResource extends Resource
                     ->required()
                     ->label('Event Name')
                     ->maxLength(255),
+                Forms\Components\TextInput::make('tickets')
+                    ->required()
+                    ->numeric()
+                    ->label('Total Tickets')
+                    ->maxLength(255),
                 Forms\Components\DateTimePicker::make('reservation_ends_at'),
                 Forms\Components\DateTimePicker::make('starts_at')
                     ->label('Event Start Time')
@@ -45,6 +51,7 @@ class EventResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('seats_left'),
                 Tables\Columns\TextColumn::make('reservation_ends_at')
                     ->dateTime()
                     ->sortable(),
@@ -76,7 +83,7 @@ class EventResource extends Resource
     public static function getRelations(): array
     {
         return [
-
+            BookingsRelationManager::class
         ];
     }
 

@@ -35,7 +35,6 @@ class AuthController extends Controller
             'name' => $user->getName(),
             'avatar' => $user->getAvatar(),
             'is_admin' => in_array('N9OY0K8OJVXR1P7L', $user->user['groups'], true),
-            // Fixed Admin Group ID
         ]);
         Auth::login($user);
         return redirect()->route('dashboard');

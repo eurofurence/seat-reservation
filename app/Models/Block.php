@@ -8,12 +8,12 @@ class Block extends Model
 {
     protected $guarded = [];
 
-    public function rows(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function rows()
     {
         return $this->hasMany(Row::class);
     }
 
-    public function room(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function room()
     {
         return $this->belongsTo(Room::class);
     }

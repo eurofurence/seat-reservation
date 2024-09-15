@@ -13,7 +13,7 @@ class BookingPolicy
 
     public function viewAny(User $user): bool
     {
-        return false;
+        return $user->is_admin;
     }
 
     public function view(User $user, Booking $booking): bool
@@ -21,8 +21,20 @@ class BookingPolicy
         return $user->id === $booking->user_id;
     }
 
-    public function create(User $user, Event $event): bool
+    public function create(User $user, Event|null $event = null): bool
     {
+        if ($user->is_admin) {
+            return true;
+        }
+        // only if the total number of bookings does not exceed the maximum number of tickets
+        if ($event === null) {
+            return false;
+        }
+
+        if($event->bookings()->count() >= $event->max_tickets) {
+            return false;
+        }
+
         return $event->reservation_ends_at->isFuture();
     }
 

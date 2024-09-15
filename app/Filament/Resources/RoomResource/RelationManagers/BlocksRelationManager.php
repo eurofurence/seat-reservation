@@ -3,6 +3,9 @@
 namespace App\Filament\Resources\RoomResource\RelationManagers;
 
 use Filament\Forms;
+use Filament\Forms\Components\Fieldset;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -21,6 +24,18 @@ class BlocksRelationManager extends RelationManager
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('row')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('rotate')
+                    ->numeric()
+                    ->default(0)
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('row_count')
+                    ->required()
+                    ->numeric()
+                    ->maxLength(255),
             ]);
     }
 
@@ -29,7 +44,8 @@ class BlocksRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-                Tables\Columns\TextColumn::make('name'),
+                Tables\Columns\TextInputColumn::make('name'),
+                Tables\Columns\TextInputColumn::make('row_count'),
             ])
             ->filters([
                 //

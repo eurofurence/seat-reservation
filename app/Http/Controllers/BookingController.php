@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Seat;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -25,6 +26,12 @@ class BookingController extends Controller
             'seats.*' => 'numeric|nullable',
             'verifyBooking' => 'boolean|nullable',
         ]);
+        if (!Auth::user()->is_admin) {
+            $bookings = Booking::where('user_id', Auth::id())->where('event_id', $event->id)->count();
+            if ($bookings >= 2) {
+                return redirect()->route('bookings.index')->with(['message' => 'You can only book 2 seats per event.']);
+            }
+        }
         if (
             isset($data['seats'], $data['verifyBooking']) && $data['verifyBooking'] === "1" && count($data['seats']) > 0) {
             return Inertia::render('Booking/VerifyBooking', [
@@ -37,6 +44,7 @@ class BookingController extends Controller
             'event' => $event->loadMissing('room.blocks.rows.seats'),
             'seats' => collect($data['seats'] ?? [])->map(fn($s) => (int) $s)->values()->toArray() ?? [],
             'takenSeats' => $event->bookings()->pluck('seat_id')->values()->toArray(),
+            'availableToUser' => (Auth::user()->is_admin) ? 9999999 : 2 - $event->bookings()->where('user_id', Auth::user()->id)->count(),
         ]);
     }
 
@@ -50,6 +58,13 @@ class BookingController extends Controller
             'seats.*.comment' => 'nullable|string|max:255',
             'seats.*.seat_id' => 'required|numeric|exists:seats,id',
         ]);
+        // Ensure that user is not booking more than 2 seats
+        if (!Auth::user()->is_admin) {
+            $bookings = Booking::where('user_id', Auth::id())->where('event_id', $event->id)->count();
+            if ($bookings + count($data['seats']) > 2) {
+                return redirect()->route('bookings.index')->with(['message' => 'You can only book 2 seats per event.']);
+            }
+        }
         // Start DB Transaction
         DB::transaction(function () use ($event, $data) {
             // Lock seats

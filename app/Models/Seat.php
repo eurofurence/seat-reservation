@@ -17,4 +17,12 @@ class Seat extends Model
     {
         return $this->hasMany(Booking::class);
     }
+
+    public function getFullName()
+    {
+        // load
+        $this->loadMissing('row.block');
+        // Block - Row - Seat
+        return "{$this->row->block->name} - {$this->row->name} - {$this->name}";
+    }
 }

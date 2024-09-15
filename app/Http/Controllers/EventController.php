@@ -14,14 +14,6 @@ class EventController extends Controller
         return Inertia::render('Event/IndexEvent', [
             'events' => Event::with('room')->where('reservation_ends_at', '>', now())->where('starts_at', '>', now())
                 ->get()
-                ->map(function ($event) {
-                    $event->seats_left = Seat::whereHas('row.block.room.events', function ($query) use ($event) {
-                        $query->where('id', $event->id);
-                    })->whereDoesntHave('bookings', function ($query) use ($event) {
-                        $query->where('event_id', $event->id);
-                    })->count();
-                    return $event;
-                })
         ]);
     }
 
