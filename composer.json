@@ -18,7 +18,7 @@
         "laravel/socialite": "^5.11",
         "laravel/tinker": "^2.8",
         "sentry/sentry-laravel": "^4.8",
-        "tightenco/ziggy": "^1.0"
+        "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
