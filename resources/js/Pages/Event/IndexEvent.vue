@@ -36,7 +36,7 @@ const seatColor = (seatCount) => {
                     </div>
                     <div>
                         <div>{{ event.room.name }}</div>
-                        <div>{{ dayjs(event.starts_at).format("DD.MM HH:MM") }}</div>
+                        <div>{{ dayjs(event.starts_at).format("DD.MM HH:mm") }}</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-end pl-8">
