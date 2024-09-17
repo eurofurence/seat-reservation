@@ -17,6 +17,7 @@ use Inertia\Inertia;
 */
 
 Route::redirect('/', '/auth/login')->middleware('auth')->name('welcome');
+Route::redirect('/login', '/auth/login')->middleware('auth')->name('login');
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class,'show'])->name('dashboard');
     Route::get('/profile', [ProfileController::class,'show'])->name('profile.show');
