@@ -1,6 +1,6 @@
 <script setup>
 
-import {Head, Link, useForm} from "@inertiajs/vue3";
+import {Head, Link, useForm, usePage} from "@inertiajs/vue3";
 import BackButton from "@/Components/BackButton.vue";
 import List from "@/Components/List/List.vue";
 import ListItem from "@/Components/List/ListItem.vue";
@@ -18,7 +18,7 @@ const props = defineProps({
 // Create Form Model with seat id's as index
 const formModel = reactive(
     Object.fromEntries(
-        props.seats.map((seat) => [seat.id, {name: 'Tin', comment: '', seat_id: seat.id}]
+        props.seats.map((seat) => [seat.id, {name: usePage().props.auth.user.name, comment: '', seat_id: seat.id}]
         )
     ))
 
