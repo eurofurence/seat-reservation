@@ -30,7 +30,7 @@ class AuthController extends Controller
     {
         try {
             $user = Socialite::driver('identity')->user();
-        } catch (InvalidStateException $e) {
+        } catch (\Exception $e) {
             return redirect()->route('auth.login');
         }
         if (!in_array('54ZYODX15G2K1M76', $user->user['groups'], true)) {
