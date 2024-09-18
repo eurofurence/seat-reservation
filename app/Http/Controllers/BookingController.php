@@ -64,6 +64,10 @@ class BookingController extends Controller
             if ($bookings + count($data['seats']) > 2) {
                 return redirect()->route('bookings.index')->with(['message' => 'You can only book 2 seats per event.']);
             }
+            // Allow no more than max seats
+            if ($event->seats_left <= 0) {
+                return redirect()->route('bookings.index')->with(['message' => 'There are no seats available.']);
+            }
         }
         // Start DB Transaction
         DB::transaction(function () use ($event, $data) {
