@@ -40,6 +40,16 @@ class BookingController extends Controller
                 'seatsFalltrough' => $data['seats']
             ]);
         }
+
+
+        // Ensure that user is not booking more than 2 seats
+        if (!Auth::user()->is_admin) {
+            // Allow no more than max seats
+            if ($event->seats_left <= 0) {
+                return redirect()->route('bookings.index')->with(['message' => 'There are no seats available.']);
+            }
+        }
+
         return Inertia::render('Booking/CreateBooking', [
             'event' => $event->loadMissing('room.blocks.rows.seats'),
             'seats' => collect($data['seats'] ?? [])->map(fn($s) => (int) $s)->values()->toArray() ?? [],
