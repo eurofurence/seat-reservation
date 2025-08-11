@@ -1,14 +1,11 @@
 <script setup>
+import { Head, Link, useForm } from "@inertiajs/vue3"
+import Layout from "@/Layouts/Layout.vue"
+import dayjs from "dayjs"
+import { reactive, ref } from "vue"
 
-import {Head, Link, useForm} from "@inertiajs/vue3";
-import BackButton from "@/Components/BackButton.vue";
-import List from "@/Components/List/List.vue";
-import ListItem from "@/Components/List/ListItem.vue";
-import dayjs from "dayjs";
-import {reactive} from "vue";
-import LinkButton from "@/Components/LinkButton.vue";
-import Layout from "@/Layouts/Layout.vue";
 defineOptions({layout: Layout})
+
 const props = defineProps({
     event: Object,
     seats: Array,
@@ -18,94 +15,280 @@ const props = defineProps({
 // Create Form Model with seat id's as index
 const formModel = reactive(
     Object.fromEntries(
-        props.seats.map((seat) => [seat.id, {name: 'Tin', comment: '', seat_id: seat.id}]
+        props.seats.map((seat) => [seat.id, {name: '', comment: '', seat_id: seat.id}]
         )
     ))
 
 function copyNameToAllSeats(text) {
     for (const [key, value] of Object.entries(formModel)) {
-        value.name = text;
+        value.name = text
     }
+    showSuccessToast('Name copied to all seats')
 }
 
 function copyCommentToAllSeats(text) {
     for (const [key, value] of Object.entries(formModel)) {
-        value.comment = text;
+        value.comment = text
     }
+    showSuccessToast('Comment copied to all seats')
 }
 
 const form = useForm({
     'seats': formModel
-});
+})
+
+const isSubmitting = ref(false)
 
 function confirmBooking() {
-    form.seats = formModel;
-    form.post(route('bookings.store', {event: props.event.id}));
+    if (isSubmitting.value) return
+    
+    isSubmitting.value = true
+    form.seats = formModel
+    form.post(route('bookings.store', {event: props.event.id}), {
+        onFinish: () => {
+            isSubmitting.value = false
+        }
+    })
+}
+
+function showSuccessToast(message) {
+    // Vant toast integration would go here
+    console.log(message)
+}
+
+function getSeatDisplayName(seat) {
+    return `${seat.row.block.name} - Row ${seat.row.name} - Seat ${seat.name}`
 }
 </script>
 
 <template>
-    <Head title="Confirm Booking" />
-    <form @submit.prevent="confirmBooking">
-    <div class="flex flex-col justify-between min-h-screen">
-            <div>
-                <BackButton
-                    :href="route('bookings.create',{event: event.id})"
-                    :data="{seats: seatsFalltrough,verifyBooking: 0}"
-                >Return to Seat Selection
-                </BackButton>
-                <div class="mb-4 py-4 px-6">
-                    <h1 class="text-2xl font-semibold">{{ event.name }}</h1>
-                    <p class="text-gray-700 text-sm">{{ dayjs(event.starts_at).format('DD MMMM YYYY HH:mm') }}</p>
-                    <p class="text-gray-700 text-sm">{{ event.room.name }}</p>
-                </div>
-                <div class="px-6 py-4 font-semibold bg-red-200" v-if="form.errors.seats">
-                    {{ form.errors.seats }}
-                </div>
-                <div>
-                    <List>
-                        <ListItem :clickable="false" v-for="seat in seats">
-                            <div>
-                                <div class="flex justify-between items-start w-full font-semibold">
-                                    <div class="w-1/3">{{ seat.row.block.name }}</div>
-                                    <div class="w-1/3 text-end">Row {{ seat.row.name }}</div>
-                                    <div class="w-1/3 text-end">Seat {{ seat.name }}</div>
-                                </div>
-                                <!-- Reserver Name and Additional info field -->
-                                <div class="w-full mt-2">
-                                    <label for="name" class="text-sm">Name on the Reservation</label>
-                                    <input id="name" name="name" class="form form-input w-full rounded"
-                                           v-model="formModel[seat.id].name">
-                                    <a @click="copyNameToAllSeats(formModel[seat.id].name)"
-                                            class="font-semibold text-xs text-blue-600 mt-0 pt-0">Copy name to all seats
-                                    </a>
-                                </div>
-
-                                <div class="w-full mt-2">
-                                    <label for="name" class="text-sm">Additional Comment</label>
-                                    <textarea id="name" name="name" class="form form-textarea w-full rounded"
-                                              v-model="formModel[seat.id].comment"></textarea>
-                                    <a @click="copyCommentToAllSeats(formModel[seat.id].comment)"
-                                            class="font-semibold text-xs text-blue-600 mt-0 pt-0">Copy comment to all seats
-                                    </a>
-                                </div>
-
-                            </div>
-                        </ListItem>
-                    </List>
-                </div>
-            </div>
-            <!-- Tailwind UI Login Button -->
-            <div>
-                <LinkButton as="button"
-                            type="submit">
-                    Confirm Booking
-                </LinkButton>
-            </div>
-    </div>
+  <Head title="Confirm Booking" />
+  
+  <!-- Mobile Booking Verification Page -->
+  <div class="verify-page">
+    <!-- Navigation Header -->
+    <van-nav-bar 
+      title="Confirm Booking"
+      left-text="Back"
+      left-arrow
+      @click-left="$inertia.get(route('bookings.create', {event: event.id}), {seats: seatsFalltrough, verifyBooking: 0})"
+    />
+    
+    <!-- Event Information -->
+    <van-cell-group inset>
+      <van-cell 
+        title="Event"
+        :value="event.name"
+        icon="calendar-o"
+      />
+      <van-cell 
+        title="Date & Time"
+        :value="dayjs(event.starts_at).format('MMM DD, YYYY - HH:mm')"
+        icon="clock-o"
+      />
+      <van-cell 
+        title="Venue"
+        :value="event.room.name"
+        icon="location-o"
+      />
+    </van-cell-group>
+    
+    <!-- Error Display -->
+    <van-notice-bar
+      v-if="form.errors.seats"
+      type="danger"
+      :text="form.errors.seats"
+      left-icon="warning-o"
+    />
+    
+    <!-- Form Content -->
+    <form @submit.prevent="confirmBooking" class="form-content">
+      <!-- Selected Seats -->
+      <div class="seats-section">
+        <h3 class="section-title">Selected Seats ({{ seats.length }})</h3>
+        
+        <div v-for="(seat, index) in seats" :key="seat.id" class="seat-form">
+          <!-- Seat Information -->
+          <van-cell-group>
+            <van-cell 
+              :title="getSeatDisplayName(seat)"
+              icon="location"
+              :border="false"
+            />
+          </van-cell-group>
+          
+          <!-- Booking Details Form -->
+          <van-cell-group>
+            <van-field
+              v-model="formModel[seat.id].name"
+              label="Name"
+              placeholder="Enter name for reservation"
+              required
+              :rules="[{ required: true, message: 'Name is required' }]"
+            >
+              <template #button>
+                <van-button 
+                  size="small" 
+                  type="primary" 
+                  plain
+                  @click="copyNameToAllSeats(formModel[seat.id].name)"
+                  :disabled="!formModel[seat.id].name"
+                >
+                  Copy to All
+                </van-button>
+              </template>
+            </van-field>
+            
+            <van-field
+              v-model="formModel[seat.id].comment"
+              label="Comment"
+              placeholder="Additional notes (optional)"
+              type="textarea"
+              rows="2"
+              autosize
+            >
+              <template #button>
+                <van-button 
+                  size="small" 
+                  type="primary" 
+                  plain
+                  @click="copyCommentToAllSeats(formModel[seat.id].comment)"
+                  :disabled="!formModel[seat.id].comment"
+                >
+                  Copy to All
+                </van-button>
+              </template>
+            </van-field>
+          </van-cell-group>
+        </div>
+      </div>
+      
+      <!-- Fixed Bottom Action -->
+      <div class="bottom-action">
+        <div class="action-content">
+          <div class="booking-summary">
+            <span class="summary-text">
+              Booking {{ seats.length }} seat{{ seats.length > 1 ? 's' : '' }}
+            </span>
+          </div>
+          
+          <van-button 
+            type="primary" 
+            size="large" 
+            block
+            native-type="submit"
+            :loading="isSubmitting"
+            loading-text="Creating booking..."
+            icon="checked"
+          >
+            Confirm Booking
+          </van-button>
+        </div>
+      </div>
     </form>
+  </div>
 </template>
 
 <style scoped>
+.verify-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: #f7f8fa;
+  display: flex;
+  flex-direction: column;
+}
 
+.form-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 100px; /* Space for fixed bottom action */
+}
+
+.seats-section {
+  flex: 1;
+  padding: 12px 0;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #323233;
+  padding: 0 16px 12px 16px;
+  margin: 0;
+}
+
+.seat-form {
+  margin-bottom: 16px;
+}
+
+.seat-form:last-child {
+  margin-bottom: 0;
+}
+
+.bottom-action {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #ebedf0;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 100;
+}
+
+.action-content {
+  max-width: 414px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.booking-summary {
+  text-align: center;
+}
+
+.summary-text {
+  font-size: 14px;
+  color: #646566;
+  font-weight: 500;
+}
+
+/* Vant component customizations */
+:deep(.van-cell-group--inset) {
+  margin: 0 16px;
+  border-radius: 12px;
+}
+
+:deep(.van-cell-group) {
+  margin-bottom: 12px;
+}
+
+:deep(.van-field__label) {
+  font-weight: 500;
+  min-width: 60px;
+}
+
+:deep(.van-field__control) {
+  font-size: 16px;
+}
+
+:deep(.van-button--small.van-button--plain) {
+  padding: 0 8px;
+  height: 28px;
+  font-size: 12px;
+}
+
+:deep(.van-notice-bar--danger) {
+  margin: 12px 16px;
+  border-radius: 8px;
+}
+
+@media (max-width: 414px) {
+  .action-content {
+    max-width: 100%;
+  }
+}
 </style>

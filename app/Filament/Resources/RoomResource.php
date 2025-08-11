@@ -92,6 +92,11 @@ class RoomResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\Action::make('floor_plan_editor')
+                    ->label('Floor Plan Editor')
+                    ->icon('heroicon-o-squares-plus')
+                    ->url(fn ($record) => route('floor-plan.editor', $record))
+                    ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

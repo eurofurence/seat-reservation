@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\FloorPlanController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -25,6 +26,15 @@ Route::middleware('auth')->group(function () {
     Route::resource('/events/{event}/bookings', \App\Http\Controllers\BookingController::class,[
         'only' => ['show','create','store','destroy','update']
     ]);
+
+    // New comprehensive floor plan editor routes
+    Route::prefix('admin/rooms/{room}/floor-plan')->name('floor-plan.')->group(function () {
+        Route::get('/editor', [\App\Http\Controllers\FloorPlanEditorController::class, 'show'])->name('editor');
+        Route::put('/update', [\App\Http\Controllers\FloorPlanEditorController::class, 'update'])->name('update');
+        Route::post('/blocks', [\App\Http\Controllers\FloorPlanEditorController::class, 'createBlock'])->name('blocks.create');
+        Route::patch('/blocks/{block}', [\App\Http\Controllers\FloorPlanEditorController::class, 'updateBlock'])->name('blocks.update');
+        Route::delete('/blocks/{block}', [\App\Http\Controllers\FloorPlanEditorController::class, 'deleteBlock'])->name('blocks.delete');
+    });
 });
 
 // Auth Group

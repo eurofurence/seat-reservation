@@ -13,6 +13,11 @@ class EditRoom extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('floor_plan')
+                ->label('Floor Plan Editor')
+                ->icon('heroicon-o-rectangle-group')
+                ->color('info')
+                ->url(fn (): string => route('floor-plan.edit', ['room' => $this->record])),
             Actions\DeleteAction::make(),
         ];
     }

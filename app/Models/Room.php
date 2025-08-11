@@ -8,6 +8,10 @@ class Room extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'layout_config' => 'array',
+    ];
+
     public function events(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Event::class);

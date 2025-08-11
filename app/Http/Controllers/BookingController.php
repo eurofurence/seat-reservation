@@ -40,8 +40,53 @@ class BookingController extends Controller
                 'seatsFalltrough' => $data['seats']
             ]);
         }
+        // Optimize data loading - only load necessary data for floor plan display
+        $event->load([
+            'room:id,name,layout_config',
+            'room.blocks:id,room_id,name,rotation,grid_column,grid_row,grid_column_span,grid_row_span',
+            'room.blocks.rows:id,block_id,name'
+        ]);
+
+        // Load seats with just essential data and count
+        $event->room->blocks->load(['rows' => function ($query) {
+            $query->withCount('seats');
+        }]);
+
+        // Generate seat data efficiently for display
+        $optimizedEvent = [
+            'id' => $event->id,
+            'name' => $event->name,
+            'starts_at' => $event->starts_at,
+            'ends_at' => $event->ends_at,
+            'reservation_ends_at' => $event->reservation_ends_at,
+            'room' => [
+                'id' => $event->room->id,
+                'name' => $event->room->name,
+                'layout_config' => $event->room->layout_config,
+                'blocks' => $event->room->blocks->map(function ($block) {
+                    return [
+                        'id' => $block->id,
+                        'name' => $block->name,
+                        'rotation' => $block->rotation ?? 0,
+                        'grid_column' => $block->grid_column ?? 1,
+                        'grid_row' => $block->grid_row ?? 1,
+                        'grid_column_span' => $block->grid_column_span ?? 1,
+                        'grid_row_span' => $block->grid_row_span ?? 1,
+                        'rows' => $block->rows->map(function ($row) {
+                            return [
+                                'id' => $row->id,
+                                'name' => $row->name,
+                                'seat_count' => $row->seats_count ?? 0,
+                                'seats' => [] // Will be generated client-side
+                            ];
+                        })->toArray()
+                    ];
+                })->toArray()
+            ]
+        ];
+
         return Inertia::render('Booking/CreateBooking', [
-            'event' => $event->loadMissing('room.blocks.rows.seats'),
+            'event' => $optimizedEvent,
             'seats' => collect($data['seats'] ?? [])->map(fn($s) => (int) $s)->values()->toArray() ?? [],
             'takenSeats' => $event->bookings()->pluck('seat_id')->values()->toArray(),
             'availableToUser' => (Auth::user()->is_admin) ? 9999999 : 2 - $event->bookings()->where('user_id', Auth::user()->id)->count(),
@@ -119,5 +164,33 @@ class BookingController extends Controller
         }
         $booking->delete();
         return redirect()->route('bookings.index')->with(['message' => 'Booking cancelled!']);
+    }
+
+    /**
+     * API endpoint to get actual seat data for a specific row
+     * This avoids loading all seats at once and reduces memory usage
+     */
+    public function getRowSeats(Request $request, Event $event, $rowId)
+    {
+        $request->validate([
+            'row_id' => 'nullable|exists:rows,id'
+        ]);
+
+        $row = \App\Models\Row::with(['seats:id,row_id,name'])
+            ->findOrFail($rowId);
+
+        $takenSeatIds = $event->bookings()->pluck('seat_id')->toArray();
+
+        return response()->json([
+            'seats' => $row->seats->map(function ($seat, $index) use ($takenSeatIds) {
+                return [
+                    'id' => $seat->id,
+                    'name' => $seat->name,
+                    'number' => $index + 1,
+                    'is_available' => !in_array($seat->id, $takenSeatIds),
+                    'is_booked' => in_array($seat->id, $takenSeatIds)
+                ];
+            })
+        ]);
     }
 }
