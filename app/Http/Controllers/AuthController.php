@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\InvalidStateException;
 
 class AuthController extends Controller
 {
@@ -27,7 +28,11 @@ class AuthController extends Controller
 
     public function loginCallback()
     {
-        $user = Socialite::driver('identity')->user();
+        try {
+            $user = Socialite::driver('identity')->user();
+        } catch (\Exception $e) {
+            return redirect()->route('auth.login');
+        }
         if (!in_array('54ZYODX15G2K1M76', $user->user['groups'], true)) {
             return redirect()->route('auth.login')->with('error', 'You are not allowed to access this application');
         }
