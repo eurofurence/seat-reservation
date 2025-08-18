@@ -1,406 +1,623 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import Panzoom from '@panzoom/panzoom'
 
 const props = defineProps({
-    event: Object,
-    room: Object,
-    blocks: Array,
-    selectedSeats: {
-        type: Array,
-        default: () => []
-    },
-    bookedSeats: {
-        type: Array,
-        default: () => []
-    }
+  event: Object,
+  room: Object,
+  blocks: Array,
+  selectedSeats: Array,
+  bookedSeats: Array
 })
 
-const emit = defineEmits(['seat-selected', 'seats-changed'])
+const emit = defineEmits(['seats-changed'])
 
-const localSelectedSeats = ref([...props.selectedSeats])
+// Seat selection state
+const selectedSeatIds = ref([...props.selectedSeats])
 
-// Check if a seat is selected
-function isSeatSelected(seatId) {
-    return localSelectedSeats.value.includes(seatId)
-}
+// Panzoom refs
+const panzoomContainer = ref(null)
+const panzoomInstance = ref(null)
 
-// Check if a seat is booked
-function isSeatBooked(seatId) {
-    return props.bookedSeats.includes(seatId)
-}
-
-// Toggle seat selection
-function toggleSeat(seat) {
-    if (isSeatBooked(seat.id)) {
-        return // Can't select booked seats
+// Calculate dynamic grid dimensions based on content
+const gridDimensions = computed(() => {
+  let maxX = 0
+  let maxY = 0
+  
+  // Check stage position
+  const stageX = props.room?.stage_x
+  const stageY = props.room?.stage_y
+  if (stageX >= 0 && stageY >= 0) {
+    maxX = Math.max(maxX, stageX + 1)
+    maxY = Math.max(maxY, stageY + 1)
+  }
+  
+  // Check block positions
+  props.blocks?.forEach(block => {
+    if (block.position_x >= 0 && block.position_y >= 0) {
+      maxX = Math.max(maxX, block.position_x + 1)
+      maxY = Math.max(maxY, block.position_y + 1)
     }
+  })
+  
+  // Minimum grid size
+  return {
+    cols: Math.max(maxX, 1),
+    rows: Math.max(maxY, 1)
+  }
+})
 
-    const index = localSelectedSeats.value.indexOf(seat.id)
-    if (index > -1) {
-        localSelectedSeats.value.splice(index, 1)
-    } else {
-        localSelectedSeats.value.push(seat.id)
-    }
-    
-    emit('seats-changed', localSelectedSeats.value)
-    emit('seat-selected', seat, !isSeatSelected(seat.id))
-}
-
-// Get seat class based on state
-function getSeatClass(seat) {
-    if (isSeatBooked(seat.id)) {
-        return 'seat-booked'
-    }
-    if (isSeatSelected(seat.id)) {
-        return 'seat-selected'
-    }
-    return 'seat-available'
-}
-
-// Get block style based on rotation
-function getBlockStyle(block) {
-    const rotationStyles = {
-        0: {},
-        90: {
-            transform: 'rotate(90deg)',
-            transformOrigin: 'center'
-        },
-        180: {
-            transform: 'rotate(180deg)',
-            transformOrigin: 'center'
-        },
-        270: {
-            transform: 'rotate(270deg)',
-            transformOrigin: 'center'
-        }
-    }
-    
-    return rotationStyles[block.rotation || 0]
-}
-
-// Check if block should display rows vertically (rotated)
-function isBlockRotated(block) {
-    return block.rotation === 90 || block.rotation === 270
-}
-
-// Calculate table layout grid positions
+// Create layout grid with blocks and stage positioned
 const layoutGrid = computed(() => {
-    const grid = []
-    let maxX = 0
-    let maxY = 0
-    
-    // Find max positions
-    props.blocks.forEach(block => {
-        maxX = Math.max(maxX, block.position_x || 0)
-        maxY = Math.max(maxY, block.position_y || 0)
-    })
-    
-    // Create grid array
-    for (let y = 0; y <= maxY; y++) {
-        grid[y] = []
-        for (let x = 0; x <= maxX; x++) {
-            grid[y][x] = null
-        }
+  const { rows, cols } = gridDimensions.value
+  const grid = Array(rows).fill(null).map(() => Array(cols).fill(null))
+  
+  // Place stage if positioned
+  const stageX = props.room?.stage_x
+  const stageY = props.room?.stage_y
+  if (stageX >= 0 && stageY >= 0 && stageX < cols && stageY < rows) {
+    grid[stageY][stageX] = { type: 'stage' }
+  }
+  
+  // Place blocks that have valid positions
+  props.blocks?.forEach(block => {
+    const x = block.position_x
+    const y = block.position_y
+    if (x >= 0 && y >= 0 && x < cols && y < rows) {
+      grid[y][x] = { type: 'block', ...block }
     }
-    
-    // Place blocks in grid
-    props.blocks.forEach(block => {
-        const x = block.position_x || 0
-        const y = block.position_y || 0
-        if (grid[y] && grid[y][x] !== undefined) {
-            grid[y][x] = block
-        }
-    })
-    
-    return grid
+  })
+  
+  return grid
 })
 
-// Check if we should use grid layout or simple list
-const useGridLayout = computed(() => {
-    return props.blocks.some(block => 
-        (block.position_x !== null && block.position_x !== undefined && block.position_x > 0) ||
-        (block.position_y !== null && block.position_y !== undefined && block.position_y > 0)
-    )
+// Get blocks that are positioned off-grid (for separate display)
+const unplacedBlocks = computed(() => {
+  const { rows, cols } = gridDimensions.value
+  return props.blocks?.filter(block => 
+    block.position_x < 0 || block.position_x >= cols || 
+    block.position_y < 0 || block.position_y >= rows ||
+    block.position_x == null || block.position_y == null
+  ) || []
 })
+
+// Get seat status styling
+const getSeatStatus = (seat) => {
+  const seatId = seat.id
+  
+  if (props.bookedSeats.includes(seatId)) {
+    return { class: 'seat-booked', disabled: true }
+  }
+  
+  if (selectedSeatIds.value.includes(seatId)) {
+    return { class: 'seat-selected', disabled: false }
+  }
+  
+  return { class: 'seat-available', disabled: false }
+}
+
+// Handle seat click
+const handleSeatClick = (seat) => {
+  const seatId = seat.id
+  
+  if (props.bookedSeats.includes(seatId)) return
+  
+  const index = selectedSeatIds.value.indexOf(seatId)
+  if (index > -1) {
+    selectedSeatIds.value.splice(index, 1)
+  } else {
+    selectedSeatIds.value.push(seatId)
+  }
+  
+  emit('seats-changed', [...selectedSeatIds.value])
+}
+
+// Get orientation styling for rotated blocks
+const getBlockTransform = (rotation) => {
+  return rotation ? `rotate(${rotation}deg)` : ''
+}
+
+// Get row and seat labels based on block orientation
+const getRowSeatsLayout = (block) => {
+  const rotation = block.rotation || 0
+  
+  // 0° (↑) and 180° (↓): Normal theater layout - rows horizontal, seats horizontal within rows
+  // 90° (→) and 270° (←): Rotated layout - rows vertical, seats horizontal within rows
+  if (rotation === 90 || rotation === 270) {
+    return {
+      rowDirection: 'vertical',   // rows go top-to-bottom (first row on left, last row on right)
+      seatDirection: 'horizontal', // seats go left-to-right within each row
+      reverseRows: rotation === 270, // 270° reverses row order
+      reverseSeats: rotation === 270  // 270° reverses seat order within rows
+    }
+  } else {
+    return {
+      rowDirection: 'horizontal', // rows go left-to-right 
+      seatDirection: 'horizontal', // seats go left-to-right within each row
+      reverseRows: rotation === 180, // 180° reverses row order
+      reverseSeats: rotation === 180  // 180° reverses seat order within rows
+    }
+  }
+}
+
+// Initialize Panzoom
+onMounted(() => {
+  if (panzoomContainer.value) {
+    const panzoomContent = panzoomContainer.value.querySelector('.panzoom-content')
+    if (panzoomContent) {
+      panzoomInstance.value = Panzoom(panzoomContent, {
+        maxScale: 3,
+        minScale: 0.3,
+        startScale: 0.6, // Default zoom-out scale
+        contain: 'outside',
+        cursor: 'grab',
+        panOnlyWhenZoomed: false,
+        excludeClass: 'seat', // Don't pan when clicking seats
+        handleStartEvent: (event) => {
+          // Allow seat clicks to work normally
+          if (event.target.classList.contains('seat')) {
+            return false
+          }
+          return true
+        }
+      })
+      
+      // Add mouse wheel zoom to container
+      panzoomContainer.value.addEventListener('wheel', (event) => {
+        if (panzoomInstance.value) {
+          panzoomInstance.value.zoomWithWheel(event)
+        }
+      })
+    }
+  }
+})
+
+// Cleanup Panzoom
+onUnmounted(() => {
+  if (panzoomInstance.value) {
+    panzoomInstance.value.destroy()
+  }
+})
+
+// Watch for external seat selection changes
+watch(() => props.selectedSeats, (newSeats) => {
+  selectedSeatIds.value = [...newSeats]
+}, { immediate: true })
 </script>
 
 <template>
-    <div class="seat-layout-container">
-        <!-- Stage/Center indicator -->
-        <div class="stage-indicator">
-            <div class="stage">STAGE</div>
-        </div>
-        
-        <!-- Grid Layout (for positioned blocks) -->
-        <div v-if="useGridLayout" class="seat-grid">
-            <table class="layout-table">
-                <tbody>
-                    <tr v-for="(row, y) in layoutGrid" :key="y">
-                        <td v-for="(cell, x) in row" :key="x" class="layout-cell">
-                            <div v-if="cell" class="block-container" :style="getBlockStyle(cell)">
-                                <div class="block">
-                                    <div class="block-name">{{ cell.name }}</div>
-                                    <div :class="['block-seats', { 'rotated': isBlockRotated(cell) }]">
-                                        <div v-for="row in cell.rows" :key="row.id" class="seat-row">
-                                            <div class="row-label">{{ row.name }}</div>
-                                            <div class="seats">
-                                                <button
-                                                    v-for="seat in row.seats"
-                                                    :key="seat.id"
-                                                    :class="['seat', getSeatClass(seat)]"
-                                                    :title="`${cell.name} - ${row.name} - ${seat.label}`"
-                                                    @click="toggleSeat(seat)"
-                                                    :disabled="isSeatBooked(seat.id)"
-                                                >
-                                                    {{ seat.label }}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Simple Layout (for non-positioned blocks) -->
-        <div v-else class="seat-blocks">
-            <div v-for="block in blocks" :key="block.id" class="block-container" :style="getBlockStyle(block)">
-                <div class="block">
-                    <div class="block-name">{{ block.name }}</div>
-                    <div :class="['block-seats', { 'rotated': isBlockRotated(block) }]">
-                        <div v-for="row in block.rows" :key="row.id" class="seat-row">
-                            <div class="row-label">{{ row.name }}</div>
-                            <div class="seats">
-                                <button
-                                    v-for="seat in row.seats"
-                                    :key="seat.id"
-                                    :class="['seat', getSeatClass(seat)]"
-                                    :title="`${block.name} - ${row.name} - ${seat.label}`"
-                                    @click="toggleSeat(seat)"
-                                    :disabled="isSeatBooked(seat.id)"
-                                >
-                                    {{ seat.label }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+  <div class="seating-layout-wrapper">
+    <!-- Main Layout Grid with Panzoom -->
+    <div class="layout-container" ref="panzoomContainer">
+      <div class="panzoom-content">
+        <table class="seat-layout-table">
+          <tbody>
+            <tr v-for="(row, rowIndex) in layoutGrid" :key="rowIndex">
+              <td
+                v-for="(cell, colIndex) in row"
+                :key="colIndex"
+                class="layout-cell"
+              >
+                <!-- Empty Cell -->
+                <div v-if="cell === null" class="empty-cell"></div>
+                
+                <!-- Stage Cell -->
+                <div
+                  v-else-if="cell.type === 'stage'"
+                  class="stage-cell"
+                >
+                  <div class="stage-content">
+                    🎭 STAGE
+                  </div>
                 </div>
-            </div>
-        </div>
+                
+                <!-- Block Cell -->
+                <div
+                  v-else-if="cell.type === 'block'"
+                  class="block-cell"
+                >
+                  <div class="block-content">
+                    <!-- Rows and Seats with orientation-based layout -->
+                    <div class="rows-container" :class="getRowSeatsLayout(cell).rowDirection + '-layout'">
+                      <!-- Block Name positioned at tip of arrow -->
+                      <div 
+                        class="block-name-label"
+                        :class="'rotation-' + (cell.rotation || 0)"
+                      >
+                        {{ cell.name }}
+                      </div>
+                      
+                      <div
+                        v-for="row in (getRowSeatsLayout(cell).reverseRows ? [...cell.rows].reverse() : cell.rows)"
+                        :key="row.id"
+                        class="seat-row"
+                        :class="getRowSeatsLayout(cell).rowDirection + '-row'"
+                      >
+                        <div class="row-label-container">
+                          <div class="row-label">{{ row.name }}</div>
+                        </div>
+                        <div class="seats-container">
+                          <button
+                            v-for="seat in (getRowSeatsLayout(cell).reverseSeats ? [...row.seats].reverse() : row.seats)"
+                            :key="seat.id"
+                            :class="['seat', getSeatStatus(seat).class]"
+                            :disabled="getSeatStatus(seat).disabled"
+                            @click="handleSeatClick(seat)"
+                            :title="`${cell.name} - Row ${row.name} - Seat ${seat.name}`"
+                          >
+                            {{ seat.name }}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         
-        <!-- Legend -->
-        <div class="seat-legend">
-            <div class="legend-item">
-                <span class="seat seat-available"></span>
-                <span>Available</span>
+        <!-- Unplaced Blocks (inside panzoom content) -->
+        <div v-if="unplacedBlocks.length > 0" class="unplaced-blocks">
+          <h4 class="unplaced-title">Additional Blocks (Not Positioned)</h4>
+          <div class="unplaced-container">
+            <div
+              v-for="block in unplacedBlocks"
+              :key="`unplaced-${block.id}`"
+              class="unplaced-block"
+            >
+              <div class="block-content">
+                <!-- Block Header -->
+                <div class="block-header">
+                  <span class="block-name">{{ block.name }}</span>
+                </div>
+
+                <!-- Rows and Seats -->
+                <div class="rows-container">
+                  <div
+                    v-for="row in block.rows"
+                    :key="row.id"
+                    class="seat-row"
+                  >
+                    <div class="row-label">{{ row.name }}</div>
+                    <div class="seats-container">
+                      <button
+                        v-for="seat in row.seats"
+                        :key="seat.id"
+                        :class="['seat', getSeatStatus(seat).class]"
+                        :disabled="getSeatStatus(seat).disabled"
+                        @click="handleSeatClick(seat)"
+                        :title="`${block.name} - ${row.name} - ${seat.name}`"
+                      >
+                        {{ seat.name }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="legend-item">
-                <span class="seat seat-selected"></span>
-                <span>Selected</span>
-            </div>
-            <div class="legend-item">
-                <span class="seat seat-booked"></span>
-                <span>Booked</span>
-            </div>
+          </div>
         </div>
+      </div>
     </div>
+
+    <!-- Legend -->
+    <div class="seat-legend">
+      <div class="legend-item">
+        <span class="seat seat-available"></span>
+        <span>Available</span>
+      </div>
+      <div class="legend-item">
+        <span class="seat seat-selected"></span>
+        <span>Selected</span>
+      </div>
+      <div class="legend-item">
+        <span class="seat seat-booked"></span>
+        <span>Booked</span>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.seat-layout-container {
-    width: 100%;
-    padding: 20px;
-    overflow-x: auto;
-    overflow-y: auto;
-    max-height: 600px;
-    background: #f5f5f5;
-    border-radius: 8px;
+.seating-layout-wrapper {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 8px;
 }
 
-.stage-indicator {
-    text-align: center;
-    margin-bottom: 30px;
+/* Layout Container */
+.layout-container {
+  overflow: hidden; /* Panzoom handles overflow */
+  margin-bottom: 20px;
+  height: 80vh;
+  width: 100%;
+  cursor: grab;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
-.stage {
-    display: inline-block;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 15px 60px;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 18px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.layout-container:active {
+  cursor: grabbing;
 }
 
-/* Grid Layout */
-.seat-grid {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 30px;
+.panzoom-content {
+  transform-origin: 0 0;
+  display: inline-block;
+  min-width: 100%;
+  min-height: 100%;
 }
 
-.layout-table {
-    border-spacing: 20px;
+.seat-layout-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
 }
 
 .layout-cell {
-    padding: 0;
-    vertical-align: top;
+  padding: 8px;
+  vertical-align: top;
+  border: none;
+  background: transparent;
 }
 
-/* Simple Layout */
-.seat-blocks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-    margin-bottom: 30px;
+/* Empty Cell */
+.empty-cell {
+  width: 100%;
+  height: 100%;
+  background: transparent;
 }
 
-/* Block Styling */
-.block-container {
-    transition: transform 0.3s ease;
+/* Stage Cell */
+.stage-cell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.block {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.stage-content {
+  background: #dc2626;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 14px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
 }
 
-.block-name {
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 10px;
-    padding: 5px;
-    background: #f0f0f0;
-    border-radius: 4px;
+/* Block Cell */
+.block-cell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
 }
 
-.block-seats {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.block-content {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
 }
 
-.block-seats.rotated {
-    flex-direction: row;
+/* Block Name Label */
+.block-name-label {
+  font-weight: bold;
+  font-size: 14px;
+  color: #1f2937;
+  position: absolute;
+  transform-origin: center center;
+  z-index: 10;
+  background: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.block-seats.rotated .seat-row {
-    flex-direction: column;
+.block-name-label.rotation-0 {
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-.block-seats.rotated .seats {
-    flex-direction: column;
+.block-name-label.rotation-90 {
+  top: 50%;
+  right: -20px;
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.block-name-label.rotation-180 {
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%) rotate(180deg);
+}
+
+.block-name-label.rotation-270 {
+  top: 50%;
+  left: -20px;
+  transform: translateY(-50%) rotate(270deg);
+}
+
+/* Rows and Seats */
+.rows-container {
+  display: flex;
+  gap: 4px;
+}
+
+.rows-container.horizontal-layout {
+  flex-direction: column;
+}
+
+.rows-container.vertical-layout {
+  flex-direction: row;
 }
 
 .seat-row {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.seat-row.horizontal-row {
+  flex-direction: row;
+}
+
+.seat-row.vertical-row {
+  flex-direction: column;
+  margin-bottom: 0;
+  margin-right: 6px;
+}
+
+.row-label-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .row-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-    min-width: 30px;
-    text-align: right;
-    padding-right: 5px;
+  min-width: 32px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #374151;
+  text-align: center;
+  background: #f3f4f6;
+  border-radius: 3px;
+  padding: 4px 6px;
+  margin-right: 8px;
 }
 
-.seats {
-    display: flex;
-    gap: 2px;
-    flex-wrap: wrap;
+.vertical-row .row-label {
+  margin-right: 0;
+  margin-bottom: 8px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 
-/* Seat Styling */
+.seats-container {
+  display: flex;
+  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+}
+
+.vertical-row .seats-container {
+  flex-direction: column;
+  align-items: center;
+}
+
 .seat {
-    width: 25px;
-    height: 25px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .seat-available {
-    background: #e8f5e9;
-    color: #2e7d32;
+  background: #10b981;
+  border-color: #059669;
+  color: white;
 }
 
 .seat-available:hover {
-    background: #c8e6c9;
-    transform: scale(1.1);
+  background: #059669;
+  transform: scale(1.1);
 }
 
 .seat-selected {
-    background: #2196f3;
-    color: white;
-    border-color: #1976d2;
+  background: #3b82f6;
+  border-color: #2563eb;
+  color: white;
+  transform: scale(1.1);
 }
 
 .seat-booked {
-    background: #ffcdd2;
-    color: #c62828;
-    cursor: not-allowed;
-    opacity: 0.6;
+  background: #ef4444;
+  border-color: #dc2626;
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .seat:disabled {
-    cursor: not-allowed;
+  cursor: not-allowed;
+}
+
+/* Unplaced Blocks */
+.unplaced-blocks {
+  margin-top: 20px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  border: 2px dashed #d1d5db;
+}
+
+.unplaced-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.unplaced-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.unplaced-block {
+  transform-origin: center center;
+}
+
+.unplaced-block .block-content {
+  border-color: #f59e0b;
+  background: #fef3c7;
+}
+
+.unplaced-block .rows-container {
+  max-height: none;
 }
 
 /* Legend */
 .seat-legend {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    padding: 15px;
-    background: white;
-    border-radius: 8px;
-    border: 1px solid #ddd;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 16px;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
 }
 
 .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #374151;
 }
 
 .legend-item .seat {
-    cursor: default;
+  width: 20px;
+  height: 20px;
+  margin: 0;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .seat-layout-container {
-        padding: 10px;
-    }
-    
-    .stage {
-        padding: 10px 30px;
-        font-size: 14px;
-    }
-    
-    .seat {
-        width: 20px;
-        height: 20px;
-        font-size: 9px;
-    }
-}
+/* Remove responsive styles - layout should never distort */
+/* The layout maintains its exact proportions and becomes scrollable if needed */
 </style>

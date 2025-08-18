@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -30,7 +31,7 @@ class AuthController extends Controller
     {
         try {
             $user = Socialite::driver('identity')->user();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return redirect()->route('auth.login');
         }
         if (!in_array('54ZYODX15G2K1M76', $user->user['groups'], true)) {

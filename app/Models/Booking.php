@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
 
 class Booking extends Model
@@ -18,17 +19,17 @@ class Booking extends Model
         'comment'
     ];
 
-    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function seat(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function seat(): BelongsTo
     {
         return $this->belongsTo(Seat::class);
     }
 
-    public function event(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
     }

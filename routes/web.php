@@ -26,6 +26,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('/events/{event}/bookings', \App\Http\Controllers\BookingController::class,[
         'only' => ['show','create','store','destroy','update']
     ]);
+    
+    // Admin routes
+    Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
+        Route::get('/rooms/{room}/layout', [\App\Http\Controllers\Admin\RoomLayoutController::class, 'edit'])->name('rooms.layout');
+        Route::put('/rooms/{room}/layout', [\App\Http\Controllers\Admin\RoomLayoutController::class, 'update'])->name('rooms.layout.update');
+    });
 });
 
 // Auth Group

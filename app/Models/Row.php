@@ -11,11 +11,11 @@ class Row extends Model
     protected $fillable = [
         'block_id',
         'name',
-        'order'
+        'sort'
     ];
 
     protected $casts = [
-        'order' => 'integer'
+        'sort' => 'integer'
     ];
 
     public function block()
@@ -25,6 +25,6 @@ class Row extends Model
 
     public function seats()
     {
-        return $this->hasMany(Seat::class)->orderBy('number');
+        return $this->hasMany(Seat::class)->orderBy('sort');
     }
 }

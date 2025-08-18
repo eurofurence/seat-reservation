@@ -1,6 +1,26 @@
 @import 'tailwindcss';
 
-@config '../../tailwind.config.js';
+@theme {
+  --color-primary: theme(colors.green.800);
+  --color-primary-foreground: theme(colors.white);
+  --color-secondary: theme(colors.slate.100);
+  --color-secondary-foreground: theme(colors.slate.900);
+  --color-destructive: theme(colors.red.500);
+  --color-destructive-foreground: theme(colors.white);
+  --color-muted: theme(colors.slate.100);
+  --color-muted-foreground: theme(colors.slate.500);
+  --color-accent: theme(colors.slate.100);
+  --color-accent-foreground: theme(colors.slate.900);
+  --color-card: theme(colors.white);
+  --color-card-foreground: theme(colors.slate.950);
+  --color-border: theme(colors.slate.200);
+  --color-input: theme(colors.slate.200);
+  --color-ring: theme(colors.green.800);
+  --color-background: theme(colors.white);
+  --color-foreground: theme(colors.slate.950);
+  
+  --radius: 0.5rem;
+}
 
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
@@ -16,6 +36,6 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
+    border-color: var(--color-border, currentcolor);
   }
 }

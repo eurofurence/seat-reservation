@@ -11,11 +11,13 @@ class Seat extends Model
     protected $fillable = [
         'row_id',
         'number',
-        'label'
+        'label',
+        'sort'
     ];
 
     protected $casts = [
-        'number' => 'integer'
+        'number' => 'integer',
+        'sort' => 'integer'
     ];
 
     public function row()

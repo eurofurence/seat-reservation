@@ -24,6 +24,15 @@ class BookingController extends Controller
 
     public function create(Event $event, Request $request)
     {
+        // Check if event has tickets available
+        if ($event->max_tickets && $event->max_tickets > 0) {
+            $bookedTickets = $event->bookings()->count();
+            if ($bookedTickets >= $event->max_tickets) {
+                return redirect()->route('events.index')
+                    ->with(['message' => 'This event is sold out.']);
+            }
+        }
+
         // Check if user has reached booking limit
         if (!Auth::user()->is_admin) {
             $existingBookings = Booking::where('user_id', Auth::id())
@@ -41,20 +50,37 @@ class BookingController extends Controller
             return $this->validateBooking($request, $event);
         }
 
-        // Load event with all seat data
-        $event->load([
-            'room.blocks.rows.seats'
-        ]);
+        // Load event with room data only
+        $event->load('room:id,name');
 
-        // Get already booked seats for this event
+        // Load blocks with minimal seat data - optimized to prevent memory issues
+        $blocks = $event->room->blocks()
+            ->with([
+                'rows' => function($query) {
+                    $query->orderBy('sort')->select('id', 'block_id', 'name', 'sort');
+                },
+                'rows.seats' => function($query) {
+                    $query->orderBy('sort')->select('id', 'row_id', 'sort', 'name');
+                }
+            ])
+            ->orderBy('sort')
+            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'sort')
+            ->get();
+
+        // Get already booked seats for this event efficiently
         $bookedSeats = Booking::where('event_id', $event->id)
             ->pluck('seat_id')
             ->toArray();
 
+        // Calculate tickets left manually to avoid heavy loading
+        $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
+        $bookedTickets = $event->bookings()->count();
+        $ticketsLeft = max(0, $maxTickets - $bookedTickets);
+
         return Inertia::render('Booking/CreateBooking', [
-            'event' => $event,
-            'room' => $event->room,
-            'blocks' => $event->room->blocks,
+            'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at']), ['tickets_left' => $ticketsLeft]),
+            'room' => $event->room->only(['id', 'name']),
+            'blocks' => $blocks,
             'bookedSeats' => $bookedSeats,
             'maxSeatsPerUser' => Auth::user()->is_admin ? 999 : 2,
             'userBookedCount' => Auth::user()->is_admin ? 0 : Booking::where('user_id', Auth::id())
@@ -69,6 +95,17 @@ class BookingController extends Controller
             'seats' => 'required|array|min:1',
             'seats.*' => 'required|exists:seats,id'
         ]);
+
+        // Calculate tickets left manually to avoid heavy loading
+        $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
+        $bookedTickets = $event->bookings()->count();
+        $ticketsLeft = max(0, $maxTickets - $bookedTickets);
+
+        // Check if enough tickets are available
+        if ($ticketsLeft < count($data['seats'])) {
+            return redirect()->back()
+                ->with(['message' => 'Not enough tickets available for this event.']);
+        }
 
         // Check if user can book these seats
         if (!Auth::user()->is_admin) {
@@ -92,13 +129,21 @@ class BookingController extends Controller
                 ->with(['message' => 'Some of the selected seats are already booked.']);
         }
 
-        // Load seat information
-        $seats = Seat::with('row.block')
+        // Load seat information with minimal data
+        $seats = Seat::with([
+                'row:id,block_id,name', 
+                'row.block:id,name'
+            ])
+            ->select('id', 'row_id', 'name', 'sort')
             ->whereIn('id', $data['seats'])
             ->get();
 
+        // Load room data separately to avoid heavy loading
+        $room = $event->room()->select('id', 'name')->first();
+
         return Inertia::render('Booking/ValidateBooking', [
-            'event' => $event->load('room'),
+            'event' => $event->only(['id', 'name', 'starts_at', 'reservation_ends_at']),
+            'room' => $room,
             'seats' => $seats,
             'seatIds' => $data['seats']
         ]);
@@ -117,6 +162,17 @@ class BookingController extends Controller
             'seats.*.name' => 'required|string|max:255',
             'seats.*.comment' => 'nullable|string|max:255'
         ]);
+
+        // Calculate tickets left manually to avoid heavy loading
+        $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
+        $bookedTickets = $event->bookings()->count();
+        $ticketsLeft = max(0, $maxTickets - $bookedTickets);
+
+        // Check if enough tickets are available
+        if ($ticketsLeft < count($data['seats'])) {
+            return redirect()->route('bookings.index')
+                ->with(['message' => 'Not enough tickets available for this event.']);
+        }
 
         // Ensure user hasn't exceeded booking limit
         if (!Auth::user()->is_admin) {

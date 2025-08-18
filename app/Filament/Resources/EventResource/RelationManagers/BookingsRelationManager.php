@@ -2,9 +2,19 @@
 
 namespace App\Filament\Resources\EventResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Columns\SelectColumn;
+use Filament\Tables\Columns\CheckboxColumn;
+use Filament\Actions\ExportAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use App\Filament\Exports\BookingExporter;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -16,16 +26,16 @@ class BookingsRelationManager extends RelationManager
 {
     protected static string $relationship = 'bookings';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->label('Name on Reservation')
                     ->required()
                     ->columnSpanFull()
                     ->maxLength(255),
-                Forms\Components\Textarea::make('comment')
+                Textarea::make('comment')
                     ->label('Comment')
                     ->columnSpanFull()
                     ->rows(3),
@@ -37,9 +47,9 @@ class BookingsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-                Tables\Columns\TextInputColumn::make('name')->label('Booking Name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('user.name')->label('User Name')->sortable()->searchable(),
-                Tables\Columns\SelectColumn::make('type')->options([
+                TextInputColumn::make('name')->label('Booking Name')->sortable()->searchable(),
+                TextColumn::make('user.name')->label('User Name')->sortable()->searchable(),
+                SelectColumn::make('type')->options([
                     'con_guest' => 'Con Guest',
                     'function' => 'Function (Daily etc.)',
                     'event_guests' => 'Event Guest',
@@ -48,21 +58,21 @@ class BookingsRelationManager extends RelationManager
                 TextColumn::make('seat.row.block.name')->sortable(),
                 TextColumn::make('seat.row.name')->sortable(),
                 TextColumn::make('seat.name')->sortable(),
-                Tables\Columns\CheckboxColumn::make('ticket_given'),
+                CheckboxColumn::make('ticket_given'),
             ])
             ->filters([
                 //
             ])
             ->headerActions([
-                Tables\Actions\ExportAction::make()->exporter(BookingExporter::class),
+                ExportAction::make()->exporter(BookingExporter::class),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
