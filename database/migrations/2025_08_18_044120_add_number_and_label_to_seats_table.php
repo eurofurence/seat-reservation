@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('seats', function (Blueprint $table) {
-            $table->integer('sort')->default(0)->after('label');
+            $table->integer('number')->default(1)->after('row_id');
+            $table->string('label')->default('A')->after('number');
         });
     }
 
@@ -22,7 +23,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('seats', function (Blueprint $table) {
-            $table->dropColumn('sort');
+            $table->dropColumn(['number', 'label']);
         });
     }
 };

@@ -2,32 +2,26 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\EventResource\Pages;
+use App\Filament\Resources\EventResource\RelationManagers\BookingsRelationManager;
+use App\Models\Event;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Actions\EditAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use App\Filament\Resources\EventResource\Pages\ListEvents;
-use App\Filament\Resources\EventResource\Pages\CreateEvent;
-use App\Filament\Resources\EventResource\Pages\EditEvent;
-use App\Filament\Resources\EventResource\Pages;
-use App\Filament\Resources\EventResource\RelationManagers\BookingsRelationManager;
-use App\Models\Event;
-use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
 
 class EventResource extends Resource
 {
     protected static ?string $model = Event::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-calendar-days';
 
     public static function form(Schema $schema): Schema
     {
@@ -86,7 +80,10 @@ class EventResource extends Resource
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                Action::make('edit')
+                    ->label('Edit')
+                    ->icon('heroicon-o-pencil')
+                    ->url(fn (Event $record): string => route('filament.admin.resources.events.edit', $record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -105,9 +102,9 @@ class EventResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListEvents::route('/'),
-            'create' => CreateEvent::route('/create'),
-            'edit' => EditEvent::route('/{record}/edit'),
+            'index' => Pages\ListEvents::route('/'),
+            'create' => Pages\CreateEvent::route('/create'),
+            'edit' => Pages\EditEvent::route('/{record}/edit'),
         ];
     }
 }

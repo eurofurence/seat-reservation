@@ -2,29 +2,24 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\RoomResource\Pages;
+use App\Models\Room;
+use App\Models\Block;
+use App\Models\Row;
+use App\Models\Seat;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Schemas\Components\Actions;
-use Filament\Actions\Action;
+use Filament\Forms\Components\Actions;
+use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Actions\EditAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use App\Filament\Resources\RoomResource\Pages\ListRooms;
-use App\Filament\Resources\RoomResource\Pages\CreateRoom;
-use App\Filament\Resources\RoomResource\Pages\EditRoom;
-use App\Filament\Resources\RoomResource\Pages;
-use App\Models\Room;
-use App\Models\Block;
-use App\Models\Row;
-use App\Models\Seat;
-use Filament\Forms;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -127,7 +122,7 @@ class RoomResource extends Resource
                                                     ->live(),
 
                                                 Actions::make([
-                                                    Action::make('generate_block')
+                                                    FormAction::make('generate_block')
                                                         ->label('Generate Block')
                                                         ->icon('heroicon-o-sparkles')
                                                         ->color('success')
@@ -229,7 +224,7 @@ class RoomResource extends Resource
         $set('rows', $rowsData);
     }
 
-    protected static function numberToLetter(int $number): string
+    public static function numberToLetter(int $number): string
     {
         $result = '';
         while ($number > 0) {
@@ -275,17 +270,17 @@ class RoomResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')
+                Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
                 
-                TextColumn::make('blocks_count')
+                Tables\Columns\TextColumn::make('blocks_count')
                     ->label('Blocks')
                     ->counts('blocks')
                     ->badge()
                     ->color('success'),
                 
-                TextColumn::make('total_seats')
+                Tables\Columns\TextColumn::make('total_seats')
                     ->label('Total Seats')
                     ->getStateUsing(function ($record) {
                         return $record->blocks()
@@ -299,17 +294,17 @@ class RoomResource extends Resource
                     ->badge()
                     ->color('primary'),
                 
-                TextColumn::make('stage_position')
+                Tables\Columns\TextColumn::make('stage_position')
                     ->label('Stage Position')
                     ->getStateUsing(fn ($record) => "({$record->stage_x}, {$record->stage_y})")
                     ->toggleable(),
                     
-                TextColumn::make('created_at')
+                Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                     
-                TextColumn::make('updated_at')
+                Tables\Columns\TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -318,7 +313,10 @@ class RoomResource extends Resource
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                Action::make('edit')
+                    ->label('Edit')
+                    ->icon('heroicon-o-pencil')
+                    ->url(fn (Room $record): string => route('filament.admin.resources.rooms.edit', $record)),
                 
                 Action::make('layout_editor')
                     ->label('Edit Layout')
@@ -384,9 +382,9 @@ class RoomResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListRooms::route('/'),
-            'create' => CreateRoom::route('/create'),
-            'edit' => EditRoom::route('/{record}/edit'),
+            'index' => Pages\ListRooms::route('/'),
+            'create' => Pages\CreateRoom::route('/create'),
+            'edit' => Pages\EditRoom::route('/{record}/edit'),
         ];
     }
 }
