@@ -13,9 +13,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
 
 class EventResource extends Resource
 {
@@ -80,15 +77,10 @@ class EventResource extends Resource
                 //
             ])
             ->recordActions([
-                Action::make('edit')
-                    ->label('Edit')
-                    ->icon('heroicon-o-pencil')
-                    ->url(fn (Event $record): string => route('filament.admin.resources.events.edit', $record)),
+                // Actions will be handled through the edit pages
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                // Bulk actions will be added later if needed
             ]);
     }
 

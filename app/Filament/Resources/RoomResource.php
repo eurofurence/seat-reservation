@@ -13,13 +13,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Forms\Components\Actions;
-use Filament\Forms\Components\Actions\Action as FormAction;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -99,43 +93,15 @@ class RoomResource extends Resource
                                             ]),
                                     ]),
 
-                                Fieldset::make('Quick Block Creation')
+                                Fieldset::make('Manual Block Creation')
                                     ->schema([
-                                        Grid::make(3)
+                                        Grid::make(1)
                                             ->schema([
-                                                TextInput::make('quick_rows')
-                                                    ->label('Number of Rows')
-                                                    ->numeric()
-                                                    ->minValue(1)
-                                                    ->maxValue(50)
-                                                    ->placeholder('e.g., 10')
-                                                    ->helperText('Creates rows automatically')
-                                                    ->live(),
-                                                
-                                                TextInput::make('quick_seats_per_row')
-                                                    ->label('Seats per Row')
-                                                    ->numeric()
-                                                    ->minValue(1)
-                                                    ->maxValue(100)
-                                                    ->placeholder('e.g., 25')
-                                                    ->helperText('Creates A-Z seats automatically')
-                                                    ->live(),
-
-                                                Actions::make([
-                                                    FormAction::make('generate_block')
-                                                        ->label('Generate Block')
-                                                        ->icon('heroicon-o-sparkles')
-                                                        ->color('success')
-                                                        ->action(function (Get $get, Set $set, $state) {
-                                                            $rows = (int) $get('quick_rows');
-                                                            $seatsPerRow = (int) $get('quick_seats_per_row');
-                                                            
-                                                            if ($rows > 0 && $seatsPerRow > 0) {
-                                                                static::generateBlockStructure($get, $set, $rows, $seatsPerRow);
-                                                            }
-                                                        })
-                                                        ->visible(fn (Get $get) => $get('quick_rows') && $get('quick_seats_per_row')),
-                                                ])
+                                                TextInput::make('block_description')
+                                                    ->label('Instructions')
+                                                    ->disabled()
+                                                    ->default('Use the rows and seats sections below to manually create your block structure. Quick generation can be added through table actions.')
+                                                    ->helperText('For quick block creation, use the "Quick Add Block" action in the rooms table.'),
                                             ]),
                                     ]),
 
@@ -196,33 +162,6 @@ class RoomResource extends Resource
             ]);
     }
 
-    protected static function generateBlockStructure(Get $get, Set $set, int $rows, int $seatsPerRow): void
-    {
-        $rowsData = [];
-        
-        for ($rowIndex = 1; $rowIndex <= $rows; $rowIndex++) {
-            $seatsData = [];
-            
-            for ($seatIndex = 1; $seatIndex <= $seatsPerRow; $seatIndex++) {
-                // Convert seat index to letter (A, B, C, ..., Z, AA, AB, etc.)
-                $seatLabel = static::numberToLetter($seatIndex);
-                
-                $seatsData[] = [
-                    'label' => $seatLabel,
-                    'number' => $seatIndex,
-                    'sort' => $seatIndex,
-                ];
-            }
-            
-            $rowsData[] = [
-                'name' => "Row {$rowIndex}",
-                'sort' => $rowIndex,
-                'seats' => $seatsData,
-            ];
-        }
-        
-        $set('rows', $rowsData);
-    }
 
     public static function numberToLetter(int $number): string
     {
@@ -313,62 +252,10 @@ class RoomResource extends Resource
                 //
             ])
             ->recordActions([
-                Action::make('edit')
-                    ->label('Edit')
-                    ->icon('heroicon-o-pencil')
-                    ->url(fn (Room $record): string => route('filament.admin.resources.rooms.edit', $record)),
-                
-                Action::make('layout_editor')
-                    ->label('Edit Layout')
-                    ->icon('heroicon-o-map')
-                    ->url(fn (Room $record): string => route('admin.rooms.layout', $record))
-                    ->openUrlInNewTab(),
-                    
-                Action::make('quick_add_block')
-                    ->label('Quick Add Block')
-                    ->icon('heroicon-o-plus-circle')
-                    ->color('success')
-                    ->schema([
-                        TextInput::make('block_name')
-                            ->label('Block Name')
-                            ->required()
-                            ->placeholder('e.g., Block A, VIP Section'),
-                            
-                        Select::make('rotation')
-                            ->label('Orientation')
-                            ->options([
-                                0 => '↑ Up (0°)',
-                                90 => '→ Right (90°)',
-                                180 => '↓ Down (180°)',
-                                270 => '← Left (270°)',
-                            ])
-                            ->default(0)
-                            ->required(),
-                            
-                        TextInput::make('rows')
-                            ->label('Number of Rows')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(50)
-                            ->required()
-                            ->default(10),
-                            
-                        TextInput::make('seats_per_row')
-                            ->label('Seats per Row')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(100)
-                            ->required()
-                            ->default(25),
-                    ])
-                    ->action(function (Room $record, array $data) {
-                        static::createQuickBlock($record, $data);
-                    }),
+                // Actions will be handled through the edit pages
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                // Bulk actions will be added later if needed
             ]);
     }
 
