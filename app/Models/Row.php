@@ -8,13 +8,23 @@ class Row extends Model
 {
     protected $guarded = [];
 
-    public function seats(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(Seat::class);
-    }
+    protected $fillable = [
+        'block_id',
+        'name',
+        'order'
+    ];
 
-    public function block(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    protected $casts = [
+        'order' => 'integer'
+    ];
+
+    public function block()
     {
         return $this->belongsTo(Block::class);
+    }
+
+    public function seats()
+    {
+        return $this->hasMany(Seat::class)->orderBy('number');
     }
 }

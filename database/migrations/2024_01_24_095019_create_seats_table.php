@@ -4,18 +4,22 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void
+return new class extends Migration
+{
+    public function up()
     {
         Schema::create('seats', function (Blueprint $table) {
             $table->id();
-            $table->foreignIdFor(\App\Models\Row::class)->constrained()->cascadeOnDelete();
-            $table->string('name');
+            $table->foreignId('row_id')->constrained()->onDelete('cascade');
+            $table->integer('number');
+            $table->string('label');
             $table->timestamps();
+            
+            $table->index(['row_id', 'number']);
         });
     }
 
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('seats');
     }

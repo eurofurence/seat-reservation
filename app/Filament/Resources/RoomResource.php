@@ -3,11 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\RoomResource\Pages;
-use App\Filament\Resources\RoomResource\RelationManagers;
 use App\Models\Room;
 use Filament\Forms;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -27,49 +24,6 @@ class RoomResource extends Resource
                     ->required()
                     ->columnSpanFull()
                     ->maxLength(255),
-                Repeater::make('Blocks')
-                    ->relationship('blocks')
-                    ->columnSpanFull()
-                    ->orderColumn()
-                    ->schema([
-                        Forms\Components\Group::make([
-                            TextInput::make('name'),
-                            TextInput::make('row')
-                                ->required()
-                                ->numeric()
-                                ->maxLength(255),
-                            TextInput::make('row_count')
-                                ->required()
-                                ->maxLength(255),
-                            TextInput::make('default_seat_count')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\Select::make('rotate')
-                                ->options([
-                                    0 => '0°',
-                                    90 => '90°',
-                                    180 => '180°',
-                                    270 => '270°',
-                                ])
-                                ->default(0),
-                        ])->columns(5),
-                        Repeater::make('Rows')
-                            ->relationship('rows')
-                            ->schema([
-                                TextInput::make('name')->disabled(),
-                                TextInput::make('seat_count')
-                                    ->numeric()
-                                    ->default(1),
-                                Forms\Components\Select::make('align')
-                                    ->options([
-                                        'left' => 'Left',
-                                        'center' => 'Center',
-                                        'right' => 'Right',
-                                    ])
-                            ])
-                            ->orderColumn()
-                            ->columns(3),
-                    ])
             ]);
     }
 
@@ -92,11 +46,6 @@ class RoomResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\Action::make('floor_plan_editor')
-                    ->label('Floor Plan Editor')
-                    ->icon('heroicon-o-squares-plus')
-                    ->url(fn ($record) => route('floor-plan.editor', $record))
-                    ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -109,7 +58,7 @@ class RoomResource extends Resource
     public static function getRelations(): array
     {
         return [
-            RelationManagers\BlocksRelationManager::class,
+            //
         ];
     }
 

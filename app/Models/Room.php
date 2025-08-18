@@ -8,17 +8,13 @@ class Room extends Model
 {
     protected $guarded = [];
 
-    protected $casts = [
-        'layout_config' => 'array',
-    ];
-
     public function events(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Event::class);
     }
 
-    public function blocks()
+    public function blocks(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->hasMany(Block::class);
+        return $this->hasMany(Block::class)->orderBy('order');
     }
 }

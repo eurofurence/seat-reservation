@@ -2,7 +2,6 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\BookingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,6 +13,3 @@ use App\Http\Controllers\BookingController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-
-// API endpoint to get seat data for a specific row (reduces Inertia payload)
-Route::middleware('auth')->get('events/{event}/rows/{rowId}/seats', [BookingController::class, 'getRowSeats']);

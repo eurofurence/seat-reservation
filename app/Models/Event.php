@@ -9,7 +9,7 @@ class Event extends Model
     protected $guarded = [];
 
     // appends
-    protected $appends = ['seats_left'];
+    protected $appends = ['tickets_left'];
 
     protected $casts = [
         'starts_at' => 'datetime',
@@ -26,16 +26,10 @@ class Event extends Model
         return $this->hasMany(Booking::class);
     }
 
-    // custom seats left attribute
-    public function getSeatsLeftAttribute(): int
+    // custom tickets left attribute
+    public function getTicketsLeftAttribute(): int
     {
-        return min(
-            Seat::whereHas('row.block.room.events', function ($query) {
-                $query->where('id', $this->id);
-            })->whereDoesntHave('bookings', function ($query) {
-                $query->where('event_id', $this->id);
-            })->count(),
-            $this->tickets - $this->bookings()->count()
-        );
+        $bookedTickets = $this->bookings()->sum('number_of_tickets');
+        return max(0, $this->tickets - $bookedTickets);
     }
 }

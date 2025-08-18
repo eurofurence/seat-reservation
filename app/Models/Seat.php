@@ -8,21 +8,34 @@ class Seat extends Model
 {
     protected $guarded = [];
 
-    public function row(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    protected $fillable = [
+        'row_id',
+        'number',
+        'label'
+    ];
+
+    protected $casts = [
+        'number' => 'integer'
+    ];
+
+    public function row()
     {
         return $this->belongsTo(Row::class);
     }
 
-    public function bookings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function bookings()
     {
         return $this->hasMany(Booking::class);
     }
 
-    public function getFullName()
+    public function isBookedForEvent($eventId)
     {
-        // load
+        return $this->bookings()->where('event_id', $eventId)->exists();
+    }
+
+    public function getFullLabel()
+    {
         $this->loadMissing('row.block');
-        // Block - Row - Seat
-        return "{$this->row->block->name} - {$this->row->name} - {$this->name}";
+        return "{$this->row->block->name}-{$this->row->name}-{$this->label}";
     }
 }

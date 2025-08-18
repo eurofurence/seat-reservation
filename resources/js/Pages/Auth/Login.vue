@@ -1,141 +1,61 @@
 <script setup>
 import { Link, Head } from '@inertiajs/vue3'
-import Layout from "@/Layouts/Layout.vue";
+import Layout from "@/Layouts/Layout.vue"
+import Button from "@/Components/ui/Button.vue"
+import Card from "@/Components/ui/Card.vue"
+import Alert from "@/Components/ui/Alert.vue"
+import { User, Info, LogIn } from 'lucide-vue-next'
+
 defineOptions({layout: Layout})
 </script>
 
 <template>
   <Head title="Login" />
   
-  <!-- Minimal Login Page -->
-  <div class="login-page">
-    <!-- Content Area -->
-    <div class="login-content">
-      <!-- Title Section -->
-      <div class="brand-section">
-        <h1 class="brand-title">Seat Reservation</h1>
-        <p class="brand-subtitle">Reserve your seats for Eurofurence Events</p>
+  <div class="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+    <div class="w-full max-w-md space-y-8">
+      <!-- Brand Section -->
+      <div class="text-center">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Seat Reservation</h1>
+        <p class="text-gray-600">Reserve your seats for Eurofurence Events</p>
       </div>
       
-      <!-- Login Form Section -->
-      <div class="login-form">
-        <van-cell-group inset class="welcome-card">
-          <van-cell
-            title="Welcome"
-            value="Tap below to sign in securely"
-            icon="user-o"
-          />
-        </van-cell-group>
-        
-        <!-- Login Button -->
-        <div class="login-button-container">
-          <Link 
-            as="button" 
-            method="post" 
-            :href="route('auth.login.redirect')"
-            class="w-full"
-          >
-            <van-button 
-              type="primary" 
-              size="large" 
-              block
-              icon="sign"
-              loading-text="Signing in..."
-              class="w-full"
-            >
-              Sign In
-            </van-button>
-          </Link>
+      <!-- Login Card -->
+      <Card class="p-6 space-y-6">
+        <!-- Welcome Message -->
+        <div class="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <User class="h-5 w-5 text-blue-600 mt-0.5" />
+          <div>
+            <h3 class="font-medium text-blue-900">Welcome</h3>
+            <p class="text-sm text-blue-700">Tap below to sign in securely</p>
+          </div>
         </div>
         
+        <!-- Login Button -->
+        <Link 
+          as="button" 
+          method="post" 
+          :href="route('auth.login.redirect')"
+          class="w-full"
+        >
+          <Button size="lg" class="w-full">
+            <LogIn class="mr-2 h-4 w-4" />
+            Sign In
+          </Button>
+        </Link>
+        
         <!-- Info Notice -->
-        <van-notice-bar
-          class="login-notice"
-          left-icon="info-o"
-          text="You'll be redirected to a secure login page"
-          color="#1989fa"
-          background="#ecf9ff"
-        />
-      </div>
+        <Alert class="border-blue-200 bg-blue-50">
+          <Info class="h-4 w-4" />
+          <div class="text-blue-800">
+            You'll be redirected to a secure login page
+          </div>
+        </Alert>
+      </Card>
     </div>
   </div>
 </template>
 
 <style scoped>
-.login-page {
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-}
-
-.login-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 32px 16px;
-  gap: 40px;
-}
-
-.brand-section {
-  text-align: center;
-  color: #333333;
-}
-
-.brand-title {
-  font-size: 28px;
-  font-weight: bold;
-  margin-bottom: 8px;
-  color: #333333;
-}
-
-.brand-subtitle {
-  font-size: 16px;
-  opacity: 0.7;
-  line-height: 1.4;
-  color: #666666;
-}
-
-.login-form {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding: 0 16px;
-}
-
-.login-button-container {
-  width: 100%;
-}
-
-.login-notice {
-  border-radius: 8px;
-}
-
-/* Vant component customization */
-:deep(.van-cell-group--inset) {
-  margin: 0;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.welcome-card {
-  margin-bottom: 0;
-}
-
-:deep(.van-button--primary) {
-  background: #1989fa;
-  border-color: #1989fa;
-  border-radius: 12px;
-  height: 50px;
-  font-size: 16px;
-  font-weight: 600;
-  width: 100%;
-}
-
-.w-full {
-  width: 100%;
-}
+/* Additional styles can be added here if needed */
 </style>

@@ -36,6 +36,7 @@ class AuthController extends Controller
         if (!in_array('54ZYODX15G2K1M76', $user->user['groups'], true)) {
             return redirect()->route('auth.login')->with('error', 'You are not allowed to access this application');
         }
+
         $user = User::updateOrCreate([
             'remote_id' => $user->getId(),
         ], [
@@ -44,6 +45,7 @@ class AuthController extends Controller
             'avatar' => $user->getAvatar(),
             'is_admin' => in_array('6MZYL5XWEXNORPJK', $user->user['groups'], true),
         ]);
+
         Auth::login($user);
         return redirect()->route('dashboard');
     }

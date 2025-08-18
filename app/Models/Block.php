@@ -6,37 +6,31 @@ use Illuminate\Database\Eloquent\Model;
 
 class Block extends Model
 {
+    protected $guarded = [];
+
     protected $fillable = [
-        'name',
         'room_id',
+        'name',
         'position_x',
         'position_y',
         'rotation',
-        'z_index',
-        'grid_column',
-        'grid_row',
-        'grid_column_span',
-        'grid_row_span'
+        'order'
     ];
 
     protected $casts = [
+        'rotation' => 'integer',
         'position_x' => 'integer',
         'position_y' => 'integer',
-        'rotation' => 'integer',
-        'z_index' => 'integer',
-        'grid_column' => 'integer',
-        'grid_row' => 'integer',
-        'grid_column_span' => 'integer',
-        'grid_row_span' => 'integer',
+        'order' => 'integer'
     ];
-
-    public function rows()
-    {
-        return $this->hasMany(Row::class);
-    }
 
     public function room()
     {
         return $this->belongsTo(Room::class);
+    }
+
+    public function rows()
+    {
+        return $this->hasMany(Row::class)->orderBy('order');
     }
 }
