@@ -2,12 +2,12 @@
 import { Head, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import FullWidthLayout from "@/Layouts/FullWidthLayout.vue"
-import Button from "@/Components/ui/Button.vue"
-import Card from "@/Components/ui/Card.vue"
-import Input from "@/Components/ui/Input.vue"
-import Label from "@/Components/ui/Label.vue"
-import Textarea from "@/Components/ui/Textarea.vue"
-import Alert from "@/Components/ui/Alert.vue"
+import { Button } from '@/Components/ui/button'
+import { Card } from '@/Components/ui/card'
+import { Input } from '@/Components/ui/input'
+import { Label } from '@/Components/ui/label'
+import { Textarea } from '@/Components/ui/textarea'
+import { Alert } from '@/Components/ui/alert'
 import { ArrowLeft, Calendar, MapPin, Clock, AlertCircle, Check } from 'lucide-vue-next'
 import dayjs from "dayjs"
 

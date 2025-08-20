@@ -6,13 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Seat extends Model
 {
+    public $timestamps = false;
     protected $guarded = [];
 
     protected $fillable = [
         'row_id',
         'number',
         'label',
-        'sort'
+        'sort',
+        'name'
     ];
 
     protected $casts = [
@@ -39,5 +41,11 @@ class Seat extends Model
     {
         $this->loadMissing('row.block');
         return "{$this->row->block->name}-{$this->row->name}-{$this->label}";
+    }
+
+    // Accessor to return label when name is null
+    public function getNameAttribute($value)
+    {
+        return $value ?: $this->label;
     }
 }

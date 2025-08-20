@@ -5,58 +5,199 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Room;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class RoomLayoutController extends Controller
 {
     public function edit(Room $room)
     {
-        // Load only block positioning data with aggregated counts - no individual seat data
+        // Load block positioning data with row seat counts
         $blocks = $room->blocks()
             ->select('blocks.*')
             ->selectRaw('COUNT(DISTINCT rows.id) as rows_count')
             ->selectRaw('COUNT(seats.id) as total_seats')
+            ->with(['rows' => function($query) {
+                $query->select('id', 'block_id', 'name', 'sort', 'seats_count')
+                    ->orderBy('sort');
+            }])
             ->leftJoin('rows', 'blocks.id', '=', 'rows.block_id')
             ->leftJoin('seats', 'rows.id', '=', 'seats.row_id')
             ->groupBy('blocks.id')
             ->orderBy('blocks.sort')
             ->get();
+
+        // Load stage blocks
+        $stageBlocks = $room->stageBlocks()->get();
+
+        // If no stage blocks exist but old stage_x/stage_y exist, migrate them
+        if ($stageBlocks->isEmpty() && ($room->stage_x !== null || $room->stage_y !== null)) {
+            $stageBlocks = collect([
+                $room->allBlocks()->create([
+                    'name' => 'Stage',
+                    'type' => 'stage',
+                    'position_x' => $room->stage_x ?? 0,
+                    'position_y' => $room->stage_y ?? 0,
+                    'rotation' => 0,
+                    'sort' => 0
+                ])
+            ]);
+        }
         
         return Inertia::render('Admin/RoomLayout/Edit', [
-            'room' => $room,
+            'room' => $room->only(['id', 'name']),
             'blocks' => $blocks,
+            'stageBlocks' => $stageBlocks,
+            'title' => 'Floor Plan Editor',
+            'breadcrumbs' => [
+                ['title' => 'Rooms', 'url' => route('admin.rooms.index')],
+                ['title' => $room->name, 'url' => null],
+                ['title' => 'Floor Plan Editor', 'url' => null]
+            ]
         ]);
     }
 
     public function update(Request $request, Room $room)
     {
         $request->validate([
-            'stage_x' => 'required|integer|min:0',
-            'stage_y' => 'required|integer|min:0',
+            'stageBlocks' => 'required|array',
+            'stageBlocks.*.id' => 'nullable|exists:blocks,id',
+            'stageBlocks.*.name' => 'required|string|max:255',
+            'stageBlocks.*.position_x' => 'required|integer|min:-1',
+            'stageBlocks.*.position_y' => 'required|integer|min:-1',
             'blocks' => 'required|array',
             'blocks.*.id' => 'required|exists:blocks,id',
+            'blocks.*.name' => 'required|string|max:255',
             'blocks.*.position_x' => 'required|integer|min:-1',
             'blocks.*.position_y' => 'required|integer|min:-1', 
             'blocks.*.rotation' => 'required|integer|in:0,90,180,270',
+            'blocks.*.rowsData' => 'nullable|array',
+            'blocks.*.rowsData.*.rowNumber' => 'integer|min:1|max:50',
+            'blocks.*.rowsData.*.seatCount' => 'integer|min:1|max:100',
         ]);
 
-        // Update stage position
-        $room->update([
-            'stage_x' => $request->stage_x,
-            'stage_y' => $request->stage_y,
+        DB::transaction(function () use ($request, $room) {
+            // Update stage blocks
+            $existingStageBlockIds = $room->stageBlocks()->pluck('id')->toArray();
+            $submittedStageBlockIds = collect($request->stageBlocks)->pluck('id')->filter()->toArray();
+            
+            // Delete stage blocks that are no longer in the submission
+            $stageBlocksToDelete = array_diff($existingStageBlockIds, $submittedStageBlockIds);
+            if (!empty($stageBlocksToDelete)) {
+                $room->stageBlocks()->whereIn('id', $stageBlocksToDelete)->delete();
+            }
+
+            // Update or create stage blocks
+            foreach ($request->stageBlocks as $index => $stageBlockData) {
+                if ($stageBlockData['id']) {
+                    // Update existing stage block
+                    $room->stageBlocks()->where('id', $stageBlockData['id'])->update([
+                        'name' => $stageBlockData['name'],
+                        'position_x' => $stageBlockData['position_x'],
+                        'position_y' => $stageBlockData['position_y'],
+                        'sort' => $index,
+                    ]);
+                } else {
+                    // Create new stage block
+                    $room->allBlocks()->create([
+                        'name' => $stageBlockData['name'],
+                        'type' => 'stage',
+                        'position_x' => $stageBlockData['position_x'],
+                        'position_y' => $stageBlockData['position_y'],
+                        'rotation' => 0,
+                        'sort' => $index,
+                    ]);
+                }
+            }
+
+            // Update blocks
+            foreach ($request->blocks as $blockData) {
+                $block = $room->blocks()->where('id', $blockData['id'])->first();
+                
+                if ($block) {
+                    // Update block position, rotation, and name
+                    $block->update([
+                        'name' => $blockData['name'],
+                        'position_x' => $blockData['position_x'],
+                        'position_y' => $blockData['position_y'],
+                        'rotation' => $blockData['rotation'],
+                    ]);
+
+                    // If rowsData is provided, update the block structure
+                    if (isset($blockData['rowsData']) && is_array($blockData['rowsData'])) {
+                        // Delete existing rows (this will cascade to seats)
+                        $block->rows()->delete();
+
+                        // Create new rows with specified seat counts
+                        foreach ($blockData['rowsData'] as $rowData) {
+                            $row = $block->rows()->create([
+                                'name' => "Row {$rowData['rowNumber']}",
+                                'sort' => $rowData['rowNumber'],
+                                'seats_count' => $rowData['seatCount'],
+                            ]);
+
+                            // Create seats for this row
+                            for ($seatIndex = 1; $seatIndex <= $rowData['seatCount']; $seatIndex++) {
+                                $seatLabel = $this->numberToLetter($seatIndex);
+                                
+                                $row->seats()->create([
+                                    'label' => $seatLabel,
+                                    'number' => $seatIndex,
+                                    'sort' => $seatIndex,
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        return back()->with('success', 'Room layout updated successfully!');
+    }
+
+    public function createBlock(Request $request, Room $room)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
         ]);
 
-        // Update block positions
-        foreach ($request->blocks as $blockData) {
-            $room->blocks()
-                ->where('id', $blockData['id'])
-                ->update([
-                    'position_x' => $blockData['position_x'],
-                    'position_y' => $blockData['position_y'],
-                    'rotation' => $blockData['rotation'],
-                ]);
+        // Get the next sort order
+        $nextSort = $room->blocks()->max('sort') + 1;
+
+        $block = $room->allBlocks()->create([
+            'name' => $request->name,
+            'type' => 'seating',
+            'position_x' => 1,  // Default position 1,1
+            'position_y' => 1,
+            'rotation' => 0,
+            'sort' => $nextSort,
+        ]);
+
+        return back()->with('success', 'Block created successfully!');
+    }
+
+    public function deleteBlock(Room $room, $blockId)
+    {
+        $block = $room->blocks()->where('id', $blockId)->first();
+        
+        if (!$block) {
+            return back()->with('error', 'Block not found.');
         }
 
-        return redirect()->back()->with('success', 'Room layout updated successfully!');
+        // Delete the block (this will cascade to rows and seats)
+        $block->delete();
+
+        return back()->with('success', 'Block deleted successfully!');
+    }
+
+    private function numberToLetter(int $number): string
+    {
+        $result = '';
+        while ($number > 0) {
+            $number--; // Make it 0-based
+            $result = chr(65 + ($number % 26)) . $result;
+            $number = intval($number / 26);
+        }
+        return $result;
     }
 }

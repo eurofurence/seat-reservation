@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Row extends Model
 {
+    public $timestamps = false;
     protected $guarded = [];
 
     protected $fillable = [

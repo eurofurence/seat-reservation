@@ -3,9 +3,9 @@ import { Head, useForm } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import FullWidthLayout from "@/Layouts/FullWidthLayout.vue"
 import SeatLayout from "@/Components/SeatLayout.vue"
-import Button from "@/Components/ui/Button.vue"
-import Card from "@/Components/ui/Card.vue"
-import Alert from "@/Components/ui/Alert.vue"
+import { Button } from '@/Components/ui/button'
+import { Card } from '@/Components/ui/card'
+import { Alert } from '@/Components/ui/alert'
 import { ArrowLeft, Info, AlertCircle, Calendar, MapPin, Clock, ArrowRight } from 'lucide-vue-next'
 import dayjs from "dayjs"
 

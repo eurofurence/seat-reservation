@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -20,7 +19,6 @@ Route::redirect('/', '/auth/login')->middleware('auth')->name('welcome');
 Route::redirect('/login', '/auth/login')->middleware('auth')->name('login');
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class,'show'])->name('dashboard');
-    Route::get('/profile', [ProfileController::class,'show'])->name('profile.show');
     Route::get('/events',[\App\Http\Controllers\EventController::class,'index'])->name('events.index');
     Route::get('/bookings',[\App\Http\Controllers\BookingController::class,'index'])->name('bookings.index');
     Route::resource('/events/{event}/bookings', \App\Http\Controllers\BookingController::class,[
@@ -28,9 +26,29 @@ Route::middleware('auth')->group(function () {
     ]);
     
     // Admin routes
-    Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware(['auth', \App\Http\Middleware\ShareAdminData::class])->group(function () {
+        // Dashboard
+        Route::get('/', [\App\Http\Controllers\Admin\AdminController::class, 'dashboard'])->name('dashboard');
+        
+        // Events
+        Route::get('/events', [\App\Http\Controllers\Admin\EventAdminController::class, 'index'])->name('events.index');
+        Route::post('/events', [\App\Http\Controllers\Admin\EventAdminController::class, 'store'])->name('events.store');
+        Route::delete('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'destroy'])->name('events.destroy');
+        Route::get('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'show'])->name('events.show');
+        Route::get('/events/{event}/export', [\App\Http\Controllers\Admin\EventAdminController::class, 'export'])->name('events.export');
+        
+        // Rooms
+        Route::get('/rooms', [\App\Http\Controllers\Admin\RoomAdminController::class, 'index'])->name('rooms.index');
+        Route::post('/rooms', [\App\Http\Controllers\Admin\RoomAdminController::class, 'store'])->name('rooms.store');
+        Route::get('/rooms/{room}/edit', [\App\Http\Controllers\Admin\RoomAdminController::class, 'edit'])->name('rooms.edit');
+        Route::put('/rooms/{room}', [\App\Http\Controllers\Admin\RoomAdminController::class, 'update'])->name('rooms.update');
+        Route::delete('/rooms/{room}', [\App\Http\Controllers\Admin\RoomAdminController::class, 'destroy'])->name('rooms.destroy');
+        
+        // Floor Plan Editor (use existing controller)
         Route::get('/rooms/{room}/layout', [\App\Http\Controllers\Admin\RoomLayoutController::class, 'edit'])->name('rooms.layout');
         Route::put('/rooms/{room}/layout', [\App\Http\Controllers\Admin\RoomLayoutController::class, 'update'])->name('rooms.layout.update');
+        Route::post('/rooms/{room}/blocks', [\App\Http\Controllers\Admin\RoomLayoutController::class, 'createBlock'])->name('rooms.blocks.create');
+        Route::delete('/rooms/{room}/blocks/{block}', [\App\Http\Controllers\Admin\RoomLayoutController::class, 'deleteBlock'])->name('rooms.blocks.delete');
     });
 });
 

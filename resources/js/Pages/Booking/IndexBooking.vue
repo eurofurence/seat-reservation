@@ -1,9 +1,9 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3"
 import Layout from "@/Layouts/Layout.vue"
-import Button from "@/Components/ui/Button.vue"
-import Card from "@/Components/ui/Card.vue"
-import Alert from "@/Components/ui/Alert.vue"
+import { Button } from '@/Components/ui/button'
+import { Card } from '@/Components/ui/card'
+import { Alert } from '@/Components/ui/alert'
 import { Clock, MapPin, User, Plus, Search, LogOut, CheckCircle, AlertCircle, Info } from 'lucide-vue-next'
 import dayjs from "dayjs"
 

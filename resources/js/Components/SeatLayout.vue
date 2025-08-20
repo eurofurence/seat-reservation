@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import Panzoom from '@panzoom/panzoom'
 
 const props = defineProps({
@@ -23,7 +23,7 @@ const panzoomInstance = ref(null)
 const gridDimensions = computed(() => {
   let maxX = 0
   let maxY = 0
-  
+
   // Check stage position
   const stageX = props.room?.stage_x
   const stageY = props.room?.stage_y
@@ -31,7 +31,7 @@ const gridDimensions = computed(() => {
     maxX = Math.max(maxX, stageX + 1)
     maxY = Math.max(maxY, stageY + 1)
   }
-  
+
   // Check block positions
   props.blocks?.forEach(block => {
     if (block.position_x >= 0 && block.position_y >= 0) {
@@ -39,7 +39,7 @@ const gridDimensions = computed(() => {
       maxY = Math.max(maxY, block.position_y + 1)
     }
   })
-  
+
   // Minimum grid size
   return {
     cols: Math.max(maxX, 1),
@@ -51,14 +51,14 @@ const gridDimensions = computed(() => {
 const layoutGrid = computed(() => {
   const { rows, cols } = gridDimensions.value
   const grid = Array(rows).fill(null).map(() => Array(cols).fill(null))
-  
+
   // Place stage if positioned
   const stageX = props.room?.stage_x
   const stageY = props.room?.stage_y
   if (stageX >= 0 && stageY >= 0 && stageX < cols && stageY < rows) {
     grid[stageY][stageX] = { type: 'stage' }
   }
-  
+
   // Place blocks that have valid positions
   props.blocks?.forEach(block => {
     const x = block.position_x
@@ -67,15 +67,15 @@ const layoutGrid = computed(() => {
       grid[y][x] = { type: 'block', ...block }
     }
   })
-  
+
   return grid
 })
 
 // Get blocks that are positioned off-grid (for separate display)
 const unplacedBlocks = computed(() => {
   const { rows, cols } = gridDimensions.value
-  return props.blocks?.filter(block => 
-    block.position_x < 0 || block.position_x >= cols || 
+  return props.blocks?.filter(block =>
+    block.position_x < 0 || block.position_x >= cols ||
     block.position_y < 0 || block.position_y >= rows ||
     block.position_x == null || block.position_y == null
   ) || []
@@ -84,31 +84,31 @@ const unplacedBlocks = computed(() => {
 // Get seat status styling
 const getSeatStatus = (seat) => {
   const seatId = seat.id
-  
+
   if (props.bookedSeats.includes(seatId)) {
     return { class: 'seat-booked', disabled: true }
   }
-  
+
   if (selectedSeatIds.value.includes(seatId)) {
     return { class: 'seat-selected', disabled: false }
   }
-  
+
   return { class: 'seat-available', disabled: false }
 }
 
 // Handle seat click
 const handleSeatClick = (seat) => {
   const seatId = seat.id
-  
+
   if (props.bookedSeats.includes(seatId)) return
-  
+
   const index = selectedSeatIds.value.indexOf(seatId)
   if (index > -1) {
     selectedSeatIds.value.splice(index, 1)
   } else {
     selectedSeatIds.value.push(seatId)
   }
-  
+
   emit('seats-changed', [...selectedSeatIds.value])
 }
 
@@ -120,7 +120,7 @@ const getBlockTransform = (rotation) => {
 // Get row and seat labels based on block orientation
 const getRowSeatsLayout = (block) => {
   const rotation = block.rotation || 0
-  
+
   // 0° (↑) and 180° (↓): Normal theater layout - rows horizontal, seats horizontal within rows
   // 90° (→) and 270° (←): Rotated layout - rows vertical, seats horizontal within rows
   if (rotation === 90 || rotation === 270) {
@@ -132,7 +132,7 @@ const getRowSeatsLayout = (block) => {
     }
   } else {
     return {
-      rowDirection: 'horizontal', // rows go left-to-right 
+      rowDirection: 'horizontal', // rows go left-to-right
       seatDirection: 'horizontal', // seats go left-to-right within each row
       reverseRows: rotation === 180, // 180° reverses row order
       reverseSeats: rotation === 180  // 180° reverses seat order within rows
@@ -142,34 +142,41 @@ const getRowSeatsLayout = (block) => {
 
 // Initialize Panzoom
 onMounted(() => {
-  if (panzoomContainer.value) {
-    const panzoomContent = panzoomContainer.value.querySelector('.panzoom-content')
-    if (panzoomContent) {
-      panzoomInstance.value = Panzoom(panzoomContent, {
-        maxScale: 3,
-        minScale: 0.3,
-        startScale: 0.6, // Default zoom-out scale
-        contain: 'outside',
-        cursor: 'grab',
-        panOnlyWhenZoomed: false,
-        excludeClass: 'seat', // Don't pan when clicking seats
-        handleStartEvent: (event) => {
-          // Allow seat clicks to work normally
-          if (event.target.classList.contains('seat')) {
-            return false
-          }
-          return true
+  // Use nextTick to ensure DOM is fully rendered
+  nextTick(() => {
+    if (panzoomContainer.value) {
+      const panzoomContent = panzoomContainer.value.querySelector('.panzoom-content')
+      if (panzoomContent) {
+        try {
+          panzoomInstance.value = Panzoom(panzoomContent, {
+            maxScale: 3,
+            minScale: 0.3,
+            startScale: 0.6, // Default zoom-out scale
+            contain: 'outside',
+            cursor: 'grab',
+            panOnlyWhenZoomed: false,
+            excludeClass: 'seat', // Don't pan when clicking seats
+            handleStartEvent: (event) => {
+              // Allow seat clicks to work normally
+              if (event.target.classList.contains('seat')) {
+                return false
+              }
+              return true
+            }
+          })
+
+          // Add mouse wheel zoom to container
+          panzoomContainer.value.addEventListener('wheel', (event) => {
+            if (panzoomInstance.value) {
+              panzoomInstance.value.zoomWithWheel(event)
+            }
+          })
+        } catch (error) {
+          console.error('Error initializing Panzoom:', error)
         }
-      })
-      
-      // Add mouse wheel zoom to container
-      panzoomContainer.value.addEventListener('wheel', (event) => {
-        if (panzoomInstance.value) {
-          panzoomInstance.value.zoomWithWheel(event)
-        }
-      })
+      }
     }
-  }
+  })
 })
 
 // Cleanup Panzoom
@@ -200,7 +207,7 @@ watch(() => props.selectedSeats, (newSeats) => {
               >
                 <!-- Empty Cell -->
                 <div v-if="cell === null" class="empty-cell"></div>
-                
+
                 <!-- Stage Cell -->
                 <div
                   v-else-if="cell.type === 'stage'"
@@ -210,7 +217,7 @@ watch(() => props.selectedSeats, (newSeats) => {
                     🎭 STAGE
                   </div>
                 </div>
-                
+
                 <!-- Block Cell -->
                 <div
                   v-else-if="cell.type === 'block'"
@@ -220,13 +227,13 @@ watch(() => props.selectedSeats, (newSeats) => {
                     <!-- Rows and Seats with orientation-based layout -->
                     <div class="rows-container" :class="getRowSeatsLayout(cell).rowDirection + '-layout'">
                       <!-- Block Name positioned at tip of arrow -->
-                      <div 
+                      <div
                         class="block-name-label"
                         :class="'rotation-' + (cell.rotation || 0)"
                       >
                         {{ cell.name }}
                       </div>
-                      
+
                       <div
                         v-for="row in (getRowSeatsLayout(cell).reverseRows ? [...cell.rows].reverse() : cell.rows)"
                         :key="row.id"
@@ -256,7 +263,7 @@ watch(() => props.selectedSeats, (newSeats) => {
             </tr>
           </tbody>
         </table>
-        
+
         <!-- Unplaced Blocks (inside panzoom content) -->
         <div v-if="unplacedBlocks.length > 0" class="unplaced-blocks">
           <h4 class="unplaced-title">Additional Blocks (Not Positioned)</h4>
