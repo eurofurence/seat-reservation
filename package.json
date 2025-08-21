@@ -43,7 +43,6 @@
         "vaul-vue": "^0.4.1",
         "vee-validate": "^4.15.1",
         "vue-router": "^4.5.1",
-        "vue-sonner": "^2.0.8",
         "zod": "^3.25.76"
     }
 }

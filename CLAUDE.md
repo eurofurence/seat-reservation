@@ -120,7 +120,7 @@ public function index()
 
 ## Toast Notifications
 
-The admin layout uses vue-sonner for toast notifications that automatically display Laravel flash messages:
+The admin layout uses shadcn/vue toast notifications that automatically display Laravel flash messages:
 
 ### Laravel Controller Usage
 ```php
@@ -138,15 +138,17 @@ return back()->with('warning', 'Please review your input.');
 return back()->with('info', 'Processing may take a few moments.');
 ```
 
-### Manual Toast Usage in Vue
+### Manual Toast Usage in Vue (if needed)
 ```javascript
-import { toast } from 'vue-sonner'
+import { useToast } from '@/Components/ui/toast'
+
+const { success, error, warning, info } = useToast()
 
 // Show different toast types
-toast.success('Operation completed!')
-toast.error('An error occurred')
-toast.warning('Please be careful')
-toast.info('Just letting you know')
+success('Success', 'Operation completed!')
+error('Error', 'An error occurred')
+warning('Warning', 'Please be careful')
+info('Info', 'Just letting you know')
 
 // With options
 toast.success('Saved!', {

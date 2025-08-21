@@ -16,7 +16,6 @@ import { Badge } from '@/Components/ui/badge'
 import { Checkbox } from '@/Components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
-import { toast } from 'vue-sonner'
 import {Download, Calendar, Clock, MapPin, Users, Plus, UserPlus, X, Pencil, Trash2, Info} from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import axios from 'axios'
@@ -183,12 +182,12 @@ const selectedSeatInfo = computed(() => {
 // Process manual booking
 const processManualBooking = async () => {
     if (selectedSeats.value.length === 0) {
-        toast.error('Please select at least one seat')
+        alert('Please select at least one seat')
         return
     }
 
     if (!manualBookingForm.value.guestName.trim()) {
-        toast.error('Please enter a name')
+        alert('Please enter a name')
         return
     }
 
@@ -203,7 +202,7 @@ const processManualBooking = async () => {
 
         if (response.data.success) {
             // Show success message
-            toast.success(`Successfully booked ${response.data.bookings_count} seat(s) for ${response.data.guest_name}`)
+            alert(`Successfully booked ${response.data.bookings_count} seat(s) for ${response.data.guest_name}`)
 
             // Reset form and clear selected seats from URL
             manualBookingForm.value = { guestName: '', comment: '', isProcessing: false }
@@ -217,9 +216,9 @@ const processManualBooking = async () => {
         console.error('Error creating manual booking:', error)
 
         if (error.response?.data?.error) {
-            toast.error(error.response.data.error)
+            alert(error.response.data.error)
         } else {
-            toast.error('Error creating booking. Please try again.')
+            alert('Error creating booking. Please try again.')
         }
     } finally {
         manualBookingForm.value.isProcessing = false
@@ -258,7 +257,7 @@ const togglePickup = async (booking) => {
 
     } catch (error) {
         console.error('Error toggling pickup status:', error)
-        toast.error('Error updating pickup status. Please try again.')
+        alert('Error updating pickup status. Please try again.')
     }
 }
 
@@ -276,7 +275,7 @@ const openEditModal = (booking) => {
 // Save edited booking
 const saveEditedBooking = () => {
     if (!editModal.value.name.trim()) {
-        toast.error('Please enter a name')
+        alert('Please enter a name')
         return
     }
 
