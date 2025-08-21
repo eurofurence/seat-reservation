@@ -24,29 +24,8 @@ defineOptions({layout: Layout})
               <span class="text-blue-600">Seat Reservation</span>
             </h1>
             <p class="text-xl text-gray-600 leading-relaxed">
-              Reserve your seats for Eurofurence Events with our easy-to-use platform
+              Get your Priority Access Tickets for Eurofurence Events here
             </p>
-          </div>
-          
-          <div class="space-y-4">
-            <div class="flex items-center space-x-3 text-gray-700">
-              <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <User class="h-4 w-4 text-blue-600" />
-              </div>
-              <span>Secure authentication</span>
-            </div>
-            <div class="flex items-center space-x-3 text-gray-700">
-              <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <Info class="h-4 w-4 text-blue-600" />
-              </div>
-              <span>Easy seat selection</span>
-            </div>
-            <div class="flex items-center space-x-3 text-gray-700">
-              <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <LogIn class="h-4 w-4 text-blue-600" />
-              </div>
-              <span>Quick booking process</span>
-            </div>
           </div>
         </div>
       </div>
@@ -56,7 +35,7 @@ defineOptions({layout: Layout})
         <!-- Mobile Brand Section -->
         <div class="text-center lg:hidden">
           <h1 class="text-3xl font-bold text-gray-900 mb-2">Seat Reservation</h1>
-          <p class="text-gray-600">Reserve your seats for Eurofurence Events</p>
+          <p class="text-gray-600">Get your Priority Access Tickets for Eurofurence Events here</p>
         </div>
         
         <!-- Login Card -->
