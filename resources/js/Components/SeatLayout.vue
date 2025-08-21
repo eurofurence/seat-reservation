@@ -121,21 +121,21 @@ const getBlockTransform = (rotation) => {
 const getRowSeatsLayout = (block) => {
   const rotation = block.rotation || 0
 
-  // 0° (↑) and 180° (↓): Normal theater layout - rows horizontal, seats horizontal within rows
-  // 90° (→) and 270° (←): Rotated layout - rows vertical, seats horizontal within rows
+  // All orientations should show rows in normal order (1, 2, 3...)
+  // The arrow points towards the stage, and rows are numbered from stage outward
   if (rotation === 90 || rotation === 270) {
     return {
-      rowDirection: 'vertical',   // rows go top-to-bottom (first row on left, last row on right)
-      seatDirection: 'horizontal', // seats go left-to-right within each row
-      reverseRows: rotation === 270, // 270° reverses row order
-      reverseSeats: rotation === 270  // 270° reverses seat order within rows
+      rowDirection: 'vertical',   // rows go side-by-side for 90°/270°
+      seatDirection: 'horizontal', // seats go in columns within each row
+      reverseRows: false, // Always show rows in natural order (1, 2, 3...)
+      reverseSeats: false // Always show seats in natural order
     }
   } else {
     return {
-      rowDirection: 'horizontal', // rows go left-to-right
+      rowDirection: 'horizontal', // rows go top-to-bottom for 0°/180°
       seatDirection: 'horizontal', // seats go left-to-right within each row
-      reverseRows: rotation === 180, // 180° reverses row order
-      reverseSeats: rotation === 180  // 180° reverses seat order within rows
+      reverseRows: false, // Always show rows in natural order (1, 2, 3...)
+      reverseSeats: false // Always show seats in natural order
     }
   }
 }
@@ -235,30 +235,76 @@ watch(() => props.selectedSeats, (newSeats) => {
                       </div>
 
                       <div
-                        v-for="row in (getRowSeatsLayout(cell).reverseRows ? [...cell.rows].reverse() : cell.rows)"
+                        v-for="row in cell.rows"
                         :key="row.id"
                         class="seat-row-section"
                         :class="getRowSeatsLayout(cell).rowDirection + '-section'"
                       >
-                        <!-- Row Separator -->
-                        <div class="row-separator">
-                          <span class="row-separator-line"></span>
-                          <span class="row-separator-label">Row {{ row.name }}</span>
-                          <span class="row-separator-line"></span>
-                        </div>
-                        <!-- Seats Container -->
-                        <div class="seats-container">
-                          <button
-                            v-for="seat in (getRowSeatsLayout(cell).reverseSeats ? [...row.seats].reverse() : row.seats)"
-                            :key="seat.id"
-                            :class="['seat', getSeatStatus(seat).class]"
-                            :disabled="getSeatStatus(seat).disabled"
-                            @click="handleSeatClick(seat)"
-                            :title="`${cell.name} - Row ${row.name} - Seat ${seat.label || seat.name}`"
-                          >
-                            {{ seat.label || seat.name }}
-                          </button>
-                        </div>
+                        <!-- For 90° and 270° rotations, arrange separator and seats horizontally -->
+                        <template v-if="(cell.rotation || 0) === 90">
+                          <!-- Row Separator on LEFT (pointing right towards stage) -->
+                          <div class="row-separator">
+                            <span class="row-separator-line"></span>
+                            <span class="row-separator-label">{{ row.name }}</span>
+                            <span class="row-separator-line"></span>
+                          </div>
+                          <!-- Seats Container -->
+                          <div class="seats-container">
+                            <button
+                              v-for="seat in row.seats"
+                              :key="seat.id"
+                              :class="['seat', getSeatStatus(seat).class]"
+                              :disabled="getSeatStatus(seat).disabled"
+                              @click="handleSeatClick(seat)"
+                              :title="`${cell.name} - Row ${row.name} - Seat ${seat.label || seat.name}`"
+                            >
+                              {{ seat.label || seat.name }}
+                            </button>
+                          </div>
+                        </template>
+                        <template v-else-if="(cell.rotation || 0) === 270">
+                          <!-- Seats Container -->
+                          <div class="seats-container">
+                            <button
+                              v-for="seat in row.seats"
+                              :key="seat.id"
+                              :class="['seat', getSeatStatus(seat).class]"
+                              :disabled="getSeatStatus(seat).disabled"
+                              @click="handleSeatClick(seat)"
+                              :title="`${cell.name} - Row ${row.name} - Seat ${seat.label || seat.name}`"
+                            >
+                              {{ seat.label || seat.name }}
+                            </button>
+                          </div>
+                          <!-- Row Separator on RIGHT (pointing left towards stage) -->
+                          <div class="row-separator">
+                            <span class="row-separator-line"></span>
+                            <span class="row-separator-label">{{ row.name }}</span>
+                            <span class="row-separator-line"></span>
+                          </div>
+                        </template>
+                        <!-- For 0° and 180° rotations, separator always comes first -->
+                        <template v-else>
+                          <!-- Row Separator -->
+                          <div class="row-separator">
+                            <span class="row-separator-line"></span>
+                            <span class="row-separator-label">{{ row.name }}</span>
+                            <span class="row-separator-line"></span>
+                          </div>
+                          <!-- Seats Container -->
+                          <div class="seats-container">
+                            <button
+                              v-for="seat in row.seats"
+                              :key="seat.id"
+                              :class="['seat', getSeatStatus(seat).class]"
+                              :disabled="getSeatStatus(seat).disabled"
+                              @click="handleSeatClick(seat)"
+                              :title="`${cell.name} - Row ${row.name} - Seat ${seat.label || seat.name}`"
+                            >
+                              {{ seat.label || seat.name }}
+                            </button>
+                          </div>
+                        </template>
                       </div>
                     </div>
                   </div>
@@ -501,6 +547,7 @@ watch(() => props.selectedSeats, (newSeats) => {
   gap: 8px;
   order: 1;
 }
+
 
 .row-separator-line {
   flex: 1;
