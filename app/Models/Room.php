@@ -21,16 +21,16 @@ class Room extends Model
 
     public function blocks(): HasMany
     {
-        return $this->hasMany(Block::class)->seating()->orderBy('sort');
+        return $this->hasMany(Block::class)->seating()->orderBy('order');
     }
 
     public function stageBlocks(): HasMany
     {
-        return $this->hasMany(Block::class)->stage()->orderBy('sort');
+        return $this->hasMany(Block::class)->stage()->orderBy('order');
     }
 
     public function allBlocks(): HasMany
     {
-        return $this->hasMany(Block::class)->orderBy('sort');
+        return $this->hasMany(Block::class)->orderBy('order');
     }
 }

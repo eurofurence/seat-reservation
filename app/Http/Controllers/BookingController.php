@@ -73,14 +73,14 @@ class BookingController extends Controller
         $blocks = $event->room->blocks()
             ->with([
                 'rows' => function($query) {
-                    $query->orderBy('sort')->select('id', 'block_id', 'name', 'sort');
+                    $query->orderBy('order')->select('id', 'block_id', 'name', 'order');
                 },
                 'rows.seats' => function($query) {
-                    $query->orderBy('sort')->select('id', 'row_id', 'sort', 'name', 'label');
+                    $query->orderBy('number')->select('id', 'row_id', 'number', 'name', 'label');
                 }
             ])
-            ->orderBy('sort')
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'sort')
+            ->orderBy('order')
+            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
             ->get();
 
         // Get already booked seats for this event efficiently
@@ -151,7 +151,7 @@ class BookingController extends Controller
                 'row:id,block_id,name', 
                 'row.block:id,name'
             ])
-            ->select('id', 'row_id', 'name', 'label', 'sort')
+            ->select('id', 'row_id', 'name', 'label', 'number')
             ->whereIn('id', $data['seats'])
             ->get();
 
@@ -259,16 +259,16 @@ class BookingController extends Controller
             
         // Load blocks for seat layout (minimal data for performance)
         $blocks = $event->room->blocks()
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'sort')
+            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
             ->with(['rows' => function($query) {
-                $query->select('id', 'block_id', 'name', 'sort')
-                    ->orderBy('sort');
+                $query->select('id', 'block_id', 'name', 'order')
+                    ->orderBy('order');
                 $query->with(['seats' => function($q) {
-                    $q->select('id', 'row_id', 'label', 'number', 'sort')
-                        ->orderBy('sort');
+                    $q->select('id', 'row_id', 'label', 'number')
+                        ->orderBy('number');
                 }]);
             }])
-            ->orderBy('sort')
+            ->orderBy('order')
             ->get();
             
         // Get user's booked seat IDs for highlighting

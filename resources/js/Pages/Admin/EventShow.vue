@@ -26,6 +26,7 @@ const props = defineProps({
     event: Object,
     room: Object,
     blocks: Array,
+    stageBlocks: Array,
     bookings: Array,
     bookedSeats: Array,
     seatBookingMap: Object,
@@ -180,7 +181,7 @@ const selectedSeatInfo = computed(() => {
 
 
 // Process manual booking
-const processManualBooking = async () => {
+const processManualBooking = () => {
     if (selectedSeats.value.length === 0) {
         alert('Please select at least one seat')
         return
@@ -191,38 +192,34 @@ const processManualBooking = async () => {
         return
     }
 
+    const form = useForm({
+        guest_name: manualBookingForm.value.guestName,
+        comment: manualBookingForm.value.comment,
+        seat_ids: selectedSeats.value
+    })
+
     manualBookingForm.value.isProcessing = true
 
-    try {
-        const response = await axios.post(route('admin.events.manual-booking', props.event.id), {
-            guest_name: manualBookingForm.value.guestName,
-            comment: manualBookingForm.value.comment,
-            seat_ids: selectedSeats.value
-        })
-
-        if (response.data.success) {
-            // Show success message
-            alert(`Successfully booked ${response.data.bookings_count} seat(s) for ${response.data.guest_name}`)
-
-            // Reset form and clear selected seats from URL
+    form.post(route('admin.events.manual-booking', props.event.id), {
+        onSuccess: () => {
+            // Reset form and clear selected seats
             manualBookingForm.value = { guestName: '', comment: '', isProcessing: false }
             selectedSeats.value = []
+            
+            // Clear selected seats from URL by navigating without the selected_seats parameter
+            const params = {}
+            if (props.search) params.search = props.search
+            if (props.booking_id) params.booking_id = props.booking_id
 
-            // Refresh the page to show new bookings (this will clear selected_seats)
-            router.reload()
+            router.get(route('admin.events.show', props.event.id), params, {
+                preserveState: false, // Don't preserve state to force a full reload
+                preserveScroll: true
+            })
+        },
+        onFinish: () => {
+            manualBookingForm.value.isProcessing = false
         }
-
-    } catch (error) {
-        console.error('Error creating manual booking:', error)
-
-        if (error.response?.data?.error) {
-            alert(error.response.data.error)
-        } else {
-            alert('Error creating booking. Please try again.')
-        }
-    } finally {
-        manualBookingForm.value.isProcessing = false
-    }
+    })
 }
 
 // Clear manual booking form
@@ -323,9 +320,6 @@ const deleteBooking = () => {
 
 // Get display name for booking
 const getBookingDisplayName = (booking) => {
-    if (booking.guest_name) {
-        return booking.guest_name
-    }
     if (booking.user) {
         return booking.user.name
     }
@@ -564,6 +558,7 @@ onMounted(scrollToHighlightedBooking)
                             :event="event"
                             :room="room"
                             :blocks="blocks"
+                            :stage-blocks="stageBlocks"
                             :booked-seats="bookedSeats"
                             :selected-seats="selectedSeats"
                             @seats-changed="handleSeatsChanged"

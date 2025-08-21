@@ -7,6 +7,7 @@ const props = defineProps({
   event: Object,
   room: Object,
   blocks: Array,
+  stageBlocks: Array,
   selectedSeats: Array,
   bookedSeats: Array,
   adminMode: {
@@ -29,15 +30,15 @@ const gridDimensions = computed(() => {
   let maxX = 0
   let maxY = 0
 
-  // Check stage position
-  const stageX = props.room?.stage_x
-  const stageY = props.room?.stage_y
-  if (stageX >= 0 && stageY >= 0) {
-    maxX = Math.max(maxX, stageX + 1)
-    maxY = Math.max(maxY, stageY + 1)
-  }
+  // Check stage blocks positions (0-based positioning)
+  props.stageBlocks?.forEach(stageBlock => {
+    if (stageBlock.position_x >= 0 && stageBlock.position_y >= 0) {
+      maxX = Math.max(maxX, stageBlock.position_x + 1)
+      maxY = Math.max(maxY, stageBlock.position_y + 1)
+    }
+  })
 
-  // Check block positions
+  // Check block positions (0-based positioning)
   props.blocks?.forEach(block => {
     if (block.position_x >= 0 && block.position_y >= 0) {
       maxX = Math.max(maxX, block.position_x + 1)
@@ -57,18 +58,20 @@ const layoutGrid = computed(() => {
   const { rows, cols } = gridDimensions.value
   const grid = Array(rows).fill(null).map(() => Array(cols).fill(null))
 
-  // Place stage if positioned
-  const stageX = props.room?.stage_x
-  const stageY = props.room?.stage_y
-  if (stageX >= 0 && stageY >= 0 && stageX < cols && stageY < rows) {
-    grid[stageY][stageX] = { type: 'stage' }
-  }
+  // Place stage blocks (0-based positioning)
+  props.stageBlocks?.forEach(stageBlock => {
+    const x = stageBlock.position_x
+    const y = stageBlock.position_y
+    if (x >= 0 && x < cols && y >= 0 && y < rows) {
+      grid[y][x] = { type: 'stage', name: stageBlock.name }
+    }
+  })
 
-  // Place blocks that have valid positions
+  // Place blocks that have valid positions (0-based positioning)
   props.blocks?.forEach(block => {
     const x = block.position_x
     const y = block.position_y
-    if (x >= 0 && y >= 0 && x < cols && y < rows) {
+    if (x >= 0 && x < cols && y >= 0 && y < rows) {
       grid[y][x] = { type: 'block', ...block }
     }
   })
@@ -199,7 +202,7 @@ watch(() => props.selectedSeats, (newSeats) => {
                   v-else-if="cell.type === 'stage'"
                   class="stage-text"
                 >
-                  STAGE
+                  {{ cell.name || 'STAGE' }}
                 </div>
 
                 <!-- Block Cell -->

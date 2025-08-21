@@ -93,18 +93,24 @@ class EventAdminController extends Controller
         
         $room = $event->room;
         
+        // Load stage blocks for the room
+        $stageBlocks = $room->stageBlocks()
+            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'order')
+            ->orderBy('order')
+            ->get();
+        
         // Only load essential block data for the seat layout
         $blocks = $room->blocks()
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'sort')
+            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
             ->with(['rows' => function($query) {
-                $query->select('id', 'block_id', 'name', 'sort')
-                    ->orderBy('sort');
+                $query->select('id', 'block_id', 'name', 'order')
+                    ->orderBy('order');
                 $query->with(['seats' => function($q) {
-                    $q->select('id', 'row_id', 'label', 'number', 'sort')
-                        ->orderBy('sort');
+                    $q->select('id', 'row_id', 'label', 'number')
+                        ->orderBy('number');
                 }]);
             }])
-            ->orderBy('sort')
+            ->orderBy('order')
             ->get();
         
         // Get all booked seat IDs for the seat layout
@@ -119,7 +125,7 @@ class EventAdminController extends Controller
         
         // Build bookings query with search
         $bookingsQuery = Booking::where('event_id', $id)
-            ->select('id', 'event_id', 'user_id', 'seat_id', 'guest_name', 'name', 'comment', 'picked_up_at', 'created_at')
+            ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at')
             ->with([
                 'user:id,name',
                 'seat:id,row_id,label',
@@ -130,8 +136,7 @@ class EventAdminController extends Controller
         // Apply search filter if provided
         if ($search = $request->get('search')) {
             $bookingsQuery->where(function($query) use ($search) {
-                $query->where('guest_name', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%")
+                $query->where('name', 'like', "%{$search}%")
                     ->orWhere('comment', 'like', "%{$search}%")
                     ->orWhereHas('user', function($q) use ($search) {
                         $q->where('name', 'like', "%{$search}%");
@@ -168,6 +173,7 @@ class EventAdminController extends Controller
             'event' => $event,
             'room' => $room,
             'blocks' => $blocks,
+            'stageBlocks' => $stageBlocks,
             'bookings' => $bookings,
             'bookedSeats' => $bookedSeats,
             'seatBookingMap' => $seatBookingMap,
@@ -199,7 +205,7 @@ class EventAdminController extends Controller
                 $this->escapeCsvField($event->room->name ?? 'N/A'),
                 $this->escapeCsvField($event->name),
                 $this->escapeCsvField($booking->user ? $booking->user->name : 'N/A'),
-                $this->escapeCsvField($booking->guest_name ?? $booking->name ?? 'N/A'),
+                $this->escapeCsvField($booking->name ?? 'N/A'),
                 $this->escapeCsvField($booking->comment ?? ''),
                 $this->escapeCsvField($booking->seat->row->block->name ?? 'N/A'),
                 $this->escapeCsvField($booking->seat->row->name ?? 'N/A'),
@@ -274,9 +280,7 @@ class EventAdminController extends Controller
                 ->exists();
                 
             if ($alreadyBooked) {
-                return response()->json([
-                    'error' => 'One or more selected seats are already booked.'
-                ], 422);
+                return back()->with('error', 'One or more selected seats are already booked.');
             }
             
             // Create manual bookings for all selected seats (no user_id required)
@@ -287,8 +291,7 @@ class EventAdminController extends Controller
                     'event_id' => $id,
                     'user_id' => null, // No user association for manual bookings
                     'seat_id' => $seatId,
-                    'guest_name' => $request->guest_name,
-                    'name' => $request->guest_name, // For compatibility
+                    'name' => $request->guest_name,
                     'comment' => $request->comment,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -299,19 +302,15 @@ class EventAdminController extends Controller
             
             DB::commit();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Manual booking created successfully.',
-                'bookings_count' => count($request->seat_ids),
-                'guest_name' => $request->guest_name
-            ]);
+            $bookingCount = count($request->seat_ids);
+            $seatText = $bookingCount === 1 ? 'seat' : 'seats';
+            
+            return back()->with('success', "Successfully booked {$bookingCount} {$seatText} for {$request->guest_name}");
             
         } catch (\Exception $e) {
             DB::rollback();
             
-            return response()->json([
-                'error' => 'Failed to create booking: ' . $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Failed to create booking: ' . $e->getMessage());
         }
     }
     
@@ -356,7 +355,6 @@ class EventAdminController extends Controller
                 ->firstOrFail();
             
             $booking->update([
-                'guest_name' => $request->name,
                 'name' => $request->name,
                 'comment' => $request->comment
             ]);

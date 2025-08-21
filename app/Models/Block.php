@@ -16,14 +16,14 @@ class Block extends Model
         'position_x',
         'position_y',
         'rotation',
-        'sort'
+        'order'
     ];
 
     protected $casts = [
         'rotation' => 'integer',
         'position_x' => 'integer',
         'position_y' => 'integer',
-        'sort' => 'integer'
+        'order' => 'integer'
     ];
 
     public function room()
@@ -33,7 +33,7 @@ class Block extends Model
 
     public function rows()
     {
-        return $this->hasMany(Row::class)->orderBy('sort');
+        return $this->hasMany(Row::class)->orderBy('order');
     }
 
     // Scopes

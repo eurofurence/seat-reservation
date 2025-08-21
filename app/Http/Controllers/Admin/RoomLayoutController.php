@@ -18,13 +18,13 @@ class RoomLayoutController extends Controller
             ->selectRaw('COUNT(DISTINCT rows.id) as rows_count')
             ->selectRaw('COUNT(seats.id) as total_seats')
             ->with(['rows' => function($query) {
-                $query->select('id', 'block_id', 'name', 'sort', 'seats_count', 'custom_seat_count')
-                    ->orderBy('sort');
+                $query->select('id', 'block_id', 'name', 'order', 'seats_count', 'custom_seat_count')
+                    ->orderBy('order');
             }])
             ->leftJoin('rows', 'blocks.id', '=', 'rows.block_id')
             ->leftJoin('seats', 'rows.id', '=', 'seats.row_id')
             ->groupBy('blocks.id')
-            ->orderBy('blocks.sort')
+            ->orderBy('blocks.order')
             ->get();
 
         // Load stage blocks
@@ -39,7 +39,7 @@ class RoomLayoutController extends Controller
                     'position_x' => $room->stage_x ?? 0,
                     'position_y' => $room->stage_y ?? 0,
                     'rotation' => 0,
-                    'sort' => 0
+                    'order' => 0
                 ])
             ]);
         }
@@ -98,7 +98,7 @@ class RoomLayoutController extends Controller
                         'name' => $stageBlockData['name'],
                         'position_x' => $stageBlockData['position_x'],
                         'position_y' => $stageBlockData['position_y'],
-                        'sort' => $index,
+                        'order' => $index,
                     ]);
                 } else {
                     // Create new stage block
@@ -108,7 +108,7 @@ class RoomLayoutController extends Controller
                         'position_x' => $stageBlockData['position_x'],
                         'position_y' => $stageBlockData['position_y'],
                         'rotation' => 0,
-                        'sort' => $index,
+                        'order' => $index,
                     ]);
                 }
             }
@@ -137,7 +137,7 @@ class RoomLayoutController extends Controller
                             
                             $row = $block->rows()->create([
                                 'name' => "Row {$rowData['rowNumber']}",
-                                'sort' => $rowData['rowNumber'],
+                                'order' => $rowData['rowNumber'],
                                 'seats_count' => $rowData['seatCount'],
                                 'custom_seat_count' => $customSeatCount,
                             ]);
@@ -149,7 +149,6 @@ class RoomLayoutController extends Controller
                                 $row->seats()->create([
                                     'label' => $seatLabel,
                                     'number' => $seatIndex,
-                                    'sort' => $seatIndex,
                                 ]);
                             }
                         }
@@ -168,15 +167,15 @@ class RoomLayoutController extends Controller
         ]);
 
         // Get the next sort order
-        $nextSort = $room->blocks()->max('sort') + 1;
+        $nextSort = $room->blocks()->max('order') + 1;
 
         $block = $room->allBlocks()->create([
             'name' => $request->name,
             'type' => 'seating',
-            'position_x' => 1,  // Default position 1,1
-            'position_y' => 1,
+            'position_x' => 0,  // Default position 0,0
+            'position_y' => 0,
             'rotation' => 0,
-            'sort' => $nextSort,
+            'order' => $nextSort,
         ]);
 
         return back()->with('success', 'Block created successfully!');

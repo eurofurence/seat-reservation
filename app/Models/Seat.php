@@ -13,13 +13,11 @@ class Seat extends Model
         'row_id',
         'number',
         'label',
-        'sort',
         'name'
     ];
 
     protected $casts = [
-        'number' => 'integer',
-        'sort' => 'integer'
+        'number' => 'integer'
     ];
 
     public function row()

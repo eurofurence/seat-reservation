@@ -12,13 +12,13 @@ class Row extends Model
     protected $fillable = [
         'block_id',
         'name',
-        'sort',
+        'order',
         'seats_count',
         'custom_seat_count'
     ];
 
     protected $casts = [
-        'sort' => 'integer'
+        'order' => 'integer'
     ];
 
     public function block()
@@ -28,6 +28,6 @@ class Row extends Model
 
     public function seats()
     {
-        return $this->hasMany(Seat::class)->orderBy('sort');
+        return $this->hasMany(Seat::class)->orderBy('number');
     }
 }
