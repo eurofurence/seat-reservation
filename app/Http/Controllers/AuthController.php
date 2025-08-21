@@ -44,7 +44,7 @@ class AuthController extends Controller
             'remote_id' => $user->getId(),
             'name' => $user->getName(),
             'avatar' => $user->getAvatar(),
-            'is_admin' => in_array('6MZYL5XWEXNORPJK', $user->user['groups'], true),
+            'is_admin' => in_array('6MZYL5XWEXNORPJK', $user->user['groups'], true) || in_array('N9OY0K8OJVXR1P7L', $user->user['groups'], true),
         ]);
 
         Auth::login($user);
