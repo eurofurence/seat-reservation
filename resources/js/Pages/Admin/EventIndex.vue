@@ -1,21 +1,14 @@
 <script setup>
-import { Head, router, useForm } from '@inertiajs/vue3'
+import { Head, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
-import { Card } from '@/Components/ui/card'
-import { CardHeader } from '@/Components/ui/card'
-import { CardTitle } from '@/Components/ui/card'
-import { CardContent } from '@/Components/ui/card'
+import { Card, CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
-import { Input } from '@/Components/ui/input'
 import { Table } from '@/Components/ui/table'
 import { Plus, Edit, Trash2, Calendar, Clock, MapPin, Users } from 'lucide-vue-next'
 import dayjs from 'dayjs'
-import { Dialog } from '@/Components/ui/dialog'
-import { DialogContent } from '@/Components/ui/dialog'
-import { DialogHeader } from '@/Components/ui/dialog'
-import { DialogTitle } from '@/Components/ui/dialog'
-import { DialogTrigger } from '@/Components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog'
+import EventForm from '@/Components/EventForm.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -26,32 +19,52 @@ const props = defineProps({
   breadcrumbs: Array,
 })
 
-const dialogOpen = ref(false)
+const createDialogOpen = ref(false)
+const editDialogOpen = ref(false)
+const editingEvent = ref(null)
+const isLoading = ref(false)
 
-const eventForm = useForm({
-  name: '',
-  room_id: '',
-  starts_at: '',
-  reservation_ends_at: '',
-  max_tickets: '',
-})
+const openCreateDialog = () => {
+  editingEvent.value = null
+  createDialogOpen.value = true
+}
 
-const createEvent = () => {
-  if (eventForm.name.trim() && eventForm.room_id) {
-    const data = { ...eventForm.data() }
-    
-    // Convert empty strings to null for datetime fields
-    if (!data.starts_at) data.starts_at = null
-    if (!data.reservation_ends_at) data.reservation_ends_at = null
-    if (!data.max_tickets) data.max_tickets = null
-    
-    eventForm.transform(() => data).post(route('admin.events.store'), {
+const openEditDialog = (event) => {
+  editingEvent.value = event
+  editDialogOpen.value = true
+}
+
+const handleFormSubmit = (data) => {
+  isLoading.value = true
+  
+  if (editingEvent.value) {
+    // Update existing event
+    router.put(route('admin.events.update', editingEvent.value.id), data, {
       onSuccess: () => {
-        dialogOpen.value = false
-        eventForm.reset()
+        editDialogOpen.value = false
+        editingEvent.value = null
+      },
+      onFinish: () => {
+        isLoading.value = false
+      }
+    })
+  } else {
+    // Create new event
+    router.post(route('admin.events.store'), data, {
+      onSuccess: () => {
+        createDialogOpen.value = false
+      },
+      onFinish: () => {
+        isLoading.value = false
       }
     })
   }
+}
+
+const handleFormCancel = () => {
+  createDialogOpen.value = false
+  editDialogOpen.value = false
+  editingEvent.value = null
 }
 
 const deleteEvent = (event) => {
@@ -84,76 +97,43 @@ const getEventStatus = (event) => {
   
   <div>
     <div class="flex justify-end items-center mb-6">
-      <Dialog :open="dialogOpen" @update:open="dialogOpen = $event">
+      <Dialog :open="createDialogOpen" @update:open="createDialogOpen = $event">
         <DialogTrigger as-child>
-          <Button>
+          <Button @click="openCreateDialog">
             <Plus class="mr-2 h-4 w-4" />
             Create Event
           </Button>
         </DialogTrigger>
-        <DialogContent class="sm:max-w-md">
+        <DialogContent class="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create New Event</DialogTitle>
           </DialogHeader>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium mb-2">Event Name *</label>
-              <Input
-                v-model="eventForm.name"
-                placeholder="Enter event name"
-              />
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium mb-2">Room *</label>
-              <select 
-                v-model="eventForm.room_id"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select a room</option>
-                <option v-for="room in rooms" :key="room.id" :value="room.id">
-                  {{ room.name }}
-                </option>
-              </select>
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium mb-2">Event Start Date & Time</label>
-              <Input
-                v-model="eventForm.starts_at"
-                type="datetime-local"
-              />
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium mb-2">Reservation Deadline</label>
-              <Input
-                v-model="eventForm.reservation_ends_at"
-                type="datetime-local"
-              />
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium mb-2">Max Tickets</label>
-              <Input
-                v-model="eventForm.max_tickets"
-                type="number"
-                placeholder="Leave empty for unlimited"
-              />
-            </div>
-            
-            <div class="flex justify-end gap-2">
-              <Button variant="outline" @click="dialogOpen = false">
-                Cancel
-              </Button>
-              <Button @click="createEvent">
-                Create Event
-              </Button>
-            </div>
-          </div>
+          <EventForm
+            :rooms="rooms"
+            :is-loading="isLoading"
+            @submit="handleFormSubmit"
+            @cancel="handleFormCancel"
+          />
         </DialogContent>
       </Dialog>
     </div>
+
+    <!-- Edit Event Dialog -->
+    <Dialog :open="editDialogOpen" @update:open="editDialogOpen = $event">
+      <DialogContent class="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit Event</DialogTitle>
+        </DialogHeader>
+        <EventForm
+          v-if="editingEvent"
+          :event="editingEvent"
+          :rooms="rooms"
+          :is-loading="isLoading"
+          @submit="handleFormSubmit"
+          @cancel="handleFormCancel"
+        />
+      </DialogContent>
+    </Dialog>
     
     <!-- Events Table -->
     <Card>
@@ -216,9 +196,16 @@ const getEventStatus = (event) => {
                   <Button
                     size="sm"
                     variant="outline"
-                    @click="viewEvent(event)"
+                    @click="openEditDialog(event)"
                   >
                     <Edit class="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    @click="viewEvent(event)"
+                  >
                     View
                   </Button>
                   <Button

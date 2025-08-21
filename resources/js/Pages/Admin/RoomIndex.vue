@@ -1,5 +1,5 @@
 <script setup>
-import { Head, router, useForm } from '@inertiajs/vue3'
+import { Head, router, useForm, Link } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import { Card } from '@/Components/ui/card'
@@ -66,9 +66,7 @@ const cancelDelete = () => {
   roomToDelete.value = null
 }
 
-const openFloorPlanner = (room) => {
-  window.open(`/admin/rooms/${room.id}/layout`, '_blank')
-}
+// Removed openFloorPlanner - using Link component instead
 </script>
 
 <template>
@@ -101,21 +99,25 @@ const openFloorPlanner = (room) => {
               <td class="p-4">{{ room.total_seats || 0 }}</td>
               <td class="p-4">
                 <div class="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    @click="openFloorPlanner(room)"
-                  >
-                    <MapPin class="h-4 w-4 mr-1" />
-                    Floor Plan
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    @click="router.visit(`/admin/rooms/${room.id}/edit`)"
-                  >
-                    <Edit class="h-4 w-4" />
-                  </Button>
+                  <Link :href="route('admin.rooms.layout', room.id)">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      as="span"
+                    >
+                      <MapPin class="h-4 w-4 mr-1" />
+                      Floor Plan
+                    </Button>
+                  </Link>
+                  <Link :href="route('admin.rooms.edit', room.id)">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      as="span"
+                    >
+                      <Edit class="h-4 w-4" />
+                    </Button>
+                  </Link>
                   <Button
                     size="sm"
                     variant="destructive"

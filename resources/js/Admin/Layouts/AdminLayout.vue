@@ -1,10 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { Calendar, Home, MapPin, Menu, X, ChevronRight } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import { Button } from '@/Components/ui/button'
-import { Alert } from '@/Components/ui/alert'
+import ToastProvider from '@/Components/ToastProvider.vue'
 import { cn } from '@/lib/utils.ts'
 
 const props = defineProps({
@@ -35,6 +35,7 @@ const navigateTo = (route) => {
   router.visit(route)
   sidebarOpen.value = false
 }
+
 </script>
 
 <template>
@@ -63,7 +64,7 @@ const navigateTo = (route) => {
       <div class="flex flex-col h-full">
         <!-- Logo -->
         <div class="px-6 py-4 border-b border-gray-200">
-          <h1 class="text-xl font-bold text-gray-900">EF Seating Reservation</h1>
+          <h1 class="text-xl font-bold text-gray-900">Seating Reservation</h1>
           <p class="text-xs text-gray-500 mt-1">Admin</p>
         </div>
 
@@ -130,7 +131,7 @@ const navigateTo = (route) => {
       )"
     >
       <!-- Header Bar with Title and Breadcrumbs -->
-      <div class="bg-white border-b border-gray-200 px-4 lg:px-8 py-4">
+      <div class="bg-white border-b border-gray-200 px-4 lg:px-8 h-24 flex items-center justify-between">
         <div class="flex flex-col space-y-2">
           <!-- Breadcrumbs -->
           <nav v-if="breadcrumbs.length > 0" class="flex items-center space-x-2 text-sm text-gray-500">
@@ -162,23 +163,6 @@ const navigateTo = (route) => {
 
       <!-- Main Content -->
       <div class="p-4 lg:p-8">
-        <!-- Flash Messages -->
-        <div v-if="page.props.flash?.success" class="mb-6">
-          <Alert class="bg-green-50 border-green-200">
-            <div class="text-green-800">
-              {{ page.props.flash.success }}
-            </div>
-          </Alert>
-        </div>
-
-        <div v-if="page.props.flash?.error" class="mb-6">
-          <Alert class="bg-red-50 border-red-200">
-            <div class="text-red-800">
-              {{ page.props.flash.error }}
-            </div>
-          </Alert>
-        </div>
-
         <slot />
       </div>
     </main>
@@ -189,5 +173,8 @@ const navigateTo = (route) => {
       @click="sidebarOpen = false"
       class="fixed inset-0 bg-black/50 z-30 lg:hidden"
     />
+    
+    <!-- Toast Notifications -->
+    <ToastProvider />
   </div>
 </template>

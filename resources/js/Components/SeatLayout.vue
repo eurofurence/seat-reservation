@@ -237,12 +237,16 @@ watch(() => props.selectedSeats, (newSeats) => {
                       <div
                         v-for="row in (getRowSeatsLayout(cell).reverseRows ? [...cell.rows].reverse() : cell.rows)"
                         :key="row.id"
-                        class="seat-row"
-                        :class="getRowSeatsLayout(cell).rowDirection + '-row'"
+                        class="seat-row-section"
+                        :class="getRowSeatsLayout(cell).rowDirection + '-section'"
                       >
-                        <div class="row-label-container">
-                          <div class="row-label">{{ row.name }}</div>
+                        <!-- Row Separator -->
+                        <div class="row-separator">
+                          <span class="row-separator-line"></span>
+                          <span class="row-separator-label">Row {{ row.name }}</span>
+                          <span class="row-separator-line"></span>
                         </div>
+                        <!-- Seats Container -->
                         <div class="seats-container">
                           <button
                             v-for="seat in (getRowSeatsLayout(cell).reverseSeats ? [...row.seats].reverse() : row.seats)"
@@ -250,9 +254,9 @@ watch(() => props.selectedSeats, (newSeats) => {
                             :class="['seat', getSeatStatus(seat).class]"
                             :disabled="getSeatStatus(seat).disabled"
                             @click="handleSeatClick(seat)"
-                            :title="`${cell.name} - Row ${row.name} - Seat ${seat.name}`"
+                            :title="`${cell.name} - Row ${row.name} - Seat ${seat.label || seat.name}`"
                           >
-                            {{ seat.name }}
+                            {{ seat.label || seat.name }}
                           </button>
                         </div>
                       </div>
@@ -284,9 +288,15 @@ watch(() => props.selectedSeats, (newSeats) => {
                   <div
                     v-for="row in block.rows"
                     :key="row.id"
-                    class="seat-row"
+                    class="seat-row-section"
                   >
-                    <div class="row-label">{{ row.name }}</div>
+                    <!-- Row Separator -->
+                    <div class="row-separator">
+                      <span class="row-separator-line"></span>
+                      <span class="row-separator-label">Row {{ row.name }}</span>
+                      <span class="row-separator-line"></span>
+                    </div>
+                    <!-- Seats Container -->
                     <div class="seats-container">
                       <button
                         v-for="seat in row.seats"
@@ -294,9 +304,9 @@ watch(() => props.selectedSeats, (newSeats) => {
                         :class="['seat', getSeatStatus(seat).class]"
                         :disabled="getSeatStatus(seat).disabled"
                         @click="handleSeatClick(seat)"
-                        :title="`${block.name} - ${row.name} - ${seat.name}`"
+                        :title="`${block.name} - ${row.name} - ${seat.label || seat.name}`"
                       >
-                        {{ seat.name }}
+                        {{ seat.label || seat.name }}
                       </button>
                     </div>
                   </div>
@@ -443,7 +453,7 @@ watch(() => props.selectedSeats, (newSeats) => {
 .block-name-label.rotation-180 {
   bottom: -20px;
   left: 50%;
-  transform: translateX(-50%) rotate(180deg);
+  transform: translateX(-50%);
 }
 
 .block-name-label.rotation-270 {
@@ -466,46 +476,72 @@ watch(() => props.selectedSeats, (newSeats) => {
   flex-direction: row;
 }
 
-.seat-row {
+.seat-row-section {
+  margin-bottom: 12px;
+}
+
+.seat-row-section.horizontal-section {
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.seat-row.horizontal-row {
-  flex-direction: row;
-}
-
-.seat-row.vertical-row {
   flex-direction: column;
-  margin-bottom: 0;
-  margin-right: 6px;
 }
 
-.row-label-container {
+.seat-row-section.vertical-section {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  margin-bottom: 0;
+  margin-right: 12px;
+}
+
+/* Row Separator Styling */
+.row-separator {
   display: flex;
   align-items: center;
-  justify-content: center;
+  margin-bottom: 6px;
+  gap: 8px;
+  order: 1;
 }
 
-.row-label {
-  min-width: 32px;
-  font-size: 12px;
+.row-separator-line {
+  flex: 1;
+  height: 1px;
+  background: #d1d5db;
+}
+
+.row-separator-label {
+  font-size: 11px;
   font-weight: bold;
-  color: #374151;
-  text-align: center;
-  background: #f3f4f6;
+  color: #6b7280;
+  background: white;
+  padding: 2px 8px;
   border-radius: 3px;
-  padding: 4px 6px;
-  margin-right: 8px;
+  border: 1px solid #d1d5db;
+  white-space: nowrap;
 }
 
-.vertical-row .row-label {
-  margin-right: 0;
-  margin-bottom: 8px;
+/* Vertical Row Separator for 90° and 270° rotations */
+.vertical-section .row-separator {
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0;
+  margin-right: 8px;
+  width: auto;
+  height: 100%;
+  order: 1;
+}
+
+.vertical-section .row-separator-line {
+  flex: 1;
+  width: 1px;
+  height: auto;
+  min-height: 40px;
+}
+
+.vertical-section .row-separator-label {
   writing-mode: vertical-rl;
   text-orientation: mixed;
+  transform: rotate(180deg);
+  margin: 8px 0;
 }
 
 .seats-container {
@@ -513,9 +549,11 @@ watch(() => props.selectedSeats, (newSeats) => {
   gap: 3px;
   flex-direction: row;
   align-items: center;
+  justify-content: center;
+  order: 2;
 }
 
-.vertical-row .seats-container {
+.vertical-section .seats-container {
   flex-direction: column;
   align-items: center;
 }

@@ -26,7 +26,12 @@ npm run build          # Production build
 php artisan serve      # Start Laravel development server
 php artisan test       # Run PHPUnit tests
 vendor/bin/pint        # Format PHP code with Laravel Pint
-php artisan route:list # View all routes
+
+# Route management
+php artisan route:list # View all routes with names, methods, and URIs
+php artisan route:list --name=admin # Filter routes by name pattern
+php artisan route:list --path=admin # Filter routes by URI pattern
+php artisan route:list --method=GET # Filter routes by HTTP method
 php artisan route:clear # Clear route cache
 ```
 
@@ -39,6 +44,25 @@ php artisan migrate:fresh --seed  # Fresh database with seeding
 ## Request Handling Patterns
 
 ### ✅ Correct Inertia.js Patterns
+
+#### Navigation with Link Component
+Always use Inertia's Link component for navigation:
+
+```vue
+<script setup>
+import { Link } from '@inertiajs/vue3'
+</script>
+
+<template>
+  <!-- Correct: Use Link with route helper -->
+  <Link :href="route('admin.rooms.layout', room.id)">
+    <Button as="span">Floor Plan</Button>
+  </Link>
+  
+  <!-- For programmatic navigation, use router -->
+  <Button @click="router.visit(route('admin.rooms.edit', room.id))">Edit</Button>
+</template>
+```
 
 #### Form Submissions
 Always use the Inertia.js `useForm` helper for form operations:
@@ -69,6 +93,8 @@ deleteForm.delete(route('admin.users.destroy', user.id))
 - Don't use `/api` routes with Inertia.js - use named routes
 - Don't use `router.post()` directly for forms - use `form.post()`
 - Don't use `fetch()` for form submissions - use Inertia forms
+- Don't use `window.open()` or `window.location` for navigation - use Link component
+- Don't use `<a>` tags directly - use Inertia's Link component
 
 ## Laravel Controller Patterns
 
@@ -91,6 +117,48 @@ public function index()
     ]);
 }
 ```
+
+## Toast Notifications
+
+The admin layout uses vue-sonner for toast notifications that automatically display Laravel flash messages:
+
+### Laravel Controller Usage
+```php
+// Success message
+return redirect()->route('admin.rooms.index')
+    ->with('success', 'Room created successfully!');
+
+// Error message
+return back()->with('error', 'Something went wrong.');
+
+// Warning message
+return back()->with('warning', 'Please review your input.');
+
+// Info message
+return back()->with('info', 'Processing may take a few moments.');
+```
+
+### Manual Toast Usage in Vue
+```javascript
+import { toast } from 'vue-sonner'
+
+// Show different toast types
+toast.success('Operation completed!')
+toast.error('An error occurred')
+toast.warning('Please be careful')
+toast.info('Just letting you know')
+
+// With options
+toast.success('Saved!', {
+  duration: 4000,
+  description: 'Your changes have been saved.'
+})
+```
+
+Flash messages are automatically displayed as toasts on:
+- Page load
+- After Inertia navigation
+- After form submissions
 
 ## Route Structure
 

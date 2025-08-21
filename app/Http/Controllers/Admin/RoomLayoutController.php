@@ -60,7 +60,7 @@ class RoomLayoutController extends Controller
     public function update(Request $request, Room $room)
     {
         $request->validate([
-            'stageBlocks' => 'required|array',
+            'stageBlocks' => 'sometimes|array',
             'stageBlocks.*.id' => 'nullable|exists:blocks,id',
             'stageBlocks.*.name' => 'required|string|max:255',
             'stageBlocks.*.position_x' => 'required|integer|min:-1',
@@ -79,7 +79,8 @@ class RoomLayoutController extends Controller
         DB::transaction(function () use ($request, $room) {
             // Update stage blocks
             $existingStageBlockIds = $room->stageBlocks()->pluck('id')->toArray();
-            $submittedStageBlockIds = collect($request->stageBlocks)->pluck('id')->filter()->toArray();
+            $submittedStageBlocks = $request->stageBlocks ?? [];
+            $submittedStageBlockIds = collect($submittedStageBlocks)->pluck('id')->filter()->toArray();
             
             // Delete stage blocks that are no longer in the submission
             $stageBlocksToDelete = array_diff($existingStageBlockIds, $submittedStageBlockIds);
@@ -88,7 +89,7 @@ class RoomLayoutController extends Controller
             }
 
             // Update or create stage blocks
-            foreach ($request->stageBlocks as $index => $stageBlockData) {
+            foreach ($submittedStageBlocks as $index => $stageBlockData) {
                 if ($stageBlockData['id']) {
                     // Update existing stage block
                     $room->stageBlocks()->where('id', $stageBlockData['id'])->update([
