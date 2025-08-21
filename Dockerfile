@@ -25,7 +25,7 @@ FROM base as local
 ######################################################
 FROM base as vite-vendor-build
 WORKDIR /app
-RUN rm -f composer.lock composer.json && COMPOSER_ALLOW_SUPERUSER=1 composer require tightenco/ziggy:^1.0 --ignore-platform-reqs
+RUN rm -f composer.lock composer.json && COMPOSER_ALLOW_SUPERUSER=1 composer require tightenco/ziggy:^2.0 --ignore-platform-reqs
 ######################################################
 # NodeJS Stage
 ######################################################
