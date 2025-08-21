@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import Panzoom from '@panzoom/panzoom'
+import SeatBlock from './SeatBlock.vue'
 
 const props = defineProps({
   event: Object,
@@ -112,33 +113,6 @@ const handleSeatClick = (seat) => {
   emit('seats-changed', [...selectedSeatIds.value])
 }
 
-// Get orientation styling for rotated blocks
-const getBlockTransform = (rotation) => {
-  return rotation ? `rotate(${rotation}deg)` : ''
-}
-
-// Get row and seat labels based on block orientation
-const getRowSeatsLayout = (block) => {
-  const rotation = block.rotation || 0
-
-  // All orientations should show rows in normal order (1, 2, 3...)
-  // The arrow points towards the stage, and rows are numbered from stage outward
-  if (rotation === 90 || rotation === 270) {
-    return {
-      rowDirection: 'vertical',   // rows go side-by-side for 90°/270°
-      seatDirection: 'horizontal', // seats go in columns within each row
-      reverseRows: false, // Always show rows in natural order (1, 2, 3...)
-      reverseSeats: false // Always show seats in natural order
-    }
-  } else {
-    return {
-      rowDirection: 'horizontal', // rows go top-to-bottom for 0°/180°
-      seatDirection: 'horizontal', // seats go left-to-right within each row
-      reverseRows: false, // Always show rows in natural order (1, 2, 3...)
-      reverseSeats: false // Always show seats in natural order
-    }
-  }
-}
 
 // Initialize Panzoom
 onMounted(() => {
@@ -223,91 +197,12 @@ watch(() => props.selectedSeats, (newSeats) => {
                   v-else-if="cell.type === 'block'"
                   class="block-cell"
                 >
-                  <div class="block-content">
-                    <!-- Rows and Seats with orientation-based layout -->
-                    <div class="rows-container" :class="getRowSeatsLayout(cell).rowDirection + '-layout'">
-                      <!-- Block Name positioned at tip of arrow -->
-                      <div
-                        class="block-name-label"
-                        :class="'rotation-' + (cell.rotation || 0)"
-                      >
-                        {{ cell.name }}
-                      </div>
-
-                      <div
-                        v-for="row in cell.rows"
-                        :key="row.id"
-                        class="seat-row-section"
-                        :class="getRowSeatsLayout(cell).rowDirection + '-section'"
-                      >
-                        <!-- For 90° and 270° rotations, arrange separator and seats horizontally -->
-                        <template v-if="(cell.rotation || 0) === 90">
-                          <!-- Row Separator on LEFT (pointing right towards stage) -->
-                          <div class="row-separator">
-                            <span class="row-separator-line"></span>
-                            <span class="row-separator-label">{{ row.name }}</span>
-                            <span class="row-separator-line"></span>
-                          </div>
-                          <!-- Seats Container -->
-                          <div class="seats-container">
-                            <button
-                              v-for="seat in row.seats"
-                              :key="seat.id"
-                              :class="['seat', getSeatStatus(seat).class]"
-                              :disabled="getSeatStatus(seat).disabled"
-                              @click="handleSeatClick(seat)"
-                              :title="`${cell.name} - Row ${row.name} - Seat ${seat.label || seat.name}`"
-                            >
-                              {{ seat.label || seat.name }}
-                            </button>
-                          </div>
-                        </template>
-                        <template v-else-if="(cell.rotation || 0) === 270">
-                          <!-- Seats Container -->
-                          <div class="seats-container">
-                            <button
-                              v-for="seat in row.seats"
-                              :key="seat.id"
-                              :class="['seat', getSeatStatus(seat).class]"
-                              :disabled="getSeatStatus(seat).disabled"
-                              @click="handleSeatClick(seat)"
-                              :title="`${cell.name} - Row ${row.name} - Seat ${seat.label || seat.name}`"
-                            >
-                              {{ seat.label || seat.name }}
-                            </button>
-                          </div>
-                          <!-- Row Separator on RIGHT (pointing left towards stage) -->
-                          <div class="row-separator">
-                            <span class="row-separator-line"></span>
-                            <span class="row-separator-label">{{ row.name }}</span>
-                            <span class="row-separator-line"></span>
-                          </div>
-                        </template>
-                        <!-- For 0° and 180° rotations, separator always comes first -->
-                        <template v-else>
-                          <!-- Row Separator -->
-                          <div class="row-separator">
-                            <span class="row-separator-line"></span>
-                            <span class="row-separator-label">{{ row.name }}</span>
-                            <span class="row-separator-line"></span>
-                          </div>
-                          <!-- Seats Container -->
-                          <div class="seats-container">
-                            <button
-                              v-for="seat in row.seats"
-                              :key="seat.id"
-                              :class="['seat', getSeatStatus(seat).class]"
-                              :disabled="getSeatStatus(seat).disabled"
-                              @click="handleSeatClick(seat)"
-                              :title="`${cell.name} - Row ${row.name} - Seat ${seat.label || seat.name}`"
-                            >
-                              {{ seat.label || seat.name }}
-                            </button>
-                          </div>
-                        </template>
-                      </div>
-                    </div>
-                  </div>
+                  <SeatBlock
+                    :block="cell"
+                    :booked-seats="bookedSeats"
+                    :selected-seats="selectedSeatIds"
+                    @seat-click="handleSeatClick"
+                  />
                 </div>
               </td>
             </tr>
@@ -318,47 +213,15 @@ watch(() => props.selectedSeats, (newSeats) => {
         <div v-if="unplacedBlocks.length > 0" class="unplaced-blocks">
           <h4 class="unplaced-title">Additional Blocks (Not Positioned)</h4>
           <div class="unplaced-container">
-            <div
+            <SeatBlock
               v-for="block in unplacedBlocks"
               :key="`unplaced-${block.id}`"
-              class="unplaced-block"
-            >
-              <div class="block-content">
-                <!-- Block Header -->
-                <div class="block-header">
-                  <span class="block-name">{{ block.name }}</span>
-                </div>
-
-                <!-- Rows and Seats -->
-                <div class="rows-container">
-                  <div
-                    v-for="row in block.rows"
-                    :key="row.id"
-                    class="seat-row-section"
-                  >
-                    <!-- Row Separator -->
-                    <div class="row-separator">
-                      <span class="row-separator-line"></span>
-                      <span class="row-separator-label">Row {{ row.name }}</span>
-                      <span class="row-separator-line"></span>
-                    </div>
-                    <!-- Seats Container -->
-                    <div class="seats-container">
-                      <button
-                        v-for="seat in row.seats"
-                        :key="seat.id"
-                        :class="['seat', getSeatStatus(seat).class]"
-                        :disabled="getSeatStatus(seat).disabled"
-                        @click="handleSeatClick(seat)"
-                        :title="`${block.name} - ${row.name} - ${seat.label || seat.name}`"
-                      >
-                        {{ seat.label || seat.name }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+              :block="block"
+              :booked-seats="bookedSeats"
+              :selected-seats="selectedSeatIds"
+              @seat-click="handleSeatClick"
+              class="border-orange-400 bg-orange-50"
+            />
           </div>
         </div>
       </div>
@@ -425,6 +288,8 @@ watch(() => props.selectedSeats, (newSeats) => {
   vertical-align: top;
   border: none;
   background: transparent;
+  width: auto;
+  height: auto;
 }
 
 /* Empty Cell */
@@ -459,195 +324,9 @@ watch(() => props.selectedSeats, (newSeats) => {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-}
-
-.block-content {
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  position: relative;
-}
-
-/* Block Name Label */
-.block-name-label {
-  font-weight: bold;
-  font-size: 14px;
-  color: #1f2937;
-  position: absolute;
-  transform-origin: center center;
-  z-index: 10;
-  background: white;
-  padding: 2px 6px;
-  border-radius: 3px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.block-name-label.rotation-0 {
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.block-name-label.rotation-90 {
-  top: 50%;
-  right: -20px;
-  transform: translateY(-50%) rotate(90deg);
-}
-
-.block-name-label.rotation-180 {
-  bottom: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.block-name-label.rotation-270 {
-  top: 50%;
-  left: -20px;
-  transform: translateY(-50%) rotate(270deg);
-}
-
-/* Rows and Seats */
-.rows-container {
-  display: flex;
-  gap: 4px;
-}
-
-.rows-container.horizontal-layout {
-  flex-direction: column;
-}
-
-.rows-container.vertical-layout {
-  flex-direction: row;
-}
-
-.seat-row-section {
-  margin-bottom: 12px;
-}
-
-.seat-row-section.horizontal-section {
-  display: flex;
-  flex-direction: column;
-}
-
-.seat-row-section.vertical-section {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  margin-bottom: 0;
-  margin-right: 12px;
-}
-
-/* Row Separator Styling */
-.row-separator {
-  display: flex;
-  align-items: center;
-  margin-bottom: 6px;
-  gap: 8px;
-  order: 1;
-}
-
-
-.row-separator-line {
-  flex: 1;
-  height: 1px;
-  background: #d1d5db;
-}
-
-.row-separator-label {
-  font-size: 11px;
-  font-weight: bold;
-  color: #6b7280;
-  background: white;
-  padding: 2px 8px;
-  border-radius: 3px;
-  border: 1px solid #d1d5db;
-  white-space: nowrap;
-}
-
-/* Vertical Row Separator for 90° and 270° rotations */
-.vertical-section .row-separator {
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 0;
-  margin-right: 8px;
-  width: auto;
+  width: 100%;
   height: 100%;
-  order: 1;
-}
-
-.vertical-section .row-separator-line {
-  flex: 1;
-  width: 1px;
-  height: auto;
-  min-height: 40px;
-}
-
-.vertical-section .row-separator-label {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
-  margin: 8px 0;
-}
-
-.seats-container {
-  display: flex;
-  gap: 3px;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  order: 2;
-}
-
-.vertical-section .seats-container {
-  flex-direction: column;
-  align-items: center;
-}
-
-.seat {
-  width: 28px;
-  height: 28px;
-  border: 1px solid;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.seat-available {
-  background: #10b981;
-  border-color: #059669;
-  color: white;
-}
-
-.seat-available:hover {
-  background: #059669;
-  transform: scale(1.1);
-}
-
-.seat-selected {
-  background: #3b82f6;
-  border-color: #2563eb;
-  color: white;
-  transform: scale(1.1);
-}
-
-.seat-booked {
-  background: #ef4444;
-  border-color: #dc2626;
-  color: white;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.seat:disabled {
-  cursor: not-allowed;
+  overflow: visible;
 }
 
 /* Unplaced Blocks */
@@ -670,19 +349,6 @@ watch(() => props.selectedSeats, (newSeats) => {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-}
-
-.unplaced-block {
-  transform-origin: center center;
-}
-
-.unplaced-block .block-content {
-  border-color: #f59e0b;
-  background: #fef3c7;
-}
-
-.unplaced-block .rows-container {
-  max-height: none;
 }
 
 /* Legend */
