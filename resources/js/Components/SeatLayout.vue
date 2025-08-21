@@ -8,10 +8,14 @@ const props = defineProps({
   room: Object,
   blocks: Array,
   selectedSeats: Array,
-  bookedSeats: Array
+  bookedSeats: Array,
+  adminMode: {
+    type: Boolean,
+    default: false
+  }
 })
 
-const emit = defineEmits(['seats-changed'])
+const emit = defineEmits(['seats-changed', 'booked-seat-click'])
 
 // Seat selection state
 const selectedSeatIds = ref([...props.selectedSeats])
@@ -113,6 +117,11 @@ const handleSeatClick = (seat) => {
   emit('seats-changed', [...selectedSeatIds.value])
 }
 
+// Handle booked seat click (admin only)
+const handleBookedSeatClick = (seat) => {
+  emit('booked-seat-click', seat)
+}
+
 
 // Initialize Panzoom
 onMounted(() => {
@@ -171,13 +180,16 @@ watch(() => props.selectedSeats, (newSeats) => {
     <!-- Main Layout Grid with Panzoom -->
     <div class="layout-container" ref="panzoomContainer">
       <div class="panzoom-content">
-        <table class="seat-layout-table">
+        <table class="seat-layout-table p-32 bg-white">
           <tbody>
             <tr v-for="(row, rowIndex) in layoutGrid" :key="rowIndex">
               <td
                 v-for="(cell, colIndex) in row"
                 :key="colIndex"
-                class="layout-cell"
+                :class="[
+                  'layout-cell',
+                  { 'stage-layout-cell': cell && cell.type === 'stage' }
+                ]"
               >
                 <!-- Empty Cell -->
                 <div v-if="cell === null" class="empty-cell"></div>
@@ -185,11 +197,9 @@ watch(() => props.selectedSeats, (newSeats) => {
                 <!-- Stage Cell -->
                 <div
                   v-else-if="cell.type === 'stage'"
-                  class="stage-cell"
+                  class="stage-text"
                 >
-                  <div class="stage-content">
-                    🎭 STAGE
-                  </div>
+                  STAGE
                 </div>
 
                 <!-- Block Cell -->
@@ -201,7 +211,9 @@ watch(() => props.selectedSeats, (newSeats) => {
                     :block="cell"
                     :booked-seats="bookedSeats"
                     :selected-seats="selectedSeatIds"
+                    :admin-mode="adminMode"
                     @seat-click="handleSeatClick"
+                    @booked-seat-click="handleBookedSeatClick"
                   />
                 </div>
               </td>
@@ -219,7 +231,9 @@ watch(() => props.selectedSeats, (newSeats) => {
               :block="block"
               :booked-seats="bookedSeats"
               :selected-seats="selectedSeatIds"
+              :admin-mode="adminMode"
               @seat-click="handleSeatClick"
+              @booked-seat-click="handleBookedSeatClick"
               class="border-orange-400 bg-orange-50"
             />
           </div>
@@ -228,7 +242,7 @@ watch(() => props.selectedSeats, (newSeats) => {
     </div>
 
     <!-- Legend -->
-    <div class="seat-legend">
+    <div v-if="!adminMode" class="seat-legend">
       <div class="legend-item">
         <span class="seat seat-available"></span>
         <span>Available</span>
@@ -280,7 +294,6 @@ watch(() => props.selectedSeats, (newSeats) => {
 .seat-layout-table {
   border-collapse: separate;
   border-spacing: 0;
-  background: white;
 }
 
 .layout-cell {
@@ -292,31 +305,44 @@ watch(() => props.selectedSeats, (newSeats) => {
   height: auto;
 }
 
+/* Stage Layout Cell - apply styling directly to the table cell */
+.stage-layout-cell {
+  background: linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+              linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+              linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+              linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  background-color: #f3f4f6;
+  border: 2px solid #d1d5db;
+  border-radius: 6px;
+  margin: 4px;
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+/* Stage Text */
+.stage-text {
+  color: #6b7280;
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 60px;
+}
+
 /* Empty Cell */
 .empty-cell {
   width: 100%;
   height: 100%;
   background: transparent;
-}
-
-/* Stage Cell */
-.stage-cell {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stage-content {
-  background: #dc2626;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-weight: bold;
-  font-size: 14px;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
 }
 
 /* Block Cell */

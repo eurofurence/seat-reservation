@@ -113,7 +113,7 @@ const navigateTo = (route) => {
                 <div class="text-left">
                   <div class="font-medium">{{ event.name }}</div>
                   <div class="text-xs text-gray-500">
-                    {{ dayjs(event.starts_at).format('MMM D, YYYY') }}
+                    {{ dayjs(event.starts_at).format('MMM D, YYYY HH:mm') }}
                   </div>
                 </div>
               </button>

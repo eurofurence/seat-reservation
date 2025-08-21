@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Room;
 use App\Models\Booking;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class EventAdminController extends Controller
 {
@@ -60,9 +62,9 @@ class EventAdminController extends Controller
             ->with('success', 'Event deleted successfully');
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $event = Event::select('id', 'name', 'starts_at', 'room_id')
+        $event = Event::select('id', 'name', 'starts_at', 'reservation_ends_at', 'max_tickets', 'room_id')
             ->with('room:id,name,stage_x,stage_y')
             ->findOrFail($id);
         
@@ -86,18 +88,58 @@ class EventAdminController extends Controller
         $bookedSeats = Booking::where('event_id', $id)
             ->pluck('seat_id')
             ->toArray();
+            
+        // Get seat to booking mapping for seat clicks
+        $seatBookingMap = Booking::where('event_id', $id)
+            ->pluck('id', 'seat_id')
+            ->toArray();
         
-        // Load bookings with minimal user data - paginated for the table
-        $bookings = Booking::where('event_id', $id)
-            ->select('id', 'event_id', 'user_id', 'seat_id', 'created_at')
+        // Build bookings query with search
+        $bookingsQuery = Booking::where('event_id', $id)
+            ->select('id', 'event_id', 'user_id', 'seat_id', 'guest_name', 'name', 'comment', 'picked_up_at', 'created_at')
             ->with([
-                'user:id,name,email',
+                'user:id,name',
                 'seat:id,row_id,label',
                 'seat.row:id,block_id,name',
                 'seat.row.block:id,name'
-            ])
-            ->latest()
-            ->paginate(50);
+            ]);
+        
+        // Apply search filter if provided
+        if ($search = $request->get('search')) {
+            $bookingsQuery->where(function($query) use ($search) {
+                $query->where('guest_name', 'like', "%{$search}%")
+                    ->orWhere('name', 'like', "%{$search}%")
+                    ->orWhere('comment', 'like', "%{$search}%")
+                    ->orWhereHas('user', function($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('seat.row.block', function($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('seat.row', function($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('seat', function($q) use ($search) {
+                        $q->where('label', 'like', "%{$search}%");
+                    });
+            });
+        }
+        
+        // Handle booking highlight - find the page containing the specific booking
+        $currentPage = $request->get('page', 1);
+        if ($bookingId = $request->get('booking_id')) {
+            // Since we're ordering by latest(), count how many bookings come before this one
+            $bookingPosition = $bookingsQuery->clone()
+                ->whereRaw('(bookings.created_at > (SELECT created_at FROM bookings WHERE id = ?) OR (bookings.created_at = (SELECT created_at FROM bookings WHERE id = ?) AND bookings.id > ?))', [$bookingId, $bookingId, $bookingId])
+                ->count();
+            
+            // Position is 1-based, so add 1. Calculate which page the booking should be on
+            $targetPage = floor($bookingPosition / 10) + 1;
+            $currentPage = $targetPage;
+        }
+        
+        // Load bookings with pagination
+        $bookings = $bookingsQuery->latest()->paginate(10, ['*'], 'page', $currentPage)->withQueryString();
         
         return Inertia::render('Admin/EventShow', [
             'event' => $event,
@@ -105,6 +147,9 @@ class EventAdminController extends Controller
             'blocks' => $blocks,
             'bookings' => $bookings,
             'bookedSeats' => $bookedSeats,
+            'seatBookingMap' => $seatBookingMap,
+            'search' => $request->get('search', ''),
+            'booking_id' => $request->get('booking_id'),
             'title' => $event->name,
             'breadcrumbs' => [
                 ['title' => 'Events', 'url' => route('admin.events.index')],
@@ -115,29 +160,187 @@ class EventAdminController extends Controller
     
     public function export($id)
     {
-        $event = Event::findOrFail($id);
+        $event = Event::with('room')->findOrFail($id);
         
         $bookings = Booking::where('event_id', $id)
             ->with(['user', 'seat.row.block'])
             ->get();
         
-        $csv = "ID,User Name,Email,Block,Row,Seat,Booked At\n";
+        $csv = "Room,Event,Name,Guest Name,Comment,Block,Row,Seat,Picked Up,Booked At\n";
         
         foreach ($bookings as $booking) {
             $csv .= sprintf(
-                "%s,%s,%s,%s,%s,%s,%s\n",
-                $booking->id,
-                $booking->user->name,
-                $booking->user->email,
-                $booking->seat->row->block->name ?? 'N/A',
-                $booking->seat->row->name ?? 'N/A',
-                $booking->seat->label ?? 'N/A',
+                "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+                $this->escapeCsvField($event->room->name ?? 'N/A'),
+                $this->escapeCsvField($event->name),
+                $this->escapeCsvField($booking->user ? $booking->user->name : 'N/A'),
+                $this->escapeCsvField($booking->guest_name ?? $booking->name ?? 'N/A'),
+                $this->escapeCsvField($booking->comment ?? ''),
+                $this->escapeCsvField($booking->seat->row->block->name ?? 'N/A'),
+                $this->escapeCsvField($booking->seat->row->name ?? 'N/A'),
+                $this->escapeCsvField($booking->seat->label ?? 'N/A'),
+                $booking->picked_up_at ? 'Yes' : 'No',
                 $booking->created_at->format('Y-m-d H:i:s')
             );
         }
         
         return response($csv)
             ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', 'attachment; filename="bookings-' . $event->id . '.csv"');
+            ->header('Content-Disposition', 'attachment; filename="bookings-' . $event->name . '-' . date('Y-m-d') . '.csv"');
+    }
+    
+    private function escapeCsvField($field)
+    {
+        // Escape quotes and wrap in quotes if contains comma, quote, or newline
+        $field = str_replace('"', '""', $field);
+        if (strpos($field, ',') !== false || strpos($field, '"') !== false || strpos($field, "\n") !== false) {
+            $field = '"' . $field . '"';
+        }
+        return $field;
+    }
+    
+    public function printTickets($id)
+    {
+        $event = Event::with('room')->findOrFail($id);
+        
+        $bookings = Booking::where('event_id', $id)
+            ->with(['user', 'seat.row.block'])
+            ->get();
+        
+        return Inertia::render('Admin/EventPrintTickets', [
+            'event' => $event,
+            'bookings' => $bookings,
+            'title' => 'Print Tickets - ' . $event->name
+        ]);
+    }
+    
+    public function manualBooking(Request $request, $id)
+    {
+        $request->validate([
+            'guest_name' => 'required|string|max:255',
+            'comment' => 'nullable|string|max:1000',
+            'seat_ids' => 'required|array|min:1',
+            'seat_ids.*' => 'required|integer|exists:seats,id'
+        ]);
+        
+        $event = Event::findOrFail($id);
+        
+        DB::beginTransaction();
+        
+        try {
+            // Check if any seats are already booked for this event
+            $alreadyBooked = Booking::where('event_id', $id)
+                ->whereIn('seat_id', $request->seat_ids)
+                ->exists();
+                
+            if ($alreadyBooked) {
+                return response()->json([
+                    'error' => 'One or more selected seats are already booked.'
+                ], 422);
+            }
+            
+            // Create manual bookings for all selected seats (no user_id required)
+            $bookings = [];
+            foreach ($request->seat_ids as $seatId) {
+                $bookings[] = [
+                    'type' => 'admin', // Mark as admin booking
+                    'event_id' => $id,
+                    'user_id' => null, // No user association for manual bookings
+                    'seat_id' => $seatId,
+                    'guest_name' => $request->guest_name,
+                    'name' => $request->guest_name, // For compatibility
+                    'comment' => $request->comment,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            
+            Booking::insert($bookings);
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Manual booking created successfully.',
+                'bookings_count' => count($request->seat_ids),
+                'guest_name' => $request->guest_name
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            return response()->json([
+                'error' => 'Failed to create booking: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function togglePickup(Request $request, $id)
+    {
+        $request->validate([
+            'booking_id' => 'required|integer|exists:bookings,id',
+            'picked_up' => 'required|boolean'
+        ]);
+        
+        try {
+            $booking = Booking::where('id', $request->booking_id)
+                ->where('event_id', $id)
+                ->firstOrFail();
+            
+            $booking->picked_up_at = $request->picked_up ? now() : null;
+            $booking->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => $request->picked_up ? 'Marked as picked up' : 'Marked as not picked up',
+                'picked_up_at' => $booking->picked_up_at
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to update pickup status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function updateBooking(Request $request, $id, $bookingId)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'comment' => 'nullable|string|max:1000'
+        ]);
+        
+        try {
+            $booking = Booking::where('id', $bookingId)
+                ->where('event_id', $id)
+                ->firstOrFail();
+            
+            $booking->update([
+                'guest_name' => $request->name,
+                'name' => $request->name,
+                'comment' => $request->comment
+            ]);
+            
+            return back()->with('success', 'Booking updated successfully');
+            
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to update booking: ' . $e->getMessage());
+        }
+    }
+    
+    public function deleteBooking(Request $request, $id, $bookingId)
+    {
+        try {
+            $booking = Booking::where('id', $bookingId)
+                ->where('event_id', $id)
+                ->firstOrFail();
+            
+            $booking->delete();
+            
+            return back()->with('success', 'Booking deleted successfully');
+            
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to delete booking: ' . $e->getMessage());
+        }
     }
 }

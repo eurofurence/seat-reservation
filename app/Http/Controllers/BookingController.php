@@ -50,8 +50,8 @@ class BookingController extends Controller
             return $this->validateBooking($request, $event);
         }
 
-        // Load event with room data only
-        $event->load('room:id,name');
+        // Load event with room data including stage position
+        $event->load('room:id,name,stage_x,stage_y');
 
         // Load blocks with minimal seat data - optimized to prevent memory issues
         $blocks = $event->room->blocks()
@@ -60,7 +60,7 @@ class BookingController extends Controller
                     $query->orderBy('sort')->select('id', 'block_id', 'name', 'sort');
                 },
                 'rows.seats' => function($query) {
-                    $query->orderBy('sort')->select('id', 'row_id', 'sort', 'name');
+                    $query->orderBy('sort')->select('id', 'row_id', 'sort', 'name', 'label');
                 }
             ])
             ->orderBy('sort')
@@ -79,7 +79,7 @@ class BookingController extends Controller
 
         return Inertia::render('Booking/CreateBooking', [
             'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at']), ['tickets_left' => $ticketsLeft]),
-            'room' => $event->room->only(['id', 'name']),
+            'room' => $event->room->only(['id', 'name', 'stage_x', 'stage_y']),
             'blocks' => $blocks,
             'bookedSeats' => $bookedSeats,
             'maxSeatsPerUser' => Auth::user()->is_admin ? 999 : 2,
@@ -134,7 +134,7 @@ class BookingController extends Controller
                 'row:id,block_id,name', 
                 'row.block:id,name'
             ])
-            ->select('id', 'row_id', 'name', 'sort')
+            ->select('id', 'row_id', 'name', 'label', 'sort')
             ->whereIn('id', $data['seats'])
             ->get();
 

@@ -24,12 +24,14 @@ interface Props {
   block: Block
   bookedSeats: number[]
   selectedSeats: number[]
+  adminMode?: boolean
 }
 
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'seat-click': [seat: Seat]
+  'booked-seat-click': [seat: Seat]
 }>()
 
 // Get seat status styling
@@ -38,8 +40,10 @@ const getSeatStatus = (seat: Seat) => {
 
   if (props.bookedSeats.includes(seatId)) {
     return {
-      classes: 'bg-red-500 border-red-600 text-white cursor-not-allowed opacity-70',
-      disabled: true
+      classes: props.adminMode 
+        ? 'bg-red-500 border-red-600 text-white hover:bg-red-600 cursor-pointer' 
+        : 'bg-red-500 border-red-600 text-white cursor-not-allowed opacity-70',
+      disabled: !props.adminMode
     }
   }
 
@@ -58,7 +62,15 @@ const getSeatStatus = (seat: Seat) => {
 
 // Handle seat click
 const handleSeatClick = (seat: Seat) => {
-  if (props.bookedSeats.includes(seat.id)) return
+  const isBooked = props.bookedSeats.includes(seat.id)
+  
+  if (isBooked) {
+    if (props.adminMode) {
+      emit('booked-seat-click', seat)
+    }
+    return
+  }
+  
   emit('seat-click', seat)
 }
 
