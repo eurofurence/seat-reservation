@@ -26,13 +26,14 @@ Route::middleware('auth')->group(function () {
     ]);
     
     // Admin routes
-    Route::prefix('admin')->name('admin.')->middleware(['auth', \App\Http\Middleware\ShareAdminData::class])->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', \App\Http\Middleware\ShareAdminData::class])->group(function () {
         // Dashboard
         Route::get('/', [\App\Http\Controllers\Admin\AdminController::class, 'dashboard'])->name('dashboard');
         
         // Events
         Route::get('/events', [\App\Http\Controllers\Admin\EventAdminController::class, 'index'])->name('events.index');
         Route::post('/events', [\App\Http\Controllers\Admin\EventAdminController::class, 'store'])->name('events.store');
+        Route::put('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'update'])->name('events.update');
         Route::delete('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'destroy'])->name('events.destroy');
         Route::get('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'show'])->name('events.show');
         Route::get('/events/{event}/export', [\App\Http\Controllers\Admin\EventAdminController::class, 'export'])->name('events.export');

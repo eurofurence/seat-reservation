@@ -18,7 +18,7 @@ class RoomLayoutController extends Controller
             ->selectRaw('COUNT(DISTINCT rows.id) as rows_count')
             ->selectRaw('COUNT(seats.id) as total_seats')
             ->with(['rows' => function($query) {
-                $query->select('id', 'block_id', 'name', 'sort', 'seats_count')
+                $query->select('id', 'block_id', 'name', 'sort', 'seats_count', 'custom_seat_count')
                     ->orderBy('sort');
             }])
             ->leftJoin('rows', 'blocks.id', '=', 'rows.block_id')
@@ -59,6 +59,7 @@ class RoomLayoutController extends Controller
 
     public function update(Request $request, Room $room)
     {
+        
         $request->validate([
             'stageBlocks' => 'sometimes|array',
             'stageBlocks.*.id' => 'nullable|exists:blocks,id',
@@ -74,6 +75,7 @@ class RoomLayoutController extends Controller
             'blocks.*.rowsData' => 'nullable|array',
             'blocks.*.rowsData.*.rowNumber' => 'integer|min:1|max:50',
             'blocks.*.rowsData.*.seatCount' => 'integer|min:1|max:100',
+            'blocks.*.rowsData.*.isCustom' => 'nullable|boolean',
         ]);
 
         DB::transaction(function () use ($request, $room) {
@@ -129,12 +131,15 @@ class RoomLayoutController extends Controller
                         // Delete existing rows (this will cascade to seats)
                         $block->rows()->delete();
 
-                        // Create new rows with specified seat counts
+                        // Create new rows with specified seat counts and custom seat counts
                         foreach ($blockData['rowsData'] as $rowData) {
+                            $customSeatCount = isset($rowData['isCustom']) && $rowData['isCustom'] ? $rowData['seatCount'] : null;
+                            
                             $row = $block->rows()->create([
                                 'name' => "Row {$rowData['rowNumber']}",
                                 'sort' => $rowData['rowNumber'],
                                 'seats_count' => $rowData['seatCount'],
+                                'custom_seat_count' => $customSeatCount,
                             ]);
 
                             // Create seats for this row

@@ -1,12 +1,12 @@
 <script setup>
-import { Head, useForm } from '@inertiajs/vue3'
+import { Head, useForm, Link } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import FullWidthLayout from "@/Layouts/FullWidthLayout.vue"
 import SeatLayout from "@/Components/SeatLayout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
-import { ArrowLeft, Info, AlertCircle, Calendar, MapPin, Clock, ArrowRight } from 'lucide-vue-next'
+import { ArrowLeft, AlertCircle, Calendar, MapPin, Clock, ArrowRight, Settings } from 'lucide-vue-next'
 import dayjs from "dayjs"
 
 defineOptions({layout: FullWidthLayout})
@@ -16,12 +16,15 @@ const props = defineProps({
     room: Object,
     blocks: Array,
     bookedSeats: Array,
+    selectedSeats: Array,
     maxSeatsPerUser: Number,
     userBookedCount: Number
 })
 
-const selectedSeats = ref([])
-const showInstructions = ref(false)
+// Convert selectedSeats from strings to numbers if needed
+const selectedSeats = ref(
+    props.selectedSeats ? props.selectedSeats.map(id => parseInt(id)) : []
+)
 
 const availableSeats = computed(() => {
     return props.maxSeatsPerUser - props.userBookedCount
@@ -69,17 +72,18 @@ function goBack() {
             <h1 class="text-xl lg:text-2xl font-semibold">{{ event.name }}</h1>
           </div>
           <div class="flex items-center space-x-4">
+            <!-- Admin button for admin users -->
+            <Link v-if="$page.props.auth.user?.is_admin" :href="route('admin.dashboard')" class="hidden lg:block">
+              <Button variant="outline" size="sm">
+                <Settings class="mr-2 h-4 w-4" />
+                Switch to Admin
+              </Button>
+            </Link>
             <!-- Desktop: Back button -->
             <Button variant="outline" @click="goBack" class="hidden lg:flex">
               <ArrowLeft class="mr-2 h-4 w-4" />
               Back to Events
             </Button>
-            <button
-              @click="showInstructions = !showInstructions"
-              class="p-2 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              <Info class="h-5 w-5" />
-            </button>
           </div>
         </div>
       </div>
@@ -115,7 +119,7 @@ function goBack() {
               <div class="flex items-center text-sm lg:text-base">
                 <MapPin class="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
                 <span class="font-medium mr-2">Room:</span>
-                <span>{{ room.name }}</span>
+                <span>{{ room?.name || 'No room assigned' }}</span>
               </div>
               <div class="flex items-center text-sm lg:text-base">
                 <Clock class="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
@@ -164,42 +168,26 @@ function goBack() {
           </div>
         </div>
 
-        <!-- Mobile Instructions (when shown) -->
-        <Card v-if="showInstructions" class="mb-6 p-4 lg:hidden">
-          <h3 class="font-semibold mb-3">How to Select Seats</h3>
-          <ul class="space-y-2 text-sm text-gray-600">
-            <li class="flex items-start">
-              <span class="mr-2">•</span>
-              Click on available seats (green) to select them
-            </li>
-            <li class="flex items-start">
-              <span class="mr-2">•</span>
-              Click again to deselect
-            </li>
-            <li class="flex items-start">
-              <span class="mr-2">•</span>
-              You can select up to {{ availableSeats }} seats
-            </li>
-            <li class="flex items-start">
-              <span class="mr-2">•</span>
-              Red seats are already booked
-            </li>
-          </ul>
-        </Card>
 
         <!-- Right Content: Seat Layout -->
         <div class="lg:col-span-8 xl:col-span-9">
           <Card class="mb-20 lg:mb-0">
             <div class="p-4 lg:p-6">
               <h3 class="font-semibold text-lg mb-4 hidden lg:block">Select Your Seats</h3>
-              <SeatLayout
-                :event="event"
-                :room="room"
-                :blocks="blocks"
-                :selected-seats="selectedSeats"
-                :booked-seats="bookedSeats"
-                @seats-changed="handleSeatsChanged"
-              />
+              <div v-if="room && blocks" class="seat-layout-container">
+                <SeatLayout
+                  :event="event"
+                  :room="room"
+                  :blocks="blocks"
+                  :selected-seats="selectedSeats"
+                  :booked-seats="bookedSeats"
+                  @seats-changed="handleSeatsChanged"
+                />
+              </div>
+              <div v-else class="text-center py-8 text-gray-500">
+                <AlertCircle class="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                <p>No seating layout available for this event.</p>
+              </div>
             </div>
           </Card>
         </div>

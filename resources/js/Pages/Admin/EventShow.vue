@@ -1,6 +1,6 @@
 <script setup>
 import {Head, router, useForm} from '@inertiajs/vue3'
-import {ref, computed, nextTick, onMounted, watch} from 'vue'
+import {ref, computed, nextTick, onMounted, watch, watchEffect} from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import SeatLayout from '@/Components/SeatLayout.vue'
 import { Card } from '@/Components/ui/card'
@@ -10,12 +10,14 @@ import { CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Table } from '@/Components/ui/table'
 import { Input } from '@/Components/ui/input'
+import { Textarea } from '@/Components/ui/textarea'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Checkbox } from '@/Components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
 import { toast } from 'vue-sonner'
-import {Download, Calendar, Clock, MapPin, Users, Plus, UserPlus, X, Pencil, Trash2} from 'lucide-vue-next'
+import {Download, Calendar, Clock, MapPin, Users, Plus, UserPlus, X, Pencil, Trash2, Info} from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import axios from 'axios'
 
@@ -30,12 +32,17 @@ const props = defineProps({
     seatBookingMap: Object,
     search: String,
     booking_id: [String, Number],
+    selected_seats: String, // Comma-separated seat IDs
     title: String,
     breadcrumbs: Array,
 })
 
-// Admin seat selection state
-const selectedSeats = ref([])
+// Admin seat selection state - initialize from URL parameter
+const selectedSeats = ref(
+    props.selected_seats
+        ? props.selected_seats.split(',').map(id => parseInt(id)).filter(Boolean)
+        : []
+)
 
 // Manual booking form state
 const manualBookingForm = ref({
@@ -65,21 +72,21 @@ const deleteModal = ref({
 // Calculate seat statistics
 const seatStats = computed(() => {
     let totalSeats = 0
-    
+
     // Count all seats in all blocks
     props.blocks?.forEach(block => {
         block.rows?.forEach(row => {
             totalSeats += row.seats?.length || 0
         })
     })
-    
+
     const bookedCount = props.bookedSeats?.length || 0
     const selectedCount = selectedSeats.value.length
     const availableCount = totalSeats - bookedCount
-    
+
     const maxTickets = props.event.max_tickets || totalSeats
     const ticketsRemaining = Math.max(0, maxTickets - bookedCount)
-    
+
     return {
         total: totalSeats,
         available: availableCount,
@@ -94,6 +101,20 @@ const seatStats = computed(() => {
 // Handle seat selection changes from layout
 const handleSeatsChanged = (newSelectedSeats) => {
     selectedSeats.value = newSelectedSeats
+
+    // Update URL with selected seats
+    const params = {}
+    if (props.search) params.search = props.search
+    if (props.booking_id) params.booking_id = props.booking_id
+    if (newSelectedSeats.length > 0) {
+        params.selected_seats = newSelectedSeats.join(',')
+    }
+
+    router.get(route('admin.events.show', props.event.id), params, {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['selected_seats']
+    })
 }
 
 // Handle clicking on booked seats to highlight booking in table
@@ -106,8 +127,12 @@ const handleBookedSeatClick = (seat) => {
         if (props.search) {
             params.search = props.search
         }
+        // Preserve selected seats when highlighting booking
+        if (selectedSeats.value.length > 0) {
+            params.selected_seats = selectedSeats.value.join(',')
+        }
         params.booking_id = bookingId
-        
+
         router.get(route('admin.events.show', props.event.id), params, {
             preserveState: true,
             preserveScroll: false, // Allow scroll to new page
@@ -121,11 +146,11 @@ const registrationStatus = computed(() => {
     if (!props.event.reservation_ends_at) {
         return { isOpen: true, status: 'Open', color: 'text-emerald-600' }
     }
-    
+
     const now = new Date()
     const reservationEnd = new Date(props.event.reservation_ends_at)
     const isOpen = now <= reservationEnd
-    
+
     return {
         isOpen,
         status: isOpen ? 'Open' : 'Closed',
@@ -137,7 +162,7 @@ const registrationStatus = computed(() => {
 // Get selected seat information for display
 const selectedSeatInfo = computed(() => {
     if (selectedSeats.value.length === 0) return []
-    
+
     const seatDetails = []
     props.blocks?.forEach(block => {
         block.rows?.forEach(row => {
@@ -161,36 +186,36 @@ const processManualBooking = async () => {
         toast.error('Please select at least one seat')
         return
     }
-    
+
     if (!manualBookingForm.value.guestName.trim()) {
         toast.error('Please enter a name')
         return
     }
-    
+
     manualBookingForm.value.isProcessing = true
-    
+
     try {
         const response = await axios.post(route('admin.events.manual-booking', props.event.id), {
             guest_name: manualBookingForm.value.guestName,
             comment: manualBookingForm.value.comment,
             seat_ids: selectedSeats.value
         })
-        
+
         if (response.data.success) {
             // Show success message
             toast.success(`Successfully booked ${response.data.bookings_count} seat(s) for ${response.data.guest_name}`)
-            
-            // Reset form and refresh page
+
+            // Reset form and clear selected seats from URL
             manualBookingForm.value = { guestName: '', comment: '', isProcessing: false }
             selectedSeats.value = []
-            
-            // Refresh the page to show new bookings
+
+            // Refresh the page to show new bookings (this will clear selected_seats)
             router.reload()
         }
-        
+
     } catch (error) {
         console.error('Error creating manual booking:', error)
-        
+
         if (error.response?.data?.error) {
             toast.error(error.response.data.error)
         } else {
@@ -205,6 +230,17 @@ const processManualBooking = async () => {
 const clearManualBooking = () => {
     manualBookingForm.value = { guestName: '', comment: '', isProcessing: false }
     selectedSeats.value = []
+
+    // Clear selected seats from URL
+    const params = {}
+    if (props.search) params.search = props.search
+    if (props.booking_id) params.booking_id = props.booking_id
+
+    router.get(route('admin.events.show', props.event.id), params, {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['selected_seats']
+    })
 }
 
 // Handle pickup toggle
@@ -214,12 +250,12 @@ const togglePickup = async (booking) => {
             booking_id: booking.id,
             picked_up: !booking.picked_up_at
         })
-        
+
         if (response.data.success) {
             // Refresh the page to show updated pickup status
             router.reload()
         }
-        
+
     } catch (error) {
         console.error('Error toggling pickup status:', error)
         toast.error('Error updating pickup status. Please try again.')
@@ -243,14 +279,14 @@ const saveEditedBooking = () => {
         toast.error('Please enter a name')
         return
     }
-    
+
     const editForm = useForm({
         name: editModal.value.name,
         comment: editModal.value.comment
     })
-    
+
     editModal.value.isProcessing = true
-    
+
     editForm.put(route('admin.events.bookings.update', [props.event.id, editModal.value.booking.id]), {
         onSuccess: () => {
             editModal.value.show = false
@@ -273,9 +309,9 @@ const openDeleteModal = (booking) => {
 // Delete booking
 const deleteBooking = () => {
     const deleteForm = useForm({})
-    
+
     deleteModal.value.isProcessing = true
-    
+
     deleteForm.delete(route('admin.events.bookings.delete', [props.event.id, deleteModal.value.booking.id]), {
         onSuccess: () => {
             deleteModal.value.show = false
@@ -297,9 +333,12 @@ const getBookingDisplayName = (booking) => {
     return booking.name || 'Unknown'
 }
 
-// Get display comment for booking
-const getBookingDisplayComment = (booking) => {
-    return booking.comment || '-'
+// Get booker information (user name or "Admin Booking")
+const getBookerInfo = (booking) => {
+    if (booking.user && booking.user.name) {
+        return booking.user.name
+    }
+    return 'Admin Booking'
 }
 
 // Handle search with Inertia GET request (adds search as URL parameter)
@@ -308,11 +347,15 @@ const handleSearch = () => {
     if (searchQuery.value.trim()) {
         params.search = searchQuery.value.trim()
     }
+    // Preserve selected seats when searching
+    if (selectedSeats.value.length > 0) {
+        params.selected_seats = selectedSeats.value.join(',')
+    }
     // Clear booking highlight when searching
-    
-    router.get(route('admin.events.show', props.event.id), 
-        params, 
-        { 
+
+    router.get(route('admin.events.show', props.event.id),
+        params,
+        {
             preserveState: true,
             preserveScroll: true,
             only: ['bookings', 'search', 'booking_id']
@@ -330,9 +373,15 @@ const debouncedSearch = () => {
 // Clear search and booking highlight
 const clearSearch = () => {
     searchQuery.value = ''
-    router.get(route('admin.events.show', props.event.id), 
-        {}, // No parameters = clear search and booking_id
-        { 
+    const params = {}
+    // Preserve selected seats when clearing search
+    if (selectedSeats.value.length > 0) {
+        params.selected_seats = selectedSeats.value.join(',')
+    }
+    
+    router.get(route('admin.events.show', props.event.id),
+        params, // Preserve selected seats but clear search and booking_id
+        {
             preserveState: true,
             preserveScroll: true,
             only: ['bookings', 'search', 'booking_id']
@@ -384,6 +433,16 @@ const scrollToHighlightedBooking = () => {
 
 // Watch for booking_id changes to scroll to highlighted booking
 watch(() => props.booking_id, scrollToHighlightedBooking)
+
+// Watch for selected_seats prop changes (when navigating back from validation)
+watch(() => props.selected_seats, (newSelectedSeats) => {
+    if (newSelectedSeats) {
+        const seatIds = newSelectedSeats.split(',').map(id => parseInt(id)).filter(Boolean)
+        selectedSeats.value = seatIds
+    } else {
+        selectedSeats.value = []
+    }
+}, { immediate: true })
 
 // Scroll to highlighted booking on component mount
 onMounted(scrollToHighlightedBooking)
@@ -457,7 +516,7 @@ onMounted(scrollToHighlightedBooking)
                         </div>
                         <div class="text-center">
                             <div class="text-2xl font-bold text-red-600">{{ seatStats.booked }}</div>
-                            <div class="text-sm text-muted-foreground">Tickets Sold</div>
+                            <div class="text-sm text-muted-foreground">Tickets Requested</div>
                         </div>
                         <div class="text-center">
                             <div class="text-2xl font-bold" :class="seatStats.ticketsRemaining > 0 ? 'text-emerald-600' : 'text-red-600'">{{ seatStats.ticketsRemaining }}</div>
@@ -468,7 +527,7 @@ onMounted(scrollToHighlightedBooking)
                             <div class="text-sm text-muted-foreground">Currently Selected</div>
                         </div>
                     </div>
-                    
+
                     <!-- Progress bar for remaining tickets -->
                     <div class="mt-4 p-3 bg-gray-50 rounded-lg">
                         <div class="flex items-center justify-between mb-2">
@@ -476,8 +535,8 @@ onMounted(scrollToHighlightedBooking)
                             <span class="text-sm text-muted-foreground">{{ Math.round((seatStats.booked / seatStats.maxTickets) * 100) }}%</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                                class="h-2 rounded-full transition-all duration-300" 
+                            <div
+                                class="h-2 rounded-full transition-all duration-300"
                                 :class="seatStats.isOverLimit ? 'bg-red-500' : seatStats.ticketsRemaining === 0 ? 'bg-yellow-500' : 'bg-emerald-500'"
                                 :style="{ width: Math.min(100, (seatStats.booked / seatStats.maxTickets) * 100) + '%' }"
                             ></div>
@@ -532,7 +591,7 @@ onMounted(scrollToHighlightedBooking)
                                 <UserPlus class="h-4 w-4 text-blue-600" />
                                 <h3 class="font-medium text-blue-900">Manual Booking</h3>
                             </div>
-                            
+
                             <!-- Selected Seats Display -->
                             <div v-if="selectedSeats.length > 0" class="mb-3">
                                 <Label class="text-sm text-muted-foreground">Selected Seats:</Label>
@@ -623,9 +682,9 @@ onMounted(scrollToHighlightedBooking)
                                 </tr>
                                 </thead>
                                 <tbody>
-                                <tr 
-                                    v-for="booking in (bookings.data || bookings)" 
-                                    :key="booking.id" 
+                                <tr
+                                    v-for="booking in (bookings.data || bookings)"
+                                    :key="booking.id"
                                     :id="`booking-${booking.id}`"
                                     :class="[
                                         'border-b hover:bg-gray-50 transition-colors',
@@ -634,7 +693,20 @@ onMounted(scrollToHighlightedBooking)
                                 >
                                     <td class="p-2">
                                         <div class="text-sm font-medium">{{ getBookingDisplayName(booking) }}</div>
-                                        <div class="text-xs text-muted-foreground">{{ getBookingDisplayComment(booking) }}</div>
+                                        <div class="text-xs text-muted-foreground flex items-center gap-1">
+                                            {{ getBookerInfo(booking) }}
+                                            <Popover v-if="booking.comment">
+                                                <PopoverTrigger>
+                                                    <Info class="h-3 w-3 text-blue-500 hover:text-blue-700 cursor-pointer" />
+                                                </PopoverTrigger>
+                                                <PopoverContent class="w-80">
+                                                    <div class="space-y-2">
+                                                        <h4 class="font-medium">Comment</h4>
+                                                        <p class="text-sm text-muted-foreground">{{ booking.comment }}</p>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
                                     </td>
                                     <td class="p-2">
                                         <div class="text-sm">{{ getSeatInfo(booking) }}</div>
@@ -644,7 +716,7 @@ onMounted(scrollToHighlightedBooking)
                                         <div class="text-xs text-muted-foreground">{{ dayjs(booking.created_at).format('HH:mm') }}</div>
                                     </td>
                                     <td class="p-2">
-                                        <input 
+                                        <input
                                             type="checkbox"
                                             :checked="!!booking.picked_up_at"
                                             @change="togglePickup(booking)"
@@ -722,11 +794,12 @@ onMounted(scrollToHighlightedBooking)
                     </div>
                     <div>
                         <Label for="edit-comment">Comment</Label>
-                        <Input
+                        <Textarea
                             id="edit-comment"
                             v-model="editModal.comment"
                             placeholder="Additional notes..."
                             class="mt-1"
+                            rows="3"
                         />
                     </div>
                 </div>

@@ -15,10 +15,20 @@ class BookingController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Booking/IndexBooking',[
-            'bookings' => Booking::with('event.room', 'seat.row.block')
-                ->where('user_id', auth()->id())
-                ->get(),
+        $bookings = Booking::where('user_id', auth()->id())
+            ->select('id', 'event_id', 'seat_id', 'name', 'guest_name', 'comment', 'picked_up_at', 'created_at')
+            ->with([
+                'event:id,name,starts_at,reservation_ends_at,room_id',
+                'event.room:id,name',
+                'seat:id,row_id,label',
+                'seat.row:id,block_id,name',
+                'seat.row.block:id,name'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return Inertia::render('Booking/IndexBooking', [
+            'bookings' => $bookings,
         ]);
     }
 
@@ -53,6 +63,12 @@ class BookingController extends Controller
         // Load event with room data including stage position
         $event->load('room:id,name,stage_x,stage_y');
 
+        // Check if event has a room
+        if (!$event->room) {
+            return redirect()->route('events.index')
+                ->with(['error' => 'This event has no room configured.']);
+        }
+
         // Load blocks with minimal seat data - optimized to prevent memory issues
         $blocks = $event->room->blocks()
             ->with([
@@ -82,6 +98,7 @@ class BookingController extends Controller
             'room' => $event->room->only(['id', 'name', 'stage_x', 'stage_y']),
             'blocks' => $blocks,
             'bookedSeats' => $bookedSeats,
+            'selectedSeats' => $request->get('seats', []), // Pass selected seats from URL
             'maxSeatsPerUser' => Auth::user()->is_admin ? 999 : 2,
             'userBookedCount' => Auth::user()->is_admin ? 0 : Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
@@ -225,9 +242,53 @@ class BookingController extends Controller
             abort(403);
         }
         
+        // Load event with room including stage coordinates for seat layout
+        $event = Event::select('id', 'name', 'starts_at', 'reservation_ends_at', 'room_id')
+            ->with('room:id,name,stage_x,stage_y')
+            ->find($event->id);
+            
+        $booking = Booking::select('id', 'event_id', 'user_id', 'seat_id', 'name', 'guest_name', 'comment', 'picked_up_at', 'created_at')
+            ->with([
+                'event:id,name,starts_at,reservation_ends_at,room_id',
+                'event.room:id,name,stage_x,stage_y',
+                'seat:id,row_id,label',
+                'seat.row:id,block_id,name',
+                'seat.row.block:id,name'
+            ])
+            ->find($booking->id);
+            
+        // Load blocks for seat layout (minimal data for performance)
+        $blocks = $event->room->blocks()
+            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'sort')
+            ->with(['rows' => function($query) {
+                $query->select('id', 'block_id', 'name', 'sort')
+                    ->orderBy('sort');
+                $query->with(['seats' => function($q) {
+                    $q->select('id', 'row_id', 'label', 'number', 'sort')
+                        ->orderBy('sort');
+                }]);
+            }])
+            ->orderBy('sort')
+            ->get();
+            
+        // Get user's booked seat IDs for highlighting
+        $userBookedSeats = Booking::where('event_id', $event->id)
+            ->where('user_id', auth()->id())
+            ->pluck('seat_id')
+            ->toArray();
+            
+        // Get all other booked seat IDs (excluding user's seats) for this event
+        $bookedSeats = Booking::where('event_id', $event->id)
+            ->where('user_id', '!=', auth()->id())
+            ->pluck('seat_id')
+            ->toArray();
+        
         return Inertia::render('Booking/ShowBooking', [
-            'event' => $event->load('room'),
-            'booking' => $booking->load('event.room', 'seat.row.block'),
+            'event' => $event,
+            'booking' => $booking,
+            'blocks' => $blocks,
+            'bookedSeats' => $bookedSeats,
+            'userBookedSeats' => $userBookedSeats,
         ]);
     }
 

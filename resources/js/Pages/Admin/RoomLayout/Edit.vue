@@ -153,24 +153,62 @@ const selectBlock = (block, type) => {
     const originalBlock = getOriginalSeatingBlock(block.id)
     expandedRows.value.clear()
 
-    // Build custom row seats from existing data
+    // Build custom row seats from existing data using the new custom_seat_count column
     const customRowSeats = {}
-    const defaultSeatsPerRow = originalBlock ? Math.ceil((originalBlock.total_seats || 0) / (originalBlock.rows_count || 1)) : 25
+    let defaultSeatsPerRow = 25
+    let actualRowCount = originalBlock?.rows_count || 10
 
-    // If the block has rows with seat counts, use them
-    if (originalBlock?.rows) {
+    // If the block has rows data from database, load them
+    if (originalBlock?.rows && originalBlock.rows.length > 0) {
+      actualRowCount = originalBlock.rows.length
+      
+      // Calculate default from non-custom rows, or use most common if all are custom
+      const nonCustomSeatCounts = []
+      const allSeatCounts = []
+      
       originalBlock.rows.forEach((row, index) => {
         const rowNumber = index + 1
-        // Only set custom value if it differs from the calculated default
-        if (row.seats_count && row.seats_count !== defaultSeatsPerRow) {
-          customRowSeats[rowNumber] = row.seats_count
+        const seatCount = row.seats_count || 0
+        const customSeatCount = row.custom_seat_count
+        
+        if (seatCount > 0) {
+          allSeatCounts.push(seatCount)
+          
+          // If this row has a custom seat count, load it
+          if (customSeatCount !== null && customSeatCount !== undefined) {
+            customRowSeats[rowNumber] = customSeatCount
+          } else {
+            // This row uses the default
+            nonCustomSeatCounts.push(seatCount)
+          }
         }
       })
+
+      // Calculate default seats per row
+      if (nonCustomSeatCounts.length > 0) {
+        // Use the most common non-custom seat count as default
+        const countFrequency = {}
+        nonCustomSeatCounts.forEach(count => {
+          countFrequency[count] = (countFrequency[count] || 0) + 1
+        })
+        defaultSeatsPerRow = parseInt(Object.keys(countFrequency).reduce((a, b) => 
+          countFrequency[a] > countFrequency[b] ? a : b
+        ))
+      } else if (allSeatCounts.length > 0) {
+        // If all rows are custom, use the most common seat count as default
+        const countFrequency = {}
+        allSeatCounts.forEach(count => {
+          countFrequency[count] = (countFrequency[count] || 0) + 1
+        })
+        defaultSeatsPerRow = parseInt(Object.keys(countFrequency).reduce((a, b) => 
+          countFrequency[a] > countFrequency[b] ? a : b
+        ))
+      }
     }
 
     blockEditor.value = {
       blockId: block.id,
-      rows: originalBlock?.rows_count || 10,
+      rows: actualRowCount,
       seatsPerRow: defaultSeatsPerRow,
       customRowSeats: customRowSeats
     }
@@ -244,17 +282,28 @@ const removeStageBlock = (index) => {
 
 // Save all changes
 const saveLayout = () => {
+  // Clean up custom row seats before saving
+  if (blockEditor.value.blockId) {
+    blockEditor.value.customRowSeats = cleanupCustomRowSeats()
+  }
+  
   // Include rows data for blocks that have been edited
   const blocksWithRowData = form.blocks.map(block => {
     const formattedBlock = { ...block }
     
-    // If this block was edited and has row data, include it
-    if (blockEditor.value.blockId === block.id) {
+    // If this block is currently being edited, include its row data
+    if (blockEditor.value.blockId === block.id && blockEditor.value.rows > 0) {
       const rowsData = []
       for (let i = 1; i <= blockEditor.value.rows; i++) {
+        const seatCount = getRowSeatCount(i)
+        const isCustom = blockEditor.value.customRowSeats[i] !== undefined && 
+                        blockEditor.value.customRowSeats[i] !== null && 
+                        blockEditor.value.customRowSeats[i] !== ''
+        
         rowsData.push({
           rowNumber: i,
-          seatCount: getRowSeatCount(i)
+          seatCount: seatCount,
+          isCustom: isCustom
         })
       }
       formattedBlock.rowsData = rowsData
@@ -322,7 +371,12 @@ const isRowExpanded = (rowIndex) => {
 }
 
 const getRowSeatCount = (rowIndex) => {
-  return blockEditor.value.customRowSeats[rowIndex] || blockEditor.value.seatsPerRow
+  // Check if this row has a custom seat count set
+  const customCount = blockEditor.value.customRowSeats[rowIndex]
+  if (customCount !== undefined && customCount !== null && customCount !== '') {
+    return parseInt(customCount) || blockEditor.value.seatsPerRow
+  }
+  return blockEditor.value.seatsPerRow
 }
 
 const calculateTotalSeats = () => {
@@ -331,6 +385,27 @@ const calculateTotalSeats = () => {
     total += getRowSeatCount(i)
   }
   return total
+}
+
+// Clean up custom row seats - remove entries that equal the default
+const cleanupCustomRowSeats = () => {
+  const cleanedCustomRowSeats = { ...blockEditor.value.customRowSeats }
+  
+  Object.keys(cleanedCustomRowSeats).forEach(rowIndex => {
+    const customValue = cleanedCustomRowSeats[rowIndex]
+    if (customValue === blockEditor.value.seatsPerRow || customValue === '' || customValue === null || customValue === undefined) {
+      delete cleanedCustomRowSeats[rowIndex]
+    }
+  })
+  
+  return cleanedCustomRowSeats
+}
+
+// Clear custom seat count for a specific row (makes it use default)
+const clearCustomRowSeat = (rowIndex) => {
+  if (blockEditor.value.customRowSeats[rowIndex] !== undefined) {
+    delete blockEditor.value.customRowSeats[rowIndex]
+  }
 }
 </script>
 
@@ -559,19 +634,42 @@ const calculateTotalSeats = () => {
                     class="w-full px-3 py-2 text-left text-sm font-medium bg-gray-50 hover:bg-gray-100 flex justify-between items-center"
                   >
                     <span>Row {{ rowIndex }}</span>
-                    <span class="text-xs">{{ getRowSeatCount(rowIndex) }} seats</span>
+                    <span class="text-xs flex items-center gap-1">
+                      {{ getRowSeatCount(rowIndex) }} seats
+                      <span v-if="blockEditor.customRowSeats[rowIndex]" class="text-blue-600 font-bold" title="Custom seat count">●</span>
+                    </span>
                   </button>
 
                   <div v-if="isRowExpanded(rowIndex)" class="p-3 border-t">
-                    <Label class="text-xs">Custom Seat Count (leave empty for default)</Label>
-                    <Input
-                      v-model.number="blockEditor.customRowSeats[rowIndex]"
-                      type="number"
-                      min="1"
-                      max="100"
-                      placeholder="Use default"
-                      class="text-sm mt-1"
-                    />
+                    <Label class="text-xs">Custom Seat Count</Label>
+                    <div class="flex gap-2 mt-1">
+                      <Input
+                        v-model.number="blockEditor.customRowSeats[rowIndex]"
+                        type="number"
+                        min="1"
+                        max="100"
+                        :placeholder="`Default: ${blockEditor.seatsPerRow}`"
+                        class="text-sm flex-1"
+                      />
+                      <Button
+                        v-if="blockEditor.customRowSeats[rowIndex] !== undefined"
+                        variant="outline"
+                        size="sm"
+                        @click="clearCustomRowSeat(rowIndex)"
+                        class="text-xs px-2"
+                        title="Use default"
+                      >
+                        Reset
+                      </Button>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">
+                      <span v-if="blockEditor.customRowSeats[rowIndex]">
+                        Using custom count: {{ blockEditor.customRowSeats[rowIndex] }}
+                      </span>
+                      <span v-else>
+                        Using default: {{ blockEditor.seatsPerRow }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

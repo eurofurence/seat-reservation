@@ -12,7 +12,9 @@ class Row extends Model
     protected $fillable = [
         'block_id',
         'name',
-        'sort'
+        'sort',
+        'seats_count',
+        'custom_seat_count'
     ];
 
     protected $casts = [

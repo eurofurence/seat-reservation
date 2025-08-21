@@ -1,5 +1,5 @@
 <script setup>
-import { Head, useForm } from '@inertiajs/vue3'
+import { Head, useForm, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import FullWidthLayout from "@/Layouts/FullWidthLayout.vue"
 import { Button } from '@/Components/ui/button'
@@ -54,7 +54,12 @@ function submitBooking() {
 }
 
 function goBack() {
-    window.history.back()
+    // Navigate back to seat selection with the seat IDs preserved
+    const params = {
+        seats: props.seatIds
+    }
+    
+    router.get(route('bookings.create', { event: props.event.id }), params)
 }
 </script>
 
@@ -92,7 +97,7 @@ function goBack() {
           <div class="flex items-center text-sm">
             <MapPin class="h-4 w-4 mr-2 text-gray-500" />
             <span class="font-medium mr-2">Room:</span>
-            <span>{{ event.room.name }}</span>
+            <span>{{ event.room?.name || 'No room assigned' }}</span>
           </div>
           <div class="flex items-center text-sm">
             <Clock class="h-4 w-4 mr-2 text-gray-500" />

@@ -53,6 +53,29 @@ class EventAdminController extends Controller
             ->with('success', 'Event created successfully');
     }
     
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'room_id' => 'required|exists:rooms,id',
+            'starts_at' => 'nullable|date',
+            'reservation_ends_at' => 'nullable|date',
+            'max_tickets' => 'nullable|integer|min:1',
+        ]);
+        
+        $event = Event::findOrFail($id);
+        $event->update($request->only([
+            'name',
+            'room_id', 
+            'starts_at',
+            'reservation_ends_at',
+            'max_tickets'
+        ]));
+        
+        return redirect()->route('admin.events.index')
+            ->with('success', 'Event updated successfully');
+    }
+
     public function destroy($id)
     {
         $event = Event::findOrFail($id);
@@ -150,6 +173,7 @@ class EventAdminController extends Controller
             'seatBookingMap' => $seatBookingMap,
             'search' => $request->get('search', ''),
             'booking_id' => $request->get('booking_id'),
+            'selected_seats' => $this->getSelectedSeatsParameter($request),
             'title' => $event->name,
             'breadcrumbs' => [
                 ['title' => 'Events', 'url' => route('admin.events.index')],
@@ -163,6 +187,7 @@ class EventAdminController extends Controller
         $event = Event::with('room')->findOrFail($id);
         
         $bookings = Booking::where('event_id', $id)
+            ->whereNotNull('picked_up_at')
             ->with(['user', 'seat.row.block'])
             ->get();
         
@@ -197,6 +222,21 @@ class EventAdminController extends Controller
             $field = '"' . $field . '"';
         }
         return $field;
+    }
+    
+    private function getSelectedSeatsParameter($request)
+    {
+        // Handle both formats: selected_seats=1,2,3 and seats[]=1&seats[]=2&seats[]=3
+        if ($request->has('selected_seats')) {
+            return $request->get('selected_seats', '');
+        }
+        
+        if ($request->has('seats')) {
+            $seats = $request->get('seats', []);
+            return is_array($seats) ? implode(',', $seats) : '';
+        }
+        
+        return '';
     }
     
     public function printTickets($id)

@@ -40,11 +40,15 @@ class BookingPolicy
 
     public function update(User $user, Booking $booking): bool
     {
-        return $user->id === $booking->user_id && $booking->event->reservation_ends_at->isFuture();
+        return $user->id === $booking->user_id 
+            && $booking->event->reservation_ends_at->isFuture()
+            && is_null($booking->picked_up_at);
     }
 
     public function delete(User $user, Booking $booking): bool
     {
-        return $user->id === $booking->user_id && $booking->event->reservation_ends_at->isFuture();
+        return $user->id === $booking->user_id 
+            && $booking->event->reservation_ends_at->isFuture()
+            && is_null($booking->picked_up_at);
     }
 }
