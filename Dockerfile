@@ -31,7 +31,7 @@ RUN rm -f composer.lock composer.json && COMPOSER_ALLOW_SUPERUSER=1 composer req
 ######################################################
 FROM node:20-bookworm as vite
 WORKDIR /app
-COPY package.json package-lock.json tailwind.config.js vite.config.js postcss.config.js ./
+COPY package.json package-lock.json vite.config.js postcss.config.js ./
 RUN npm install
 COPY ./resources /app/resources
 COPY --from=vite-vendor-build /app/vendor/tightenco/ziggy /app/vendor/tightenco/ziggy
