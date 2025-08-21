@@ -15,6 +15,15 @@ use Inertia\Inertia;
 |
 */
 
+// Health check endpoint
+Route::get('/up', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toISOString(),
+        'service' => 'Seat Planning System'
+    ]);
+});
+
 Route::redirect('/', '/auth/login')->middleware('auth')->name('welcome');
 Route::redirect('/login', '/auth/login')->middleware('auth')->name('login');
 Route::middleware('auth')->group(function () {
