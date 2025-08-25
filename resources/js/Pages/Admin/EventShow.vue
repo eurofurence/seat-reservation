@@ -31,6 +31,7 @@ const props = defineProps({
     bookedSeats: Array,
     seatBookingMap: Object,
     search: String,
+    bookingcode: String,
     booking_id: [String, Number],
     selected_seats: String, // Comma-separated seat IDs
     title: String,
@@ -363,7 +364,7 @@ const debouncedSearch = () => {
     searchTimeout = setTimeout(handleSearch, 300)
 }
 
-// Clear search and booking highlight
+// Clear search, booking code filter, and booking highlight
 const clearSearch = () => {
     searchQuery.value = ''
     const params = {}
@@ -373,11 +374,11 @@ const clearSearch = () => {
     }
     
     router.get(route('admin.events.show', props.event.id),
-        params, // Preserve selected seats but clear search and booking_id
+        params, // Preserve selected seats but clear search, booking_code, and booking_id
         {
             preserveState: true,
             preserveScroll: true,
-            only: ['bookings', 'search', 'booking_id']
+            only: ['bookings', 'search', 'bookingcode', 'booking_id']
         }
     )
 }
@@ -400,9 +401,9 @@ const exportBookings = async () => {
     }
 }
 
-const printTickets = () => {
-    // Open print tickets page in new window
-    window.open(route('admin.events.print-tickets', props.event.id), '_blank')
+const printSeatCards = () => {
+    // Open seat cards PDF in new window
+    window.open(route('admin.events.seating-cards', props.event.id), '_blank')
 }
 
 const getSeatInfo = (booking) => {
@@ -487,9 +488,9 @@ onMounted(scrollToHighlightedBooking)
                         <Download class="mr-2 h-4 w-4"/>
                         Export Bookings
                     </Button>
-                    <Button @click="printTickets" variant="outline">
+                    <Button @click="printSeatCards" variant="outline">
                         <Download class="mr-2 h-4 w-4"/>
-                        Print Tickets
+                        Print Seat Cards
                     </Button>
                 </div>
             </div>
@@ -646,21 +647,29 @@ onMounted(scrollToHighlightedBooking)
                         <div>
                             <div class="flex items-center justify-between mb-3">
                                 <h3 class="font-medium">Current Bookings ({{ (bookings.data || bookings).length }}{{ bookings.total && bookings.total !== (bookings.data || bookings).length ? ` of ${bookings.total}` : '' }})</h3>
-                                <div class="w-64 relative">
-                                    <Input
-                                        v-model="searchQuery"
-                                        @input="debouncedSearch"
-                                        placeholder="Search by name, seat, or comment..."
-                                        class="h-8 text-sm pr-8"
-                                    />
-                                    <button
-                                        v-if="searchQuery || props.booking_id"
-                                        @click="clearSearch"
-                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                        :title="props.booking_id && !searchQuery ? 'Clear highlighted booking' : 'Clear search'"
-                                    >
-                                        <X class="h-3 w-3" />
-                                    </button>
+                                <div class="flex items-center gap-2">
+                                    <!-- Show booking code filter indicator -->
+                                    <div v-if="props.bookingcode" class="flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
+                                        Code: {{ props.bookingcode }}
+                                    </div>
+                                    <div class="w-64 relative">
+                                        <Input
+                                            v-model="searchQuery"
+                                            @input="debouncedSearch"
+                                            :placeholder="props.bookingcode ? 'Filtered by booking code' : 'Search by name, seat, or comment...'"
+                                            :disabled="props.bookingcode"
+                                            class="h-8 text-sm pr-8"
+                                            :class="{ 'bg-gray-50': props.bookingcode }"
+                                        />
+                                        <button
+                                            v-if="searchQuery || props.bookingcode || props.booking_id"
+                                            @click="clearSearch"
+                                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            :title="props.bookingcode ? 'Clear booking code filter' : (props.booking_id && !searchQuery ? 'Clear highlighted booking' : 'Clear search')"
+                                        >
+                                            <X class="h-3 w-3" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <!-- Simple Booking Table -->
