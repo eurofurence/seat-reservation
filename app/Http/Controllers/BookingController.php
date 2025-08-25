@@ -339,7 +339,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Generate a unique 2-character alphanumeric booking code
+     * Generate a unique 3-character alphanumeric booking code
      */
     private function generateUniqueBookingCode(): string
     {
@@ -348,7 +348,7 @@ class BookingController extends Controller
 
         while (true) {
             $code = '';
-            for ($i = 0; $i < 2; $i++) {
+            for ($i = 0; $i < 3; $i++) {
                 $code .= $characters[rand(0, $charactersLength - 1)];
             }
 
