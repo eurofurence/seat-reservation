@@ -2,18 +2,20 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Seat extends Model
 {
+    use HasFactory;
+
     public $timestamps = false;
     protected $guarded = [];
 
     protected $fillable = [
         'row_id',
         'number',
-        'label',
-        'name'
+        'label'
     ];
 
     protected $casts = [

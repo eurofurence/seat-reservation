@@ -16,7 +16,7 @@ class BookingController extends Controller
     public function index()
     {
         $bookings = Booking::where('user_id', auth()->id())
-            ->select('id', 'event_id', 'seat_id', 'name', 'guest_name', 'comment', 'picked_up_at', 'created_at')
+            ->select('id', 'event_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code')
             ->with([
                 'event:id,name,starts_at,reservation_ends_at,room_id',
                 'event.room:id,name',
@@ -76,7 +76,7 @@ class BookingController extends Controller
                     $query->orderBy('order')->select('id', 'block_id', 'name', 'order');
                 },
                 'rows.seats' => function($query) {
-                    $query->orderBy('number')->select('id', 'row_id', 'number', 'name', 'label');
+                    $query->orderBy('number')->select('id', 'row_id', 'number', 'label');
                 }
             ])
             ->orderBy('order')
@@ -99,8 +99,8 @@ class BookingController extends Controller
             'blocks' => $blocks,
             'bookedSeats' => $bookedSeats,
             'selectedSeats' => $request->get('seats', []), // Pass selected seats from URL
-            'maxSeatsPerUser' => Auth::user()->is_admin ? 999 : 2,
-            'userBookedCount' => Auth::user()->is_admin ? 0 : Booking::where('user_id', Auth::id())
+            'maxSeatsPerUser' => 2,
+            'userBookedCount' => Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
                 ->count()
         ]);
@@ -151,7 +151,7 @@ class BookingController extends Controller
                 'row:id,block_id,name', 
                 'row.block:id,name'
             ])
-            ->select('id', 'row_id', 'name', 'label', 'number')
+            ->select('id', 'row_id', 'label', 'number')
             ->whereIn('id', $data['seats'])
             ->get();
 
@@ -204,7 +204,9 @@ class BookingController extends Controller
         }
 
         // Use transaction to ensure atomicity
-        DB::transaction(function () use ($event, $data) {
+        $bookingCode = null;
+        
+        DB::transaction(function () use ($event, $data, &$bookingCode) {
             // Lock seats to prevent race conditions
             $seatIds = collect($data['seats'])->pluck('seat_id')->toArray();
             Seat::whereIn('id', $seatIds)->lockForUpdate()->get();
@@ -220,6 +222,9 @@ class BookingController extends Controller
                 ]);
             }
 
+            // Generate unique booking code for ALL bookings through user interface
+            $bookingCode = $this->generateUniqueBookingCode();
+
             // Create bookings
             foreach ($data['seats'] as $seatData) {
                 $event->bookings()->create([
@@ -227,10 +232,19 @@ class BookingController extends Controller
                     'seat_id' => $seatData['seat_id'],
                     'name' => $seatData['name'],
                     'comment' => $seatData['comment'] ?? null,
-                    'type' => 'online'
+                    'type' => 'online',
+                    'booking_code' => $bookingCode
                 ]);
             }
         });
+
+        // Redirect to confirmation page with booking code for ALL users
+        if ($bookingCode) {
+            return redirect()->route('bookings.confirmed', [
+                'event' => $event->id,
+                'code' => $bookingCode
+            ]);
+        }
 
         return redirect()->route('bookings.index')
             ->with(['message' => 'Your booking has been confirmed!']);
@@ -247,7 +261,7 @@ class BookingController extends Controller
             ->with('room:id,name,stage_x,stage_y')
             ->find($event->id);
             
-        $booking = Booking::select('id', 'event_id', 'user_id', 'seat_id', 'name', 'guest_name', 'comment', 'picked_up_at', 'created_at')
+        $booking = Booking::select('id', 'event_id', 'user_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code')
             ->with([
                 'event:id,name,starts_at,reservation_ends_at,room_id',
                 'event.room:id,name,stage_x,stage_y',
@@ -302,7 +316,6 @@ class BookingController extends Controller
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
             'comment' => 'sometimes|nullable|string|max:255',
-            'ticket_given' => 'sometimes|boolean',
         ]);
         
         $booking->update($data);
@@ -322,5 +335,61 @@ class BookingController extends Controller
         
         return redirect()->route('bookings.index')
             ->with(['message' => 'Booking cancelled!']);
+    }
+
+    /**
+     * Generate a unique 2-character alphanumeric booking code
+     */
+    private function generateUniqueBookingCode(): string
+    {
+        $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $charactersLength = strlen($characters);
+        
+        while (true) {
+            $code = '';
+            for ($i = 0; $i < 2; $i++) {
+                $code .= $characters[rand(0, $charactersLength - 1)];
+            }
+            
+            // Check if this code is currently in use
+            $exists = Booking::where('booking_code', $code)->exists();
+            
+            if (!$exists) {
+                return $code;
+            }
+        }
+    }
+
+    /**
+     * Show booking confirmation page
+     */
+    public function confirmed(Event $event, $code)
+    {
+        // Verify the booking code belongs to the current user
+        $bookings = Booking::where('event_id', $event->id)
+            ->where('booking_code', $code)
+            ->where('user_id', auth()->id())
+            ->with(['seat.row.block'])
+            ->get();
+
+        if ($bookings->isEmpty()) {
+            return redirect()->route('bookings.index');
+        }
+
+        return Inertia::render('Booking/BookingConfirmed', [
+            'event' => $event->only(['id', 'name', 'reservation_ends_at']),
+            'bookingCode' => $code,
+            'bookings' => $bookings->map(function ($booking) {
+                return [
+                    'id' => $booking->id,
+                    'name' => $booking->name,
+                    'seat' => [
+                        'label' => $booking->seat->label,
+                        'row' => $booking->seat->row->name,
+                        'block' => $booking->seat->row->block->name
+                    ]
+                ];
+            })
+        ]);
     }
 }

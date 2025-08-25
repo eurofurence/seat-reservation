@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
 
 class Event extends Model
 {
+    use HasFactory;
+
     protected $guarded = [];
 
     // appends - disabled to prevent heavy loading
@@ -17,7 +20,8 @@ class Event extends Model
         'starts_at' => 'datetime',
         'reservation_ends_at' => 'datetime',
         'tickets' => 'integer',
-        'max_tickets' => 'integer'
+        'max_tickets' => 'integer',
+        'notifications_sent' => 'array'
     ];
 
     public function room(): BelongsTo

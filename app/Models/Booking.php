@@ -2,19 +2,22 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
 
 class Booking extends Model
 {
+    use HasFactory;
+    
     protected $guarded = [];
 
     protected $fillable = [
         'user_id',
         'event_id',
         'seat_id',
-        'ticket_given',
         'type',
+        'booking_code',
         'name',
         'comment'
     ];

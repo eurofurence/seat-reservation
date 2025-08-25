@@ -176,7 +176,11 @@ const getBookingStatus = (booking) => {
                 </div>
                 
                 <div class="text-sm lg:text-base text-gray-500 lg:pt-4 lg:border-t">
-                  <strong>Seat:</strong> {{ getSeatInfo(booking) }}
+                  <div><strong>Seat:</strong> {{ getSeatInfo(booking) }}</div>
+                  <div v-if="booking.booking_code" class="mt-1">
+                    <strong>Booking Code:</strong> 
+                    <span class="font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-900 ml-1">{{ booking.booking_code }}</span>
+                  </div>
                 </div>
 
                 <!-- PAT Pickup Warning for individual booking -->

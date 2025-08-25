@@ -19,12 +19,23 @@ class AuthController extends Controller
 
     public function login()
     {
-        $url = Socialite::driver('identity')
-            ->scopes(['openid', 'profile', 'email', 'groups'])
-            ->redirect();
+        try {
+            // Check if identity configuration is set
+            if (empty(config('services.identity.openid_configuration'))) {
+                return back()->with('error', 'OAuth identity service is not configured. Please check your environment variables.');
+            }
 
-        // Use Interia location instead
-        return Inertia::location($url->getTargetUrl());
+            $url = Socialite::driver('identity')
+                ->scopes(['openid', 'profile', 'email', 'groups'])
+                ->redirect();
+
+            // Use Interia location instead
+            return Inertia::location($url->getTargetUrl());
+        } catch (\Exception $e) {
+            // Log the error and redirect back with a helpful message
+            \Log::error('OAuth login error: ' . $e->getMessage());
+            return back()->with('error', 'Unable to connect to authentication service: ' . $e->getMessage());
+        }
     }
 
     public function loginCallback()

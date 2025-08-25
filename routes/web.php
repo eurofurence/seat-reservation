@@ -24,12 +24,13 @@ Route::get('/up', function () {
     ]);
 });
 
-Route::redirect('/', '/auth/login')->middleware('auth')->name('welcome');
-Route::redirect('/login', '/auth/login')->middleware('auth')->name('login');
+Route::redirect('/', '/auth/login')->name('welcome');
+Route::redirect('/login', '/auth/login')->name('login');
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class,'show'])->name('dashboard');
     Route::get('/events',[\App\Http\Controllers\EventController::class,'index'])->name('events.index');
     Route::get('/bookings',[\App\Http\Controllers\BookingController::class,'index'])->name('bookings.index');
+    Route::get('/events/{event}/bookings/confirmed/{code}', [\App\Http\Controllers\BookingController::class, 'confirmed'])->name('bookings.confirmed');
     Route::resource('/events/{event}/bookings', \App\Http\Controllers\BookingController::class,[
         'only' => ['show','create','store','destroy','update']
     ]);
@@ -38,6 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', \App\Http\Middleware\ShareAdminData::class])->group(function () {
         // Dashboard
         Route::get('/', [\App\Http\Controllers\Admin\AdminController::class, 'dashboard'])->name('dashboard');
+        Route::post('/lookup-booking-code', [\App\Http\Controllers\Admin\AdminController::class, 'lookupBookingCode'])->name('lookup-booking-code');
         
         // Events
         Route::get('/events', [\App\Http\Controllers\Admin\EventAdminController::class, 'index'])->name('events.index');
@@ -46,11 +48,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'destroy'])->name('events.destroy');
         Route::get('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'show'])->name('events.show');
         Route::get('/events/{event}/export', [\App\Http\Controllers\Admin\EventAdminController::class, 'export'])->name('events.export');
-        Route::get('/events/{event}/print-tickets', [\App\Http\Controllers\Admin\EventAdminController::class, 'printTickets'])->name('events.print-tickets');
+        Route::get('/events/{event}/seating-cards', [\App\Http\Controllers\Admin\EventAdminController::class, 'seatingCards'])->name('events.seating-cards');
         Route::post('/events/{event}/manual-booking', [\App\Http\Controllers\Admin\EventAdminController::class, 'manualBooking'])->name('events.manual-booking');
         Route::post('/events/{event}/toggle-pickup', [\App\Http\Controllers\Admin\EventAdminController::class, 'togglePickup'])->name('events.toggle-pickup');
-        Route::put('/events/{event}/bookings/{booking}', [\App\Http\Controllers\Admin\EventAdminController::class, 'updateBooking'])->name('events.bookings.update');
-        Route::delete('/events/{event}/bookings/{booking}', [\App\Http\Controllers\Admin\EventAdminController::class, 'deleteBooking'])->name('events.bookings.delete');
+        Route::put('/events/{event}/bookings/{booking}', [\App\Http\Controllers\Admin\EventAdminController::class, 'updateBooking'])->name('events.update-booking');
+        Route::delete('/events/{event}/bookings/{booking}', [\App\Http\Controllers\Admin\EventAdminController::class, 'deleteBooking'])->name('events.delete-booking');
         
         // Rooms
         Route::get('/rooms', [\App\Http\Controllers\Admin\RoomAdminController::class, 'index'])->name('rooms.index');

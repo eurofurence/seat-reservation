@@ -280,6 +280,24 @@ const removeStageBlock = (index) => {
   }
 }
 
+// Delete seating block
+const deleteSeatingBlock = (blockId) => {
+  if (confirm('Are you sure you want to delete this block? This will permanently remove all rows and seats in this block.')) {
+    const deleteForm = useForm({})
+    
+    deleteForm.delete(route('admin.rooms.blocks.delete', { room: props.room.id, block: blockId }), {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Remove the block from the form data after successful deletion
+        const index = form.blocks.findIndex(b => b.id === blockId)
+        if (index !== -1) {
+          form.blocks.splice(index, 1)
+        }
+      }
+    })
+  }
+}
+
 // Save all changes
 const saveLayout = () => {
   // Clean up custom row seats before saving
@@ -540,6 +558,14 @@ const clearCustomRowSeat = (rowIndex) => {
                     class="text-xs px-2 py-1"
                   >
                     ↻
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    @click.stop="deleteSeatingBlock(block.id)"
+                    class="text-xs px-2 py-1"
+                  >
+                    🗑
                   </Button>
                 </div>
               </div>

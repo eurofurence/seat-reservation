@@ -1,12 +1,20 @@
 <script setup>
-import { Link, Head } from '@inertiajs/vue3'
+import { Link, Head, useForm, usePage } from '@inertiajs/vue3'
 import Layout from "@/Layouts/Layout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
-import { User, Info, LogIn } from 'lucide-vue-next'
+import { User, Info, LogIn, AlertCircle } from 'lucide-vue-next'
 
 defineOptions({layout: Layout})
+
+// Use Inertia form for proper CSRF handling
+const form = useForm({})
+const page = usePage()
+
+const handleLogin = () => {
+  form.post(route('auth.login.redirect'))
+}
 </script>
 
 <template>
@@ -40,6 +48,14 @@ defineOptions({layout: Layout})
         
         <!-- Login Card -->
         <Card class="p-6 lg:p-8 space-y-6">
+          <!-- Error Message -->
+          <Alert v-if="page.props.flash?.error" class="border-red-200 bg-red-50">
+            <AlertCircle class="h-4 w-4 text-red-600" />
+            <div class="text-red-800">
+              {{ page.props.flash.error }}
+            </div>
+          </Alert>
+
           <!-- Welcome Message -->
           <div class="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <User class="h-5 w-5 text-blue-600 mt-0.5" />
@@ -50,17 +66,15 @@ defineOptions({layout: Layout})
           </div>
           
           <!-- Login Button -->
-          <Link 
-            as="button" 
-            method="post" 
-            :href="route('auth.login.redirect')"
+          <Button 
+            size="lg" 
             class="w-full"
+            @click="handleLogin"
+            :disabled="form.processing"
           >
-            <Button size="lg" class="w-full">
-              <LogIn class="mr-2 h-4 w-4" />
-              Sign In
-            </Button>
-          </Link>
+            <LogIn class="mr-2 h-4 w-4" />
+            {{ form.processing ? 'Signing In...' : 'Sign In' }}
+          </Button>
           
           <!-- Info Notice -->
           <Alert class="border-blue-200 bg-blue-50">

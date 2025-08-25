@@ -36,6 +36,11 @@ return [
         'client_id' => env('IDENTITY_CLIENT_ID'),
         'client_secret' => env('IDENTITY_CLIENT_SECRET'),
         'redirect' => env('IDENTITY_CALLBACK_URL'),
-    ]
+    ],
+
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_CHAT_ID'),
+    ],
 
 ];

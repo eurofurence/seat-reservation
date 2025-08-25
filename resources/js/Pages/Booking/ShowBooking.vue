@@ -177,6 +177,15 @@ function updateBooking() {
                         <div class="text-sm text-gray-600 mt-1">
                             Booked on {{ dayjs(booking.created_at).format('MMMM DD, YYYY [at] HH:mm') }}
                         </div>
+                        <div v-if="booking.booking_code" class="mt-3 pt-3 border-t border-gray-200">
+                            <div class="text-sm text-gray-600 mb-1">Booking Code for Ticket Pickup:</div>
+                            <div class="text-2xl font-mono font-bold bg-white px-3 py-2 rounded border-2 border-gray-300 text-center text-gray-900 max-w-24">
+                                {{ booking.booking_code }}
+                            </div>
+                            <div class="text-xs text-gray-500 mt-2">
+                                Bring this code to the infodesk to exchange for your Priority Access Ticket
+                            </div>
+                        </div>
                     </div>
                 </div>
             </Card>
