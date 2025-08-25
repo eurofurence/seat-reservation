@@ -3,9 +3,9 @@
 namespace Tests\Unit;
 
 use App\Services\TelegramNotificationService;
-use Tests\TestCase;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
 
 class TelegramNotificationServiceTest extends TestCase
 {
@@ -15,9 +15,9 @@ class TelegramNotificationServiceTest extends TestCase
         Config::set('services.telegram.bot_token', '');
         Config::set('services.telegram.chat_id', '');
 
-        $service = new TelegramNotificationService();
+        $service = new TelegramNotificationService;
         $result = $service->sendMessage('Test message');
-        
+
         $this->assertFalse($result);
     }
 
@@ -31,11 +31,11 @@ class TelegramNotificationServiceTest extends TestCase
         Config::set('services.telegram.bot_token', 'test_token');
         Config::set('services.telegram.chat_id', 'test_chat_id');
 
-        $service = new TelegramNotificationService();
+        $service = new TelegramNotificationService;
         $result = $service->notifyRoomFullyBooked('Test Event', 'Test Room', 50);
-        
+
         $this->assertTrue($result);
-        
+
         // Assert that the HTTP request was made
         Http::assertSent(function ($request) {
             return $request->url() === 'https://api.telegram.org/bottest_token/sendMessage'
@@ -56,12 +56,12 @@ class TelegramNotificationServiceTest extends TestCase
         Config::set('services.telegram.bot_token', 'test_token');
         Config::set('services.telegram.chat_id', 'test_chat_id');
 
-        $service = new TelegramNotificationService();
+        $service = new TelegramNotificationService;
         $endTime = new \DateTime('2023-12-25 15:30:00');
         $result = $service->notifyReservationPeriodEnded('Test Event', $endTime);
-        
+
         $this->assertTrue($result);
-        
+
         // Assert that the HTTP request was made
         Http::assertSent(function ($request) {
             return $request->url() === 'https://api.telegram.org/bottest_token/sendMessage'

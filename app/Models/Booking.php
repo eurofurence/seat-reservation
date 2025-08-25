@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Booking extends Model
 {
     use HasFactory;
-    
+
     protected $guarded = [];
 
     protected $fillable = [
@@ -19,7 +19,7 @@ class Booking extends Model
         'type',
         'booking_code',
         'name',
-        'comment'
+        'comment',
     ];
 
     public function user(): BelongsTo

@@ -10,16 +10,17 @@ class Seat extends Model
     use HasFactory;
 
     public $timestamps = false;
+
     protected $guarded = [];
 
     protected $fillable = [
         'row_id',
         'number',
-        'label'
+        'label',
     ];
 
     protected $casts = [
-        'number' => 'integer'
+        'number' => 'integer',
     ];
 
     public function row()
@@ -40,6 +41,7 @@ class Seat extends Model
     public function getFullLabel()
     {
         $this->loadMissing('row.block');
+
         return "{$this->row->block->name}-{$this->row->name}-{$this->label}";
     }
 

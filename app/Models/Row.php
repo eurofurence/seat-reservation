@@ -10,6 +10,7 @@ class Row extends Model
     use HasFactory;
 
     public $timestamps = false;
+
     protected $guarded = [];
 
     protected $fillable = [
@@ -18,12 +19,12 @@ class Row extends Model
         'order',
         'seats_count',
         'custom_seat_count',
-        'alignment'
+        'alignment',
     ];
 
     protected $casts = [
         'order' => 'integer',
-        'alignment' => 'string'
+        'alignment' => 'string',
     ];
 
     public function getAlignmentOptions(): array
@@ -31,7 +32,7 @@ class Row extends Model
         return [
             'left' => 'Left',
             'center' => 'Center',
-            'right' => 'Right'
+            'right' => 'Right',
         ];
     }
 

@@ -21,7 +21,7 @@ class BookingPolicy
         return $user->id === $booking->user_id;
     }
 
-    public function create(User $user, Event|null $event = null): bool
+    public function create(User $user, ?Event $event = null): bool
     {
         if ($user->is_admin) {
             return true;
@@ -31,7 +31,7 @@ class BookingPolicy
             return false;
         }
 
-        if($event->bookings()->count() >= $event->max_tickets) {
+        if ($event->bookings()->count() >= $event->max_tickets) {
             return false;
         }
 
@@ -40,14 +40,14 @@ class BookingPolicy
 
     public function update(User $user, Booking $booking): bool
     {
-        return $user->id === $booking->user_id 
+        return $user->id === $booking->user_id
             && $booking->event->reservation_ends_at->isFuture()
             && is_null($booking->picked_up_at);
     }
 
     public function delete(User $user, Booking $booking): bool
     {
-        return $user->id === $booking->user_id 
+        return $user->id === $booking->user_id
             && $booking->event->reservation_ends_at->isFuture()
             && is_null($booking->picked_up_at);
     }

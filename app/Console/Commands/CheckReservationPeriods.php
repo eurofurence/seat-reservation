@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Event;
 use App\Services\TelegramNotificationService;
-use Illuminate\Console\Command;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
 
 class CheckReservationPeriods extends Command
 {
@@ -73,7 +73,7 @@ class CheckReservationPeriods extends Command
         }
 
         $this->info("Checked {$endedEvents->count()} events with ended reservations. Sent {$notificationsSent} notifications.");
-        
+
         return 0;
     }
 }

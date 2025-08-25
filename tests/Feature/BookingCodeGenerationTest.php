@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
+use App\Models\Block;
+use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
-use App\Models\Block;
 use App\Models\Row;
 use App\Models\Seat;
-use App\Models\Booking;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,30 +18,33 @@ class BookingCodeGenerationTest extends TestCase
     use RefreshDatabase;
 
     protected $regularUser;
+
     protected $adminUser;
+
     protected $event;
+
     protected $seats;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Create users
         $this->regularUser = User::factory()->create(['is_admin' => false]);
         $this->adminUser = User::factory()->create(['is_admin' => true]);
-        
+
         // Create room structure
         $room = Room::factory()->create();
         $block = Block::factory()->create(['room_id' => $room->id]);
         $row = Row::factory()->create(['block_id' => $block->id]);
         $this->seats = Seat::factory()->count(10)->create(['row_id' => $row->id]);
-        
+
         // Create event
         $this->event = Event::factory()->create([
             'room_id' => $room->id,
             'starts_at' => Carbon::now()->addDays(7),
             'reservation_ends_at' => Carbon::now()->addHours(2),
-            'max_tickets' => 100
+            'max_tickets' => 100,
         ]);
     }
 
@@ -49,12 +52,12 @@ class BookingCodeGenerationTest extends TestCase
     public function regular_user_gets_booking_code_when_creating_booking()
     {
         $seatData = [
-            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
         ];
 
         $response = $this->actingAs($this->regularUser)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         // Should redirect to confirmation page
@@ -77,12 +80,12 @@ class BookingCodeGenerationTest extends TestCase
     public function admin_user_gets_booking_code_through_user_interface()
     {
         $seatData = [
-            ['seat_id' => $this->seats[0]->id, 'name' => 'Admin Booking', 'comment' => null]
+            ['seat_id' => $this->seats[0]->id, 'name' => 'Admin Booking', 'comment' => null],
         ];
 
         $response = $this->actingAs($this->adminUser)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         // Should redirect to confirmation page (same as regular user)
@@ -106,12 +109,12 @@ class BookingCodeGenerationTest extends TestCase
     {
         $seatData = [
             ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
-            ['seat_id' => $this->seats[1]->id, 'name' => 'Jane Doe', 'comment' => 'VIP']
+            ['seat_id' => $this->seats[1]->id, 'name' => 'Jane Doe', 'comment' => 'VIP'],
         ];
 
         $response = $this->actingAs($this->regularUser)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         $response->assertRedirect();
@@ -122,7 +125,7 @@ class BookingCodeGenerationTest extends TestCase
             ->get();
 
         $this->assertCount(2, $bookings, 'Should create 2 bookings');
-        
+
         // Both should have the same booking code
         $this->assertNotNull($bookings[0]->booking_code);
         $this->assertNotNull($bookings[1]->booking_code);
@@ -136,8 +139,8 @@ class BookingCodeGenerationTest extends TestCase
         $this->actingAs($this->regularUser)
             ->post(route('bookings.store', $this->event), [
                 'seats' => [
-                    ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]
-                ]
+                    ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
+                ],
             ]);
 
         // Create another event for second booking
@@ -145,15 +148,15 @@ class BookingCodeGenerationTest extends TestCase
             'room_id' => $this->event->room_id,
             'starts_at' => Carbon::now()->addDays(14),
             'reservation_ends_at' => Carbon::now()->addHours(3),
-            'max_tickets' => 100
+            'max_tickets' => 100,
         ]);
 
         // Second booking
         $this->actingAs($this->regularUser)
             ->post(route('bookings.store', $otherEvent), [
                 'seats' => [
-                    ['seat_id' => $this->seats[1]->id, 'name' => 'John Doe', 'comment' => null]
-                ]
+                    ['seat_id' => $this->seats[1]->id, 'name' => 'John Doe', 'comment' => null],
+                ],
             ]);
 
         $firstBooking = Booking::where('event_id', $this->event->id)->first();
@@ -171,15 +174,15 @@ class BookingCodeGenerationTest extends TestCase
         Booking::factory()->create([
             'booking_code' => 'AA',
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[9]->id
+            'seat_id' => $this->seats[9]->id,
         ]);
 
         // Now create a booking that should get a different code
         $response = $this->actingAs($this->regularUser)
             ->post(route('bookings.store', $this->event), [
                 'seats' => [
-                    ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]
-                ]
+                    ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
+                ],
             ]);
 
         $response->assertRedirect();
@@ -200,20 +203,20 @@ class BookingCodeGenerationTest extends TestCase
             'user_id' => $this->regularUser->id,
             'event_id' => $this->event->id,
             'seat_id' => $this->seats[0]->id,
-            'booking_code' => 'B5'
+            'booking_code' => 'B5',
         ]);
 
         $response = $this->actingAs($this->regularUser)
             ->get(route('bookings.index'));
 
         $response->assertOk();
-        
+
         // Get the bookings data from the Inertia response
         $props = $response->getOriginalContent()->getData()['page']['props'];
         $bookings = $props['bookings'] ?? null;
-        
+
         $this->assertNotNull($bookings, 'Bookings should be returned');
-        
+
         // Handle different possible structures of paginated data
         $bookingItems = null;
         if (is_object($bookings) && method_exists($bookings, 'items')) {
@@ -228,10 +231,10 @@ class BookingCodeGenerationTest extends TestCase
 
         $this->assertNotNull($bookingItems, 'Could not extract booking items from response');
         $this->assertNotEmpty($bookingItems, 'Should have at least one booking');
-        
+
         $firstBooking = is_array($bookingItems) ? $bookingItems[0] : $bookingItems[0];
         $bookingCode = is_object($firstBooking) ? $firstBooking->booking_code : $firstBooking['booking_code'];
-        
+
         $this->assertEquals('B5', $bookingCode, 'Booking code should be included in response');
     }
 
@@ -242,14 +245,14 @@ class BookingCodeGenerationTest extends TestCase
             'user_id' => $this->regularUser->id,
             'event_id' => $this->event->id,
             'seat_id' => $this->seats[0]->id,
-            'booking_code' => 'C7'
+            'booking_code' => 'C7',
         ]);
 
         $response = $this->actingAs($this->regularUser)
             ->get(route('bookings.show', [$this->event, $booking]));
 
         $response->assertOk();
-        
+
         // The booking should include the booking_code
         $props = $response->getOriginalContent()->getData()['page']['props'];
         $bookingData = $props['booking'] ?? null;
@@ -263,14 +266,14 @@ class BookingCodeGenerationTest extends TestCase
     {
         $generatedCodes = [];
         $duplicateCount = 0;
-        
+
         // Generate 100 booking codes and check for duplicates
         for ($i = 0; $i < 100; $i++) {
             $response = $this->actingAs($this->regularUser)
                 ->post(route('bookings.store', $this->event), [
                     'seats' => [
-                        ['seat_id' => $this->seats[$i % count($this->seats)]->id, 'name' => "User $i", 'comment' => null]
-                    ]
+                        ['seat_id' => $this->seats[$i % count($this->seats)]->id, 'name' => "User $i", 'comment' => null],
+                    ],
                 ]);
 
             if ($i === 0) {
@@ -287,14 +290,14 @@ class BookingCodeGenerationTest extends TestCase
                     'room_id' => $this->event->room_id,
                     'starts_at' => Carbon::now()->addDays(7 + $i),
                     'reservation_ends_at' => Carbon::now()->addHours(2 + $i),
-                    'max_tickets' => 100
+                    'max_tickets' => 100,
                 ]);
 
                 $this->actingAs($this->regularUser)
                     ->post(route('bookings.store', $newEvent), [
                         'seats' => [
-                            ['seat_id' => $this->seats[$i % count($this->seats)]->id, 'name' => "User $i", 'comment' => null]
-                        ]
+                            ['seat_id' => $this->seats[$i % count($this->seats)]->id, 'name' => "User $i", 'comment' => null],
+                        ],
                     ]);
             }
         }
@@ -303,7 +306,7 @@ class BookingCodeGenerationTest extends TestCase
         $allBookings = Booking::whereNotNull('booking_code')->get();
         $codes = $allBookings->pluck('booking_code')->toArray();
         $uniqueCodes = array_unique($codes);
-        
+
         // Should have high uniqueness rate (allowing for some theoretical collisions in a small sample)
         $uniqueRate = count($uniqueCodes) / count($codes);
         $this->assertGreaterThan(0.8, $uniqueRate, 'Should have high uniqueness rate for booking codes');
@@ -317,7 +320,7 @@ class BookingCodeGenerationTest extends TestCase
             'user_id' => $this->regularUser->id,
             'event_id' => $this->event->id,
             'seat_id' => $this->seats[0]->id,
-            'booking_code' => null // Explicitly null
+            'booking_code' => null, // Explicitly null
         ]);
 
         // Should not break the index page
@@ -325,7 +328,7 @@ class BookingCodeGenerationTest extends TestCase
             ->get(route('bookings.index'));
         $response->assertOk();
 
-        // Should not break the show page  
+        // Should not break the show page
         $response = $this->actingAs($this->regularUser)
             ->get(route('bookings.show', [$this->event, $booking]));
         $response->assertOk();
@@ -336,20 +339,20 @@ class BookingCodeGenerationTest extends TestCase
     {
         // Test that generated codes match expected format
         $codes = [];
-        
+
         for ($i = 0; $i < 20; $i++) {
             $event = Event::factory()->create([
                 'room_id' => $this->event->room_id,
                 'starts_at' => Carbon::now()->addDays(7 + $i),
                 'reservation_ends_at' => Carbon::now()->addHours(2),
-                'max_tickets' => 100
+                'max_tickets' => 100,
             ]);
 
             $response = $this->actingAs($this->regularUser)
                 ->post(route('bookings.store', $event), [
                     'seats' => [
-                        ['seat_id' => $this->seats[0]->id, 'name' => "User $i", 'comment' => null]
-                    ]
+                        ['seat_id' => $this->seats[0]->id, 'name' => "User $i", 'comment' => null],
+                    ],
                 ]);
 
             if ($response->status() === 302) { // Redirect means success

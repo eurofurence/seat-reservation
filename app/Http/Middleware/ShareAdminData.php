@@ -2,11 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Event;
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\Models\Event;
-use Carbon\Carbon;
 
 class ShareAdminData
 {

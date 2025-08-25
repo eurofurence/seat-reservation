@@ -17,7 +17,7 @@ class RoomFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->words(2, true) . ' Room',
+            'name' => fake()->words(2, true).' Room',
             'stage_x' => fake()->numberBetween(0, 10),
             'stage_y' => fake()->numberBetween(0, 10),
         ];

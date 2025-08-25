@@ -10,6 +10,7 @@ class Block extends Model
     use HasFactory;
 
     public $timestamps = false;
+
     protected $guarded = [];
 
     protected $fillable = [
@@ -19,14 +20,14 @@ class Block extends Model
         'position_x',
         'position_y',
         'rotation',
-        'order'
+        'order',
     ];
 
     protected $casts = [
         'rotation' => 'integer',
         'position_x' => 'integer',
         'position_y' => 'integer',
-        'order' => 'integer'
+        'order' => 'integer',
     ];
 
     public function room()

@@ -17,7 +17,7 @@ class RoomLayoutController extends Controller
             ->select('blocks.*')
             ->selectRaw('COUNT(DISTINCT rows.id) as rows_count')
             ->selectRaw('COUNT(seats.id) as total_seats')
-            ->with(['rows' => function($query) {
+            ->with(['rows' => function ($query) {
                 $query->select('id', 'block_id', 'name', 'order', 'seats_count', 'custom_seat_count', 'alignment')
                     ->orderBy('order');
             }])
@@ -39,11 +39,11 @@ class RoomLayoutController extends Controller
                     'position_x' => $room->stage_x ?? 0,
                     'position_y' => $room->stage_y ?? 0,
                     'rotation' => 0,
-                    'order' => 0
-                ])
+                    'order' => 0,
+                ]),
             ]);
         }
-        
+
         return Inertia::render('Admin/RoomLayout/Edit', [
             'room' => $room->only(['id', 'name']),
             'blocks' => $blocks,
@@ -52,14 +52,14 @@ class RoomLayoutController extends Controller
             'breadcrumbs' => [
                 ['title' => 'Rooms', 'url' => route('admin.rooms.index')],
                 ['title' => $room->name, 'url' => null],
-                ['title' => 'Floor Plan Editor', 'url' => null]
-            ]
+                ['title' => 'Floor Plan Editor', 'url' => null],
+            ],
         ]);
     }
 
     public function update(Request $request, Room $room)
     {
-        
+
         $request->validate([
             'stageBlocks' => 'sometimes|array',
             'stageBlocks.*.id' => 'nullable|exists:blocks,id',
@@ -70,7 +70,7 @@ class RoomLayoutController extends Controller
             'blocks.*.id' => 'required|exists:blocks,id',
             'blocks.*.name' => 'required|string|max:255',
             'blocks.*.position_x' => 'required|integer|min:-1',
-            'blocks.*.position_y' => 'required|integer|min:-1', 
+            'blocks.*.position_y' => 'required|integer|min:-1',
             'blocks.*.rotation' => 'required|integer|in:0,90,180,270',
             'blocks.*.rowsData' => 'nullable|array',
             'blocks.*.rowsData.*.rowNumber' => 'integer|min:1|max:50',
@@ -84,10 +84,10 @@ class RoomLayoutController extends Controller
             $existingStageBlockIds = $room->stageBlocks()->pluck('id')->toArray();
             $submittedStageBlocks = $request->stageBlocks ?? [];
             $submittedStageBlockIds = collect($submittedStageBlocks)->pluck('id')->filter()->toArray();
-            
+
             // Delete stage blocks that are no longer in the submission
             $stageBlocksToDelete = array_diff($existingStageBlockIds, $submittedStageBlockIds);
-            if (!empty($stageBlocksToDelete)) {
+            if (! empty($stageBlocksToDelete)) {
                 $room->stageBlocks()->whereIn('id', $stageBlocksToDelete)->delete();
             }
 
@@ -117,7 +117,7 @@ class RoomLayoutController extends Controller
             // Update blocks
             foreach ($request->blocks as $blockData) {
                 $block = $room->blocks()->where('id', $blockData['id'])->first();
-                
+
                 if ($block) {
                     // Update block position, rotation, and name
                     $block->update([
@@ -136,7 +136,7 @@ class RoomLayoutController extends Controller
                         foreach ($blockData['rowsData'] as $rowData) {
                             $customSeatCount = isset($rowData['isCustom']) && $rowData['isCustom'] ? $rowData['seatCount'] : null;
                             $alignment = $rowData['alignment'] ?? 'center';
-                            
+
                             $row = $block->rows()->create([
                                 'name' => "Row {$rowData['rowNumber']}",
                                 'order' => $rowData['rowNumber'],
@@ -148,7 +148,7 @@ class RoomLayoutController extends Controller
                             // Create seats for this row
                             for ($seatIndex = 1; $seatIndex <= $rowData['seatCount']; $seatIndex++) {
                                 $seatLabel = $this->numberToLetter($seatIndex);
-                                
+
                                 $row->seats()->create([
                                     'label' => $seatLabel,
                                     'number' => $seatIndex,
@@ -187,8 +187,8 @@ class RoomLayoutController extends Controller
     public function deleteBlock(Room $room, $blockId)
     {
         $block = $room->blocks()->where('id', $blockId)->first();
-        
-        if (!$block) {
+
+        if (! $block) {
             return back()->with('error', 'Block not found.');
         }
 
@@ -203,9 +203,10 @@ class RoomLayoutController extends Controller
         $result = '';
         while ($number > 0) {
             $number--; // Make it 0-based
-            $result = chr(65 + ($number % 26)) . $result;
+            $result = chr(65 + ($number % 26)).$result;
             $number = intval($number / 26);
         }
+
         return $result;
     }
 }

@@ -40,7 +40,7 @@ class BookingFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'user_id' => User::factory(),
             'type' => 'online',
-            'booking_code' => strtoupper(fake()->randomLetter() . fake()->randomDigit()),
+            'booking_code' => strtoupper(fake()->randomLetter().fake()->randomDigit()),
         ]);
     }
 

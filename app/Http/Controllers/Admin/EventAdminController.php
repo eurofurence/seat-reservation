@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
-use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use Inertia\Inertia;
 
 class EventAdminController extends Controller
 {
@@ -27,7 +26,7 @@ class EventAdminController extends Controller
             'events' => $events,
             'rooms' => $rooms,
             'title' => 'Events',
-            'breadcrumbs' => []
+            'breadcrumbs' => [],
         ]);
     }
 
@@ -46,7 +45,7 @@ class EventAdminController extends Controller
             'room_id',
             'starts_at',
             'reservation_ends_at',
-            'max_tickets'
+            'max_tickets',
         ]));
 
         return redirect()->route('admin.events.index')
@@ -69,7 +68,7 @@ class EventAdminController extends Controller
             'room_id',
             'starts_at',
             'reservation_ends_at',
-            'max_tickets'
+            'max_tickets',
         ]));
 
         return redirect()->route('admin.events.index')
@@ -102,10 +101,10 @@ class EventAdminController extends Controller
         // Only load essential block data for the seat layout
         $blocks = $room->blocks()
             ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
-            ->with(['rows' => function($query) {
+            ->with(['rows' => function ($query) {
                 $query->select('id', 'block_id', 'name', 'order', 'alignment')
                     ->orderBy('order');
-                $query->with(['seats' => function($q) {
+                $query->with(['seats' => function ($q) {
                     $q->select('id', 'row_id', 'label', 'number')
                         ->orderBy('number');
                 }]);
@@ -130,7 +129,7 @@ class EventAdminController extends Controller
                 'user:id,name',
                 'seat:id,row_id,label',
                 'seat.row:id,block_id,name',
-                'seat.row.block:id,name'
+                'seat.row.block:id,name',
             ]);
 
         // Apply booking code filter if provided
@@ -139,20 +138,20 @@ class EventAdminController extends Controller
         }
         // Apply search filter if provided (but not if booking code is set)
         elseif ($search = $request->get('search')) {
-            $bookingsQuery->where(function($query) use ($search) {
+            $bookingsQuery->where(function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('comment', 'like', "%{$search}%")
                     ->orWhere('booking_code', 'like', "%{$search}%")
-                    ->orWhereHas('user', function($q) use ($search) {
+                    ->orWhereHas('user', function ($q) use ($search) {
                         $q->where('name', 'like', "%{$search}%");
                     })
-                    ->orWhereHas('seat.row.block', function($q) use ($search) {
+                    ->orWhereHas('seat.row.block', function ($q) use ($search) {
                         $q->where('name', 'like', "%{$search}%");
                     })
-                    ->orWhereHas('seat.row', function($q) use ($search) {
+                    ->orWhereHas('seat.row', function ($q) use ($search) {
                         $q->where('name', 'like', "%{$search}%");
                     })
-                    ->orWhereHas('seat', function($q) use ($search) {
+                    ->orWhereHas('seat', function ($q) use ($search) {
                         $q->where('label', 'like', "%{$search}%");
                     });
             });
@@ -189,8 +188,8 @@ class EventAdminController extends Controller
             'title' => $event->name,
             'breadcrumbs' => [
                 ['title' => 'Events', 'url' => route('admin.events.index')],
-                ['title' => $event->name, 'url' => null]
-            ]
+                ['title' => $event->name, 'url' => null],
+            ],
         ]);
     }
 
@@ -223,7 +222,7 @@ class EventAdminController extends Controller
 
         return response($csv)
             ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', 'attachment; filename="bookings-' . $event->name . '-' . date('Y-m-d') . '.csv"');
+            ->header('Content-Disposition', 'attachment; filename="bookings-'.$event->name.'-'.date('Y-m-d').'.csv"');
     }
 
     private function escapeCsvField($field)
@@ -231,8 +230,9 @@ class EventAdminController extends Controller
         // Escape quotes and wrap in quotes if contains comma, quote, or newline
         $field = str_replace('"', '""', $field);
         if (strpos($field, ',') !== false || strpos($field, '"') !== false || strpos($field, "\n") !== false) {
-            $field = '"' . $field . '"';
+            $field = '"'.$field.'"';
         }
+
         return $field;
     }
 
@@ -245,12 +245,12 @@ class EventAdminController extends Controller
 
         if ($request->has('seats')) {
             $seats = $request->get('seats', []);
+
             return is_array($seats) ? implode(',', $seats) : '';
         }
 
         return '';
     }
-
 
     public function seatingCards($id)
     {
@@ -264,7 +264,7 @@ class EventAdminController extends Controller
                 ->sortBy([
                     ['seat.row.block.name', 'asc'],
                     ['seat.row.name', 'asc'],
-                    ['seat.number', 'asc']
+                    ['seat.number', 'asc'],
                 ]);
 
             if ($bookings->isEmpty()) {
@@ -284,9 +284,9 @@ class EventAdminController extends Controller
                 'fontdata' => [
                     'orbitron' => [
                         'R' => 'Orbitron-Bold.ttf',
-                    ]
+                    ],
                 ],
-                'default_font' => 'orbitron'
+                'default_font' => 'orbitron',
             ]);
 
             // Set execution time limit for large batches
@@ -298,31 +298,34 @@ class EventAdminController extends Controller
                     // Use the blade template without background image
                     $html = view('pdf.seating-card-single', [
                         'booking' => $booking,
-                        'event' => $event
+                        'event' => $event,
                     ])->render();
-                    
+
                     $mpdf->WriteHTML($html);
-                    
+
                     // Add page break after each booking except the last one
                     if ($index < $bookings->count() - 1) {
                         $mpdf->AddPage();
                     }
 
                 } catch (\Exception $e) {
-                    \Log::error("Error processing booking {$booking->id}: " . $e->getMessage());
+                    \Log::error("Error processing booking {$booking->id}: ".$e->getMessage());
+
                     continue; // Skip this booking and continue
                 }
             }
 
             // Return PDF for browser preview
-            $filename = 'seating-cards-' . \Str::slug($event->name) . '-' . date('Y-m-d') . '.pdf';
+            $filename = 'seating-cards-'.\Str::slug($event->name).'-'.date('Y-m-d').'.pdf';
+
             return response($mpdf->Output($filename, 'S'))
                 ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', 'inline; filename="' . $filename . '"');
+                ->header('Content-Disposition', 'inline; filename="'.$filename.'"');
 
         } catch (\Exception $e) {
-            \Log::error('Seating cards generation failed: ' . $e->getMessage());
-            return back()->with('error', 'Failed to generate seating cards: ' . $e->getMessage());
+            \Log::error('Seating cards generation failed: '.$e->getMessage());
+
+            return back()->with('error', 'Failed to generate seating cards: '.$e->getMessage());
         }
     }
 
@@ -332,7 +335,7 @@ class EventAdminController extends Controller
             'guest_name' => 'required|string|max:255',
             'comment' => 'nullable|string|max:1000',
             'seat_ids' => 'required|array|min:1',
-            'seat_ids.*' => 'required|integer|exists:seats,id'
+            'seat_ids.*' => 'required|integer|exists:seats,id',
         ]);
 
         $event = Event::findOrFail($id);
@@ -376,7 +379,7 @@ class EventAdminController extends Controller
         } catch (\Exception $e) {
             DB::rollback();
 
-            return back()->with('error', 'Failed to create booking: ' . $e->getMessage());
+            return back()->with('error', 'Failed to create booking: '.$e->getMessage());
         }
     }
 
@@ -384,7 +387,7 @@ class EventAdminController extends Controller
     {
         $request->validate([
             'booking_id' => 'required|integer|exists:bookings,id',
-            'picked_up' => 'required|boolean'
+            'picked_up' => 'required|boolean',
         ]);
 
         try {
@@ -398,12 +401,12 @@ class EventAdminController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $request->picked_up ? 'Marked as picked up' : 'Marked as not picked up',
-                'picked_up_at' => $booking->picked_up_at
+                'picked_up_at' => $booking->picked_up_at,
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Failed to update pickup status: ' . $e->getMessage()
+                'error' => 'Failed to update pickup status: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -412,7 +415,7 @@ class EventAdminController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'comment' => 'nullable|string|max:1000'
+            'comment' => 'nullable|string|max:1000',
         ]);
 
         try {
@@ -422,13 +425,13 @@ class EventAdminController extends Controller
 
             $booking->update([
                 'name' => $request->name,
-                'comment' => $request->comment
+                'comment' => $request->comment,
             ]);
 
             return back()->with('success', 'Booking updated successfully');
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to update booking: ' . $e->getMessage());
+            return back()->with('error', 'Failed to update booking: '.$e->getMessage());
         }
     }
 
@@ -444,7 +447,7 @@ class EventAdminController extends Controller
             return back()->with('success', 'Booking deleted successfully');
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to delete booking: ' . $e->getMessage());
+            return back()->with('error', 'Failed to delete booking: '.$e->getMessage());
         }
     }
 }

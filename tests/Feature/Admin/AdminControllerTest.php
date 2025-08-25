@@ -2,17 +2,17 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Models\User;
+use App\Models\Block;
+use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
-use App\Models\Booking;
-use App\Models\Block;
 use App\Models\Row;
 use App\Models\Seat;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
-use Carbon\Carbon;
 
 class AdminControllerTest extends TestCase
 {
@@ -50,7 +50,7 @@ class AdminControllerTest extends TestCase
         // Create test data
         $room1 = Room::factory()->create();
         $room2 = Room::factory()->create();
-        
+
         // Create events (2 total, 1 upcoming)
         $pastEvent = Event::factory()->create([
             'room_id' => $room1->id,
@@ -66,7 +66,7 @@ class AdminControllerTest extends TestCase
         $row = Row::factory()->create(['block_id' => $block->id]);
         $seat1 = Seat::factory()->create(['row_id' => $row->id]);
         $seat2 = Seat::factory()->create(['row_id' => $row->id]);
-        
+
         // Create bookings (3 total)
         Booking::factory()->create(['event_id' => $pastEvent->id, 'seat_id' => $seat1->id]);
         Booking::factory()->create(['event_id' => $pastEvent->id, 'seat_id' => $seat2->id]);
@@ -166,7 +166,7 @@ class AdminControllerTest extends TestCase
 
         $room1 = Room::factory()->create();
         $room2 = Room::factory()->create();
-        
+
         $event1 = Event::factory()->create(['room_id' => $room1->id]);
         $event2 = Event::factory()->create(['room_id' => $room2->id]);
 
@@ -184,7 +184,7 @@ class AdminControllerTest extends TestCase
         Booking::factory()->create(['event_id' => $event1->id, 'seat_id' => $seat1->id]);
         Booking::factory()->create(['event_id' => $event2->id, 'seat_id' => $seat2->id]);
         Booking::factory()->create(['event_id' => $event2->id, 'seat_id' => $seat3->id]);
-        
+
         // Create additional seats and bookings for proper counts
         $seat4 = Seat::factory()->create(['row_id' => $row1->id]);
         $seat5 = Seat::factory()->create(['row_id' => $row2->id]);

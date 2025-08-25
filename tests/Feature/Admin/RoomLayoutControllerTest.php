@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Models\User;
-use App\Models\Room;
 use App\Models\Block;
+use App\Models\Room;
 use App\Models\Row;
 use App\Models\Seat;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
@@ -16,6 +16,7 @@ class RoomLayoutControllerTest extends TestCase
     use RefreshDatabase, WithFaker;
 
     private $admin;
+
     private $room;
 
     protected function setUp(): void
@@ -55,7 +56,7 @@ class RoomLayoutControllerTest extends TestCase
     public function room_layout_migrates_old_stage_position()
     {
         $this->actingAs($this->admin);
-        
+
         // Create room with old stage_x/stage_y values but no stage blocks
         $this->room->update(['stage_x' => 5, 'stage_y' => 3]);
 
@@ -106,7 +107,7 @@ class RoomLayoutControllerTest extends TestCase
                     'name' => 'Main Stage',
                     'position_x' => 5,
                     'position_y' => 3,
-                ]
+                ],
             ],
             'blocks' => [
                 [
@@ -119,7 +120,7 @@ class RoomLayoutControllerTest extends TestCase
                         ['rowNumber' => 1, 'seatCount' => 10, 'isCustom' => false],
                         ['rowNumber' => 2, 'seatCount' => 8, 'isCustom' => true],
                     ],
-                ]
+                ],
             ],
         ];
 
@@ -161,7 +162,7 @@ class RoomLayoutControllerTest extends TestCase
         ]);
 
         // Verify seats were created (18 total: 10 + 8)
-        $totalSeats = Seat::whereHas('row', function($query) use ($seatingBlock) {
+        $totalSeats = Seat::whereHas('row', function ($query) use ($seatingBlock) {
             $query->where('block_id', $seatingBlock->id);
         })->count();
         $this->assertEquals(18, $totalSeats);
@@ -181,7 +182,7 @@ class RoomLayoutControllerTest extends TestCase
                     'position_x' => -2, // Invalid position
                     'position_y' => 0,
                     'rotation' => 45, // Invalid rotation
-                ]
+                ],
             ],
         ]);
 
@@ -245,7 +246,7 @@ class RoomLayoutControllerTest extends TestCase
     public function admin_can_delete_seating_block()
     {
         $this->actingAs($this->admin);
-        
+
         $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
         $row = Row::factory()->create(['block_id' => $block->id]);
         $seat = Seat::factory()->create(['row_id' => $row->id]);
@@ -287,7 +288,7 @@ class RoomLayoutControllerTest extends TestCase
                     'name' => 'New Stage',
                     'position_x' => 3,
                     'position_y' => 2,
-                ]
+                ],
             ],
             'blocks' => [
                 [
@@ -296,7 +297,7 @@ class RoomLayoutControllerTest extends TestCase
                     'position_x' => $block->position_x,
                     'position_y' => $block->position_y,
                     'rotation' => $block->rotation,
-                ]
+                ],
             ],
         ];
 
@@ -333,7 +334,7 @@ class RoomLayoutControllerTest extends TestCase
                     'name' => $stageBlock1->name,
                     'position_x' => $stageBlock1->position_x,
                     'position_y' => $stageBlock1->position_y,
-                ]
+                ],
             ],
             'blocks' => [
                 [
@@ -342,7 +343,7 @@ class RoomLayoutControllerTest extends TestCase
                     'position_x' => $seatingBlock->position_x,
                     'position_y' => $seatingBlock->position_y,
                     'rotation' => $seatingBlock->rotation,
-                ]
+                ],
             ],
         ];
 
@@ -376,7 +377,7 @@ class RoomLayoutControllerTest extends TestCase
                     'rowsData' => [
                         ['rowNumber' => 1, 'seatCount' => 5, 'isCustom' => false],
                     ],
-                ]
+                ],
             ],
         ];
 
@@ -395,7 +396,7 @@ class RoomLayoutControllerTest extends TestCase
             'seats_count' => 5,
         ]);
 
-        $newSeats = Seat::whereHas('row', function($query) use ($block) {
+        $newSeats = Seat::whereHas('row', function ($query) use ($block) {
             $query->where('block_id', $block->id);
         })->count();
         $this->assertEquals(5, $newSeats);

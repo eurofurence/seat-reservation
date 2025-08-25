@@ -2,13 +2,13 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Models\User;
+use App\Models\Block;
+use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
-use App\Models\Block;
 use App\Models\Row;
 use App\Models\Seat;
-use App\Models\Booking;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,38 +18,41 @@ class AdminDashboardTest extends TestCase
     use RefreshDatabase;
 
     protected $admin;
+
     protected $user;
+
     protected $event;
+
     protected $booking;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Create admin and regular user
         $this->admin = User::factory()->create(['is_admin' => true]);
         $this->user = User::factory()->create(['is_admin' => false]);
-        
+
         // Create room structure
         $room = Room::factory()->create();
         $block = Block::factory()->create(['room_id' => $room->id]);
         $row = Row::factory()->create(['block_id' => $block->id]);
         $seat = Seat::factory()->create(['row_id' => $row->id]);
-        
+
         // Create event and booking with booking code
         $this->event = Event::factory()->create([
             'room_id' => $room->id,
             'starts_at' => Carbon::now()->addDays(7),
             'reservation_ends_at' => Carbon::now()->addHours(2),
-            'max_tickets' => 100
+            'max_tickets' => 100,
         ]);
-        
+
         $this->booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'event_id' => $this->event->id,
             'seat_id' => $seat->id,
             'booking_code' => 'A7',
-            'type' => 'online'
+            'type' => 'online',
         ]);
     }
 
@@ -67,12 +70,12 @@ class AdminDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'A7'
+                'booking_code' => 'A7',
             ]);
 
         $response->assertRedirect(route('admin.events.show', [
             'event' => $this->event->id,
-            'bookingcode' => 'A7'
+            'bookingcode' => 'A7',
         ]));
     }
 
@@ -81,7 +84,7 @@ class AdminDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'ZZ'
+                'booking_code' => 'ZZ',
             ]);
 
         $response->assertRedirect()
@@ -93,14 +96,14 @@ class AdminDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'A'
+                'booking_code' => 'A',
             ]);
 
         $response->assertSessionHasErrors('booking_code');
 
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'ABC'
+                'booking_code' => 'ABC',
             ]);
 
         $response->assertSessionHasErrors('booking_code');
@@ -111,12 +114,12 @@ class AdminDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'a7'
+                'booking_code' => 'a7',
             ]);
 
         $response->assertRedirect(route('admin.events.show', [
             'event' => $this->event->id,
-            'bookingcode' => 'A7'
+            'bookingcode' => 'A7',
         ]));
     }
 
@@ -134,7 +137,7 @@ class AdminDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->user)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'A7'
+                'booking_code' => 'A7',
             ]);
 
         $response->assertStatus(403);
@@ -156,42 +159,42 @@ class AdminDashboardTest extends TestCase
         $otherBlock = Block::factory()->create(['room_id' => $otherRoom->id]);
         $otherRow = Row::factory()->create(['block_id' => $otherBlock->id]);
         $otherSeat = Seat::factory()->create(['row_id' => $otherRow->id]);
-        
+
         $otherEvent = Event::factory()->create([
             'room_id' => $otherRoom->id,
             'starts_at' => Carbon::now()->addDays(14),
             'reservation_ends_at' => Carbon::now()->addHours(2),
-            'max_tickets' => 100
+            'max_tickets' => 100,
         ]);
-        
+
         Booking::factory()->create([
             'user_id' => $this->user->id,
             'event_id' => $otherEvent->id,
             'seat_id' => $otherSeat->id,
             'booking_code' => 'B3',
-            'type' => 'online'
+            'type' => 'online',
         ]);
 
         // Lookup first booking code
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'A7'
+                'booking_code' => 'A7',
             ]);
 
         $response->assertRedirect(route('admin.events.show', [
             'event' => $this->event->id,
-            'bookingcode' => 'A7'
+            'bookingcode' => 'A7',
         ]));
 
         // Lookup second booking code
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'B3'
+                'booking_code' => 'B3',
             ]);
 
         $response->assertRedirect(route('admin.events.show', [
             'event' => $otherEvent->id,
-            'bookingcode' => 'B3'
+            'bookingcode' => 'B3',
         ]));
     }
 }

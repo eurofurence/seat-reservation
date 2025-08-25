@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Models\User;
-use App\Models\Room;
 use App\Models\Block;
+use App\Models\Room;
 use App\Models\Row;
 use App\Models\Seat;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
@@ -16,6 +16,7 @@ class RoomLayoutController2Test extends TestCase
     use RefreshDatabase, WithFaker;
 
     private $admin;
+
     private $room;
 
     protected function setUp(): void
@@ -39,7 +40,7 @@ class RoomLayoutController2Test extends TestCase
             'rotation' => 90,
             'order' => 1,
         ]);
-        
+
         $seatingBlock2 = Block::factory()->seating()->create([
             'room_id' => $this->room->id,
             'name' => 'General Seating',
@@ -82,7 +83,7 @@ class RoomLayoutController2Test extends TestCase
     public function layout_editor_migrates_old_stage_coordinates()
     {
         $this->actingAs($this->admin);
-        
+
         // Set old stage_x/stage_y on room but no stage blocks exist
         $this->room->update(['stage_x' => 7, 'stage_y' => 4]);
 
@@ -140,7 +141,7 @@ class RoomLayoutController2Test extends TestCase
                     'name' => 'Updated Main Stage',
                     'position_x' => 8,
                     'position_y' => 1,
-                ]
+                ],
             ],
             'blocks' => [
                 [
@@ -154,7 +155,7 @@ class RoomLayoutController2Test extends TestCase
                         ['rowNumber' => 2, 'seatCount' => 10, 'isCustom' => true],
                         ['rowNumber' => 3, 'seatCount' => 15, 'isCustom' => false],
                     ],
-                ]
+                ],
             ],
         ];
 
@@ -200,7 +201,7 @@ class RoomLayoutController2Test extends TestCase
         ]);
 
         // Verify total seat count (12 + 10 + 15 = 37)
-        $totalSeats = Seat::whereHas('row', function($query) use ($existingBlock) {
+        $totalSeats = Seat::whereHas('row', function ($query) use ($existingBlock) {
             $query->where('block_id', $existingBlock->id);
         })->count();
         $this->assertEquals(37, $totalSeats);
@@ -225,7 +226,7 @@ class RoomLayoutController2Test extends TestCase
                     'rowsData' => [
                         ['rowNumber' => 1, 'seatCount' => 5, 'isCustom' => false],
                     ],
-                ]
+                ],
             ],
         ];
 
@@ -294,7 +295,7 @@ class RoomLayoutController2Test extends TestCase
     public function admin_can_delete_seating_block_and_cascade()
     {
         $this->actingAs($this->admin);
-        
+
         $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
         $row1 = Row::factory()->create(['block_id' => $block->id]);
         $row2 = Row::factory()->create(['block_id' => $block->id]);
@@ -320,7 +321,7 @@ class RoomLayoutController2Test extends TestCase
     public function cannot_delete_block_from_different_room()
     {
         $this->actingAs($this->admin);
-        
+
         $otherRoom = Room::factory()->create();
         $otherBlock = Block::factory()->seating()->create(['room_id' => $otherRoom->id]);
 
@@ -347,7 +348,7 @@ class RoomLayoutController2Test extends TestCase
                     'name' => '', // Required field empty
                     'position_x' => -2, // Invalid position
                     'position_y' => 0,
-                ]
+                ],
             ],
             'blocks' => [
                 [
@@ -356,7 +357,7 @@ class RoomLayoutController2Test extends TestCase
                     'position_x' => -5, // Invalid position
                     'position_y' => 0,
                     'rotation' => 45, // Invalid rotation
-                ]
+                ],
             ],
         ];
 
@@ -364,10 +365,10 @@ class RoomLayoutController2Test extends TestCase
 
         $response->assertSessionHasErrors([
             'stageBlocks.0.name',
-            'stageBlocks.0.position_x', 
+            'stageBlocks.0.position_x',
             'blocks.0.name',
             'blocks.0.position_x',
-            'blocks.0.rotation'
+            'blocks.0.rotation',
         ]);
     }
 
@@ -391,7 +392,7 @@ class RoomLayoutController2Test extends TestCase
                         ['rowNumber' => 0, 'seatCount' => 0], // Both invalid (too low)
                         ['rowNumber' => 51, 'seatCount' => 101], // Both invalid (too high)
                     ],
-                ]
+                ],
             ],
         ];
 

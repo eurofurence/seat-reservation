@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Exception;
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
-use Laravel\Socialite\Two\InvalidStateException;
 
 class AuthController extends Controller
 {
@@ -33,8 +32,9 @@ class AuthController extends Controller
             return Inertia::location($url->getTargetUrl());
         } catch (\Exception $e) {
             // Log the error and redirect back with a helpful message
-            \Log::error('OAuth login error: ' . $e->getMessage());
-            return back()->with('error', 'Unable to connect to authentication service: ' . $e->getMessage());
+            \Log::error('OAuth login error: '.$e->getMessage());
+
+            return back()->with('error', 'Unable to connect to authentication service: '.$e->getMessage());
         }
     }
 
@@ -45,7 +45,7 @@ class AuthController extends Controller
         } catch (Exception $e) {
             return redirect()->route('auth.login');
         }
-        if (!in_array('54ZYODX15G2K1M76', $user->user['groups'], true)) {
+        if (! in_array('54ZYODX15G2K1M76', $user->user['groups'], true)) {
             return redirect()->route('auth.login')->with('error', 'You are not allowed to access this application');
         }
 
@@ -59,6 +59,7 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+
         return redirect()->route('dashboard');
     }
 
@@ -66,7 +67,6 @@ class AuthController extends Controller
     {
         return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout');
     }
-
 
     // Frontchannel Logout
     public function logoutCallback()

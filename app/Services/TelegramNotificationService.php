@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 class TelegramNotificationService
 {
     protected string $botToken;
+
     protected string $chatId;
 
     public function __construct()
@@ -20,6 +21,7 @@ class TelegramNotificationService
     {
         if (empty($this->botToken) || empty($this->chatId)) {
             Log::warning('Telegram bot token or chat ID not configured');
+
             return false;
         }
 
@@ -32,20 +34,23 @@ class TelegramNotificationService
 
             if ($response->successful()) {
                 Log::info('Telegram notification sent successfully', ['message' => $message]);
+
                 return true;
             } else {
                 Log::error('Failed to send Telegram notification', [
                     'status' => $response->status(),
                     'body' => $response->body(),
-                    'message' => $message
+                    'message' => $message,
                 ]);
+
                 return false;
             }
         } catch (\Exception $e) {
             Log::error('Exception while sending Telegram notification', [
                 'error' => $e->getMessage(),
-                'message' => $message
+                'message' => $message,
             ]);
+
             return false;
         }
     }
@@ -56,7 +61,7 @@ class TelegramNotificationService
         $message .= "Event: <b>{$eventName}</b>\n";
         $message .= "Room: <b>{$roomName}</b>\n";
         $message .= "Total Seats: <b>{$totalSeats}</b>\n\n";
-        $message .= "The room has reached maximum capacity for priority access tickets.";
+        $message .= 'The room has reached maximum capacity for priority access tickets.';
 
         return $this->sendMessage($message);
     }
@@ -66,7 +71,7 @@ class TelegramNotificationService
         $message = "⏰ <b>Reservation Period Ended</b>\n\n";
         $message .= "Event: <b>{$eventName}</b>\n";
         $message .= "Reservation ended: <b>{$reservationEndTime->format('Y-m-d H:i:s')}</b>\n\n";
-        $message .= "The reservation period for this event has ended.";
+        $message .= 'The reservation period for this event has ended.';
 
         return $this->sendMessage($message);
     }

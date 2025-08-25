@@ -18,11 +18,11 @@ class SeatFactory extends Factory
     public function definition(): array
     {
         $number = fake()->numberBetween(1, 50);
-        
+
         return [
             'row_id' => Row::factory(),
             'number' => $number,
-            'label' => 'A' . $number,
+            'label' => 'A'.$number,
         ];
     }
 }

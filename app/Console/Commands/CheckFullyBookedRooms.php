@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Event;
 use App\Services\TelegramNotificationService;
-use Illuminate\Console\Command;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
 
 class CheckFullyBookedRooms extends Command
 {
@@ -42,7 +42,7 @@ class CheckFullyBookedRooms extends Command
         $activeEvents = Event::with(['room.blocks.rows.seats', 'bookings'])
             ->where(function ($query) {
                 $query->where('starts_at', '>=', Carbon::now())
-                      ->orWhere('reservation_ends_at', '>=', Carbon::now());
+                    ->orWhere('reservation_ends_at', '>=', Carbon::now());
             })
             ->get();
 
@@ -62,7 +62,7 @@ class CheckFullyBookedRooms extends Command
                 $totalSeats = $event->room->blocks()
                     ->with('rows.seats')
                     ->get()
-                    ->flatMap(fn($block) => $block->rows->flatMap(fn($row) => $row->seats))
+                    ->flatMap(fn ($block) => $block->rows->flatMap(fn ($row) => $row->seats))
                     ->count();
                 $maxTickets = $totalSeats;
             }
@@ -92,7 +92,7 @@ class CheckFullyBookedRooms extends Command
         }
 
         $this->info("Checked {$activeEvents->count()} events. Sent {$notificationsSent} notifications.");
-        
+
         return 0;
     }
 }

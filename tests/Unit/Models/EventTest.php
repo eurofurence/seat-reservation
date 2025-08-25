@@ -2,12 +2,12 @@
 
 namespace Tests\Unit\Models;
 
+use App\Models\Block;
+use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
-use App\Models\Block;
 use App\Models\Row;
 use App\Models\Seat;
-use App\Models\Booking;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

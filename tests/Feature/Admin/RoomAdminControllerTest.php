@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Models\User;
-use App\Models\Room;
 use App\Models\Block;
+use App\Models\Room;
 use App\Models\Row;
 use App\Models\Seat;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
@@ -27,7 +27,7 @@ class RoomAdminControllerTest extends TestCase
     public function admin_can_view_rooms_index()
     {
         $this->actingAs($this->admin);
-        
+
         $room1 = Room::factory()->create(['name' => 'Room 1']);
         $room2 = Room::factory()->create(['name' => 'Room 2']);
 
@@ -61,7 +61,7 @@ class RoomAdminControllerTest extends TestCase
         $response = $this->post(route('admin.rooms.store'), $roomData);
 
         $response->assertRedirect(route('admin.rooms.index'));
-        
+
         $this->assertDatabaseHas('rooms', [
             'name' => 'New Conference Room',
             'stage_x' => 0,
@@ -122,7 +122,7 @@ class RoomAdminControllerTest extends TestCase
         $response = $this->put(route('admin.rooms.update', $room->id), $updateData);
 
         $response->assertRedirect(route('admin.rooms.index'));
-        
+
         $this->assertDatabaseHas('rooms', [
             'id' => $room->id,
             'name' => 'Updated Room Name',
@@ -165,7 +165,7 @@ class RoomAdminControllerTest extends TestCase
 
         $response->assertRedirect(route('admin.rooms.index'));
         $response->assertSessionHas('success', "Room 'Room to Delete' has been deleted successfully.");
-        
+
         $this->assertDatabaseMissing('rooms', ['id' => $room->id]);
     }
 
@@ -174,7 +174,7 @@ class RoomAdminControllerTest extends TestCase
     {
         $this->actingAs($this->admin);
         $room = Room::factory()->create();
-        
+
         // Create related models
         $block = Block::factory()->seating()->create(['room_id' => $room->id]);
         $row = Row::factory()->create(['block_id' => $block->id]);
@@ -183,7 +183,7 @@ class RoomAdminControllerTest extends TestCase
         $response = $this->delete(route('admin.rooms.destroy', $room->id));
 
         $response->assertRedirect(route('admin.rooms.index'));
-        
+
         // Verify cascade deletion
         $this->assertDatabaseMissing('rooms', ['id' => $room->id]);
         $this->assertDatabaseMissing('blocks', ['id' => $block->id]);
@@ -195,7 +195,7 @@ class RoomAdminControllerTest extends TestCase
     public function rooms_index_shows_correct_seat_counts()
     {
         $this->actingAs($this->admin);
-        
+
         $room1 = Room::factory()->create(['name' => 'Room 1']);
         $room2 = Room::factory()->create(['name' => 'Room 2']);
 
@@ -244,7 +244,7 @@ class RoomAdminControllerTest extends TestCase
     {
         $user = User::factory()->create(['is_admin' => false]);
         $this->actingAs($user);
-        
+
         $room = Room::factory()->create();
 
         $response = $this->get(route('admin.rooms.index'));

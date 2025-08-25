@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Model;
 
 class Event extends Model
 {
@@ -21,7 +21,7 @@ class Event extends Model
         'reservation_ends_at' => 'datetime',
         'tickets' => 'integer',
         'max_tickets' => 'integer',
-        'notifications_sent' => 'array'
+        'notifications_sent' => 'array',
     ];
 
     public function room(): BelongsTo
@@ -41,11 +41,12 @@ class Event extends Model
         if ($maxTickets === 0) {
             // If no ticket limit is set, use seat availability
             $totalSeats = $this->room->blocks()->with('rows.seats')->get()
-                ->flatMap(fn($block) => $block->rows->flatMap(fn($row) => $row->seats))->count();
+                ->flatMap(fn ($block) => $block->rows->flatMap(fn ($row) => $row->seats))->count();
             $maxTickets = $totalSeats;
         }
-        
+
         $bookedTickets = $this->bookings()->count(); // Each booking = 1 ticket
+
         return max(0, $maxTickets - $bookedTickets);
     }
 }

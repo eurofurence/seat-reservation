@@ -20,7 +20,7 @@ class EventFactory extends Factory
     {
         $startsAt = Carbon::now()->addDays(fake()->numberBetween(1, 30));
         $reservationEndsAt = $startsAt->copy()->subHours(fake()->numberBetween(1, 24));
-        
+
         return [
             'room_id' => Room::factory(),
             'name' => fake()->words(3, true),

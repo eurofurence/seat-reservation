@@ -2,12 +2,12 @@
 
 namespace Tests\Unit\Models;
 
-use App\Models\Seat;
-use App\Models\Row;
 use App\Models\Block;
-use App\Models\Room;
-use App\Models\Event;
 use App\Models\Booking;
+use App\Models\Event;
+use App\Models\Room;
+use App\Models\Row;
+use App\Models\Seat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,19 +47,19 @@ class SeatTest extends TestCase
         $room = Room::factory()->create();
         $block = Block::factory()->seating()->create([
             'room_id' => $room->id,
-            'name' => 'Block A'
+            'name' => 'Block A',
         ]);
         $row = Row::factory()->create([
             'block_id' => $block->id,
-            'name' => 'Row 1'
+            'name' => 'Row 1',
         ]);
         $seat = Seat::factory()->create([
             'row_id' => $row->id,
-            'label' => 'A1'
+            'label' => 'A1',
         ]);
 
         $fullLabel = $seat->getFullLabel();
-        
+
         $this->assertEquals('Block A-Row 1-A1', $fullLabel);
     }
 
@@ -69,7 +69,7 @@ class SeatTest extends TestCase
         $room = Room::factory()->create();
         $block = Block::factory()->seating()->create(['room_id' => $room->id]);
         $row = Row::factory()->create(['block_id' => $block->id]);
-        
+
         // Test the name accessor - should return label since there's no name column
         $seat = Seat::factory()->create([
             'row_id' => $row->id,

@@ -2,23 +2,24 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Models\User;
+use App\Models\Block;
+use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
-use App\Models\Booking;
-use App\Models\Block;
 use App\Models\Row;
 use App\Models\Seat;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
-use Carbon\Carbon;
 
 class EventAdminController2Test extends TestCase
 {
     use RefreshDatabase, WithFaker;
 
     private $admin;
+
     private $room;
 
     protected function setUp(): void
@@ -32,7 +33,7 @@ class EventAdminController2Test extends TestCase
     public function admin_can_view_event_index_with_events()
     {
         $this->actingAs($this->admin);
-        
+
         $event1 = Event::factory()->create(['room_id' => $this->room->id, 'name' => 'Event 1']);
         $event2 = Event::factory()->create(['room_id' => $this->room->id, 'name' => 'Event 2']);
 
@@ -41,7 +42,7 @@ class EventAdminController2Test extends TestCase
         $row = Row::factory()->create(['block_id' => $block->id]);
         $seat1 = Seat::factory()->create(['row_id' => $row->id]);
         $seat2 = Seat::factory()->create(['row_id' => $row->id]);
-        
+
         Booking::factory()->create(['event_id' => $event1->id, 'seat_id' => $seat1->id]);
         Booking::factory()->create(['event_id' => $event2->id, 'seat_id' => $seat2->id]);
 
@@ -73,7 +74,7 @@ class EventAdminController2Test extends TestCase
 
         $response->assertRedirect(route('admin.events.index'));
         $response->assertSessionHas('success', 'Event created successfully');
-        
+
         $this->assertDatabaseHas('events', [
             'name' => 'Test Event',
             'room_id' => $this->room->id,
@@ -95,7 +96,7 @@ class EventAdminController2Test extends TestCase
 
         $response->assertRedirect(route('admin.events.index'));
         $response->assertSessionHas('success', 'Event created successfully');
-        
+
         $this->assertDatabaseHas('events', [
             'name' => 'Minimal Event',
             'room_id' => $this->room->id,
@@ -118,7 +119,7 @@ class EventAdminController2Test extends TestCase
 
         $response->assertRedirect(route('admin.events.index'));
         $response->assertSessionHas('success', 'Event updated successfully');
-        
+
         $this->assertDatabaseHas('events', [
             'id' => $event->id,
             'name' => 'Updated Event Name',
@@ -136,7 +137,7 @@ class EventAdminController2Test extends TestCase
 
         $response->assertRedirect(route('admin.events.index'));
         $response->assertSessionHas('success', 'Event deleted successfully');
-        
+
         $this->assertDatabaseMissing('events', ['id' => $event->id]);
     }
 
@@ -145,17 +146,17 @@ class EventAdminController2Test extends TestCase
     {
         $this->actingAs($this->admin);
         $event = Event::factory()->create(['room_id' => $this->room->id]);
-        
+
         $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
         $row = Row::factory()->create(['block_id' => $block->id]);
         $seat = Seat::factory()->create(['row_id' => $row->id]);
-        
+
         $booking = Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat->id]);
 
         $response = $this->delete(route('admin.events.destroy', $event->id));
 
         $response->assertRedirect(route('admin.events.index'));
-        
+
         // Verify both event and booking are deleted
         $this->assertDatabaseMissing('events', ['id' => $event->id]);
         $this->assertDatabaseMissing('bookings', ['id' => $booking->id]);
@@ -197,17 +198,17 @@ class EventAdminController2Test extends TestCase
     {
         $this->actingAs($this->admin);
         $event = Event::factory()->create(['room_id' => $this->room->id]);
-        
+
         $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
         $row = Row::factory()->create(['block_id' => $block->id]);
         $seat1 = Seat::factory()->create(['row_id' => $row->id]);
         $seat2 = Seat::factory()->create(['row_id' => $row->id]);
-        
+
         // Create bookings with different names
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat1->id, 'name' => 'John Doe']);
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat2->id, 'name' => 'Jane Smith']);
 
-        $response = $this->get(route('admin.events.show', $event->id) . '?search=John');
+        $response = $this->get(route('admin.events.show', $event->id).'?search=John');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -220,11 +221,11 @@ class EventAdminController2Test extends TestCase
     {
         $this->actingAs($this->admin);
         $event = Event::factory()->create(['room_id' => $this->room->id, 'name' => 'Test Event']);
-        
+
         $block = Block::factory()->seating()->create(['room_id' => $this->room->id, 'name' => 'Block A']);
         $row = Row::factory()->create(['block_id' => $block->id, 'name' => 'Row 1']);
         $seat = Seat::factory()->create(['row_id' => $row->id, 'label' => 'A1']);
-        
+
         $booking = Booking::factory()->create([
             'event_id' => $event->id,
             'seat_id' => $seat->id,
@@ -236,8 +237,8 @@ class EventAdminController2Test extends TestCase
 
         $response->assertOk();
         $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
-        $response->assertHeader('content-disposition', 'attachment; filename="bookings-Test Event-' . date('Y-m-d') . '.csv"');
-        
+        $response->assertHeader('content-disposition', 'attachment; filename="bookings-Test Event-'.date('Y-m-d').'.csv"');
+
         $content = $response->getContent();
         $this->assertStringContainsString('Test Event', $content);
         $this->assertStringContainsString('John Doe', $content);
@@ -251,11 +252,11 @@ class EventAdminController2Test extends TestCase
     {
         $this->actingAs($this->admin);
         $event = Event::factory()->create(['room_id' => $this->room->id, 'name' => 'Event "With" Quotes']);
-        
+
         $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
         $row = Row::factory()->create(['block_id' => $block->id]);
         $seat = Seat::factory()->create(['row_id' => $row->id]);
-        
+
         $booking = Booking::factory()->create([
             'event_id' => $event->id,
             'seat_id' => $seat->id,
@@ -267,7 +268,7 @@ class EventAdminController2Test extends TestCase
         $response = $this->get(route('admin.events.export', $event->id));
 
         $response->assertOk();
-        
+
         $content = $response->getContent();
         $this->assertStringContainsString('"Event ""With"" Quotes"', $content);
         $this->assertStringContainsString('"John ""Johnny"" Doe"', $content);
@@ -330,7 +331,7 @@ class EventAdminController2Test extends TestCase
     {
         $user = User::factory()->create(['is_admin' => false]);
         $this->actingAs($user);
-        
+
         $event = Event::factory()->create(['room_id' => $this->room->id]);
 
         $response = $this->get(route('admin.events.index'));

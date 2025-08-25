@@ -22,7 +22,7 @@ class BookingController extends Controller
                 'event.room:id,name',
                 'seat:id,row_id,label',
                 'seat.row:id,block_id,name',
-                'seat.row.block:id,name'
+                'seat.row.block:id,name',
             ])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
@@ -44,11 +44,11 @@ class BookingController extends Controller
         }
 
         // Check if user has reached booking limit
-        if (!Auth::user()->is_admin) {
+        if (! Auth::user()->is_admin) {
             $existingBookings = Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
                 ->count();
-            
+
             if ($existingBookings >= 2) {
                 return redirect()->route('bookings.index')
                     ->with(['message' => 'You have already booked the maximum number of seats for this event.']);
@@ -64,7 +64,7 @@ class BookingController extends Controller
         $event->load('room:id,name,stage_x,stage_y');
 
         // Check if event has a room
-        if (!$event->room) {
+        if (! $event->room) {
             return redirect()->route('events.index')
                 ->with(['error' => 'This event has no room configured.']);
         }
@@ -72,12 +72,12 @@ class BookingController extends Controller
         // Load blocks with minimal seat data - optimized to prevent memory issues
         $blocks = $event->room->blocks()
             ->with([
-                'rows' => function($query) {
+                'rows' => function ($query) {
                     $query->orderBy('order')->select('id', 'block_id', 'name', 'order');
                 },
-                'rows.seats' => function($query) {
+                'rows.seats' => function ($query) {
                     $query->orderBy('number')->select('id', 'row_id', 'number', 'label');
-                }
+                },
             ])
             ->orderBy('order')
             ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
@@ -102,7 +102,7 @@ class BookingController extends Controller
             'maxSeatsPerUser' => 2,
             'userBookedCount' => Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
-                ->count()
+                ->count(),
         ]);
     }
 
@@ -110,7 +110,7 @@ class BookingController extends Controller
     {
         $data = $request->validate([
             'seats' => 'required|array|min:1',
-            'seats.*' => 'required|exists:seats,id'
+            'seats.*' => 'required|exists:seats,id',
         ]);
 
         // Calculate tickets left manually to avoid heavy loading
@@ -125,11 +125,11 @@ class BookingController extends Controller
         }
 
         // Check if user can book these seats
-        if (!Auth::user()->is_admin) {
+        if (! Auth::user()->is_admin) {
             $existingBookings = Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
                 ->count();
-            
+
             if ($existingBookings + count($data['seats']) > 2) {
                 return redirect()->back()
                     ->with(['message' => 'You can only book a maximum of 2 seats per event.']);
@@ -148,9 +148,9 @@ class BookingController extends Controller
 
         // Load seat information with minimal data
         $seats = Seat::with([
-                'row:id,block_id,name', 
-                'row.block:id,name'
-            ])
+            'row:id,block_id,name',
+            'row.block:id,name',
+        ])
             ->select('id', 'row_id', 'label', 'number')
             ->whereIn('id', $data['seats'])
             ->get();
@@ -162,7 +162,7 @@ class BookingController extends Controller
             'event' => $event->only(['id', 'name', 'starts_at', 'reservation_ends_at']),
             'room' => $room,
             'seats' => $seats,
-            'seatIds' => $data['seats']
+            'seatIds' => $data['seats'],
         ]);
     }
 
@@ -177,7 +177,7 @@ class BookingController extends Controller
             'seats' => 'required|array',
             'seats.*.seat_id' => 'required|exists:seats,id',
             'seats.*.name' => 'required|string|max:255',
-            'seats.*.comment' => 'nullable|string|max:255'
+            'seats.*.comment' => 'nullable|string|max:255',
         ]);
 
         // Calculate tickets left manually to avoid heavy loading
@@ -192,11 +192,11 @@ class BookingController extends Controller
         }
 
         // Ensure user hasn't exceeded booking limit
-        if (!Auth::user()->is_admin) {
+        if (! Auth::user()->is_admin) {
             $existingBookings = Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
                 ->count();
-            
+
             if ($existingBookings + count($data['seats']) > 2) {
                 return redirect()->route('bookings.index')
                     ->with(['message' => 'You can only book a maximum of 2 seats per event.']);
@@ -205,7 +205,7 @@ class BookingController extends Controller
 
         // Use transaction to ensure atomicity
         $bookingCode = null;
-        
+
         DB::transaction(function () use ($event, $data, &$bookingCode) {
             // Lock seats to prevent race conditions
             $seatIds = collect($data['seats'])->pluck('seat_id')->toArray();
@@ -218,7 +218,7 @@ class BookingController extends Controller
 
             if ($existingBookings) {
                 throw ValidationException::withMessages([
-                    'seats' => 'Some of the selected seats have already been booked.'
+                    'seats' => 'Some of the selected seats have already been booked.',
                 ]);
             }
 
@@ -233,7 +233,7 @@ class BookingController extends Controller
                     'name' => $seatData['name'],
                     'comment' => $seatData['comment'] ?? null,
                     'type' => 'online',
-                    'booking_code' => $bookingCode
+                    'booking_code' => $bookingCode,
                 ]);
             }
         });
@@ -242,7 +242,7 @@ class BookingController extends Controller
         if ($bookingCode) {
             return redirect()->route('bookings.confirmed', [
                 'event' => $event->id,
-                'code' => $bookingCode
+                'code' => $bookingCode,
             ]);
         }
 
@@ -255,48 +255,48 @@ class BookingController extends Controller
         if (auth()->user()->cannot('view', $booking)) {
             abort(403);
         }
-        
+
         // Load event with room including stage coordinates for seat layout
         $event = Event::select('id', 'name', 'starts_at', 'reservation_ends_at', 'room_id')
             ->with('room:id,name,stage_x,stage_y')
             ->find($event->id);
-            
+
         $booking = Booking::select('id', 'event_id', 'user_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code')
             ->with([
                 'event:id,name,starts_at,reservation_ends_at,room_id',
                 'event.room:id,name,stage_x,stage_y',
                 'seat:id,row_id,label',
                 'seat.row:id,block_id,name',
-                'seat.row.block:id,name'
+                'seat.row.block:id,name',
             ])
             ->find($booking->id);
-            
+
         // Load blocks for seat layout (minimal data for performance)
         $blocks = $event->room->blocks()
             ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
-            ->with(['rows' => function($query) {
+            ->with(['rows' => function ($query) {
                 $query->select('id', 'block_id', 'name', 'order', 'alignment')
                     ->orderBy('order');
-                $query->with(['seats' => function($q) {
+                $query->with(['seats' => function ($q) {
                     $q->select('id', 'row_id', 'label', 'number')
                         ->orderBy('number');
                 }]);
             }])
             ->orderBy('order')
             ->get();
-            
+
         // Get user's booked seat IDs for highlighting
         $userBookedSeats = Booking::where('event_id', $event->id)
             ->where('user_id', auth()->id())
             ->pluck('seat_id')
             ->toArray();
-            
+
         // Get all other booked seat IDs (excluding user's seats) for this event
         $bookedSeats = Booking::where('event_id', $event->id)
             ->where('user_id', '!=', auth()->id())
             ->pluck('seat_id')
             ->toArray();
-        
+
         return Inertia::render('Booking/ShowBooking', [
             'event' => $event,
             'booking' => $booking,
@@ -312,14 +312,14 @@ class BookingController extends Controller
             return redirect()->route('bookings.index')
                 ->with(['message' => 'You are not allowed to update this booking!']);
         }
-        
+
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
             'comment' => 'sometimes|nullable|string|max:255',
         ]);
-        
+
         $booking->update($data);
-        
+
         return redirect()->route('bookings.index')
             ->with(['message' => 'Booking updated!']);
     }
@@ -330,9 +330,9 @@ class BookingController extends Controller
             return redirect()->route('bookings.index')
                 ->with(['message' => 'You are not allowed to cancel this booking!']);
         }
-        
+
         $booking->delete();
-        
+
         return redirect()->route('bookings.index')
             ->with(['message' => 'Booking cancelled!']);
     }
@@ -344,17 +344,17 @@ class BookingController extends Controller
     {
         $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         $charactersLength = strlen($characters);
-        
+
         while (true) {
             $code = '';
             for ($i = 0; $i < 2; $i++) {
                 $code .= $characters[rand(0, $charactersLength - 1)];
             }
-            
+
             // Check if this code is currently in use
             $exists = Booking::where('booking_code', $code)->exists();
-            
-            if (!$exists) {
+
+            if (! $exists) {
                 return $code;
             }
         }
@@ -386,10 +386,10 @@ class BookingController extends Controller
                     'seat' => [
                         'label' => $booking->seat->label,
                         'row' => $booking->seat->row->name,
-                        'block' => $booking->seat->row->block->name
-                    ]
+                        'block' => $booking->seat->row->block->name,
+                    ],
                 ];
-            })
+            }),
         ]);
     }
 }

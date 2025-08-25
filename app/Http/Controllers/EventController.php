@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
-use App\Models\Seat;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -26,31 +25,19 @@ class EventController extends Controller
         });
 
         return Inertia::render('Event/IndexEvent', [
-            'events' => $events
+            'events' => $events,
         ]);
     }
 
-    public function create()
-    {
-    }
+    public function create() {}
 
-    public function store(Request $request)
-    {
-    }
+    public function store(Request $request) {}
 
-    public function show(Event $event)
-    {
-    }
+    public function show(Event $event) {}
 
-    public function edit(Event $event)
-    {
-    }
+    public function edit(Event $event) {}
 
-    public function update(Request $request, Event $event)
-    {
-    }
+    public function update(Request $request, Event $event) {}
 
-    public function destroy(Event $event)
-    {
-    }
+    public function destroy(Event $event) {}
 }

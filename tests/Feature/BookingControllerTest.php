@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
+use App\Models\Block;
+use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
-use App\Models\Block;
 use App\Models\Row;
 use App\Models\Seat;
-use App\Models\Booking;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,31 +18,35 @@ class BookingControllerTest extends TestCase
     use RefreshDatabase;
 
     protected $user;
+
     protected $admin;
+
     protected $event;
+
     protected $room;
+
     protected $seats;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Create test users
         $this->user = User::factory()->create(['is_admin' => false]);
         $this->admin = User::factory()->create(['is_admin' => true]);
-        
+
         // Create room structure
         $this->room = Room::factory()->create();
         $block = Block::factory()->create(['room_id' => $this->room->id]);
         $row = Row::factory()->create(['block_id' => $block->id]);
         $this->seats = Seat::factory()->count(5)->create(['row_id' => $row->id]);
-        
+
         // Create event
         $this->event = Event::factory()->create([
             'room_id' => $this->room->id,
             'starts_at' => Carbon::now()->addDays(7),
             'reservation_ends_at' => Carbon::now()->addHours(2),
-            'max_tickets' => 100
+            'max_tickets' => 100,
         ]);
     }
 
@@ -75,12 +79,12 @@ class BookingControllerTest extends TestCase
     {
         $seatData = [
             ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => 'Test comment'],
-            ['seat_id' => $this->seats[1]->id, 'name' => 'Jane Doe', 'comment' => null]
+            ['seat_id' => $this->seats[1]->id, 'name' => 'Jane Doe', 'comment' => null],
         ];
 
         $response = $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         // Should redirect to confirmation page
@@ -89,13 +93,13 @@ class BookingControllerTest extends TestCase
 
         // Verify bookings were created
         $this->assertDatabaseCount('bookings', 2);
-        
+
         $bookings = Booking::where('event_id', $this->event->id)->get();
-        $this->assertTrue($bookings->every(fn($booking) => $booking->booking_code !== null));
-        $this->assertTrue($bookings->every(fn($booking) => strlen($booking->booking_code) === 2));
-        $this->assertTrue($bookings->every(fn($booking) => $booking->user_id === $this->user->id));
-        $this->assertTrue($bookings->every(fn($booking) => $booking->type === 'online'));
-        
+        $this->assertTrue($bookings->every(fn ($booking) => $booking->booking_code !== null));
+        $this->assertTrue($bookings->every(fn ($booking) => strlen($booking->booking_code) === 2));
+        $this->assertTrue($bookings->every(fn ($booking) => $booking->user_id === $this->user->id));
+        $this->assertTrue($bookings->every(fn ($booking) => $booking->type === 'online'));
+
         // All bookings should have the same booking code
         $this->assertEquals(1, $bookings->pluck('booking_code')->unique()->count());
     }
@@ -104,12 +108,12 @@ class BookingControllerTest extends TestCase
     public function admin_can_create_booking_with_booking_code()
     {
         $seatData = [
-            ['seat_id' => $this->seats[0]->id, 'name' => 'Guest Name', 'comment' => 'Admin booking']
+            ['seat_id' => $this->seats[0]->id, 'name' => 'Guest Name', 'comment' => 'Admin booking'],
         ];
 
         $response = $this->actingAs($this->admin)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         // Should redirect to confirmation page with booking code
@@ -128,21 +132,21 @@ class BookingControllerTest extends TestCase
         Booking::factory()->create([
             'user_id' => $this->user->id,
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
         Booking::factory()->create([
             'user_id' => $this->user->id,
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[1]->id
+            'seat_id' => $this->seats[1]->id,
         ]);
 
         $seatData = [
-            ['seat_id' => $this->seats[2]->id, 'name' => 'John Doe', 'comment' => null]
+            ['seat_id' => $this->seats[2]->id, 'name' => 'John Doe', 'comment' => null],
         ];
 
         $response = $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         $response->assertRedirect()
@@ -157,16 +161,16 @@ class BookingControllerTest extends TestCase
         // Create existing booking
         Booking::factory()->create([
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
 
         $seatData = [
-            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
         ];
 
         $response = $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         $response->assertSessionHasErrors(['seats']);
@@ -176,16 +180,16 @@ class BookingControllerTest extends TestCase
     public function user_cannot_book_after_reservation_deadline()
     {
         $this->event->update([
-            'reservation_ends_at' => Carbon::now()->subHour()
+            'reservation_ends_at' => Carbon::now()->subHour(),
         ]);
 
         $seatData = [
-            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
         ];
 
         $response = $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         $response->assertRedirect()
@@ -196,20 +200,20 @@ class BookingControllerTest extends TestCase
     public function user_cannot_book_when_no_tickets_left()
     {
         $this->event->update(['max_tickets' => 1]);
-        
+
         // Create existing booking to fill capacity
         Booking::factory()->create([
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
 
         $seatData = [
-            ['seat_id' => $this->seats[1]->id, 'name' => 'John Doe', 'comment' => null]
+            ['seat_id' => $this->seats[1]->id, 'name' => 'John Doe', 'comment' => null],
         ];
 
         $response = $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         $response->assertRedirect()
@@ -220,12 +224,12 @@ class BookingControllerTest extends TestCase
     public function booking_code_is_generated_for_users()
     {
         $seatData = [
-            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
         ];
 
         $response = $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         $response->assertRedirect();
@@ -240,12 +244,12 @@ class BookingControllerTest extends TestCase
     {
         // Create first booking
         $seatData1 = [
-            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
         ];
 
         $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData1
+                'seats' => $seatData1,
             ]);
 
         $firstBookingCode = Booking::where('event_id', $this->event->id)->first()->booking_code;
@@ -255,16 +259,16 @@ class BookingControllerTest extends TestCase
             'room_id' => $this->room->id,
             'starts_at' => Carbon::now()->addDays(14),
             'reservation_ends_at' => Carbon::now()->addHours(2),
-            'max_tickets' => 100
+            'max_tickets' => 100,
         ]);
 
         $seatData2 = [
-            ['seat_id' => $this->seats[1]->id, 'name' => 'Jane Doe', 'comment' => null]
+            ['seat_id' => $this->seats[1]->id, 'name' => 'Jane Doe', 'comment' => null],
         ];
 
         $this->actingAs($this->user)
             ->post(route('bookings.store', $otherEvent), [
-                'seats' => $seatData2
+                'seats' => $seatData2,
             ]);
 
         $secondBookingCode = Booking::where('event_id', $otherEvent->id)->first()->booking_code;
@@ -281,7 +285,7 @@ class BookingControllerTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
 
         $response = $this->actingAs($this->user)
@@ -297,7 +301,7 @@ class BookingControllerTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $otherUser->id,
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
 
         $response = $this->actingAs($this->user)
@@ -314,13 +318,13 @@ class BookingControllerTest extends TestCase
             'event_id' => $this->event->id,
             'seat_id' => $this->seats[0]->id,
             'name' => 'Old Name',
-            'comment' => 'Old Comment'
+            'comment' => 'Old Comment',
         ]);
 
         $response = $this->actingAs($this->user)
             ->put(route('bookings.update', [$this->event, $booking]), [
                 'name' => 'New Name',
-                'comment' => 'New Comment'
+                'comment' => 'New Comment',
             ]);
 
         $response->assertRedirect(route('bookings.index'))
@@ -329,7 +333,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
             'name' => 'New Name',
-            'comment' => 'New Comment'
+            'comment' => 'New Comment',
         ]);
     }
 
@@ -340,12 +344,12 @@ class BookingControllerTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $otherUser->id,
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
 
         $response = $this->actingAs($this->user)
             ->put(route('bookings.update', [$this->event, $booking]), [
-                'name' => 'Hacked Name'
+                'name' => 'Hacked Name',
             ]);
 
         $response->assertRedirect(route('bookings.index'))
@@ -358,7 +362,7 @@ class BookingControllerTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
 
         $response = $this->actingAs($this->user)
@@ -377,7 +381,7 @@ class BookingControllerTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $otherUser->id,
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
 
         $response = $this->actingAs($this->user)
@@ -395,8 +399,8 @@ class BookingControllerTest extends TestCase
         $response = $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
                 'seats' => [
-                    ['seat_id' => 99999, 'name' => 'John Doe', 'comment' => null]
-                ]
+                    ['seat_id' => 99999, 'name' => 'John Doe', 'comment' => null],
+                ],
             ]);
 
         $response->assertSessionHasErrors(['seats.0.seat_id']);
@@ -408,8 +412,8 @@ class BookingControllerTest extends TestCase
         $response = $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
                 'seats' => [
-                    ['seat_id' => $this->seats[0]->id, 'name' => '', 'comment' => null]
-                ]
+                    ['seat_id' => $this->seats[0]->id, 'name' => '', 'comment' => null],
+                ],
             ]);
 
         $response->assertSessionHasErrors(['seats.0.name']);
@@ -421,13 +425,13 @@ class BookingControllerTest extends TestCase
         $booking = Booking::factory()->create([
             'user_id' => $this->user->id,
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
 
         $response = $this->actingAs($this->user)
             ->put(route('bookings.update', [$this->event, $booking]), [
                 'name' => '', // Invalid: empty name
-                'comment' => str_repeat('a', 300) // Invalid: too long
+                'comment' => str_repeat('a', 300), // Invalid: too long
             ]);
 
         $response->assertSessionHasErrors(['name']);
@@ -438,7 +442,7 @@ class BookingControllerTest extends TestCase
     {
         $booking = Booking::factory()->create([
             'event_id' => $this->event->id,
-            'seat_id' => $this->seats[0]->id
+            'seat_id' => $this->seats[0]->id,
         ]);
 
         // Test various routes
@@ -465,16 +469,16 @@ class BookingControllerTest extends TestCase
         Booking::factory()->create(['booking_code' => 'AA']);
 
         $seatData = [
-            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
         ];
 
         $response = $this->actingAs($this->user)
             ->post(route('bookings.store', $this->event), [
-                'seats' => $seatData
+                'seats' => $seatData,
             ]);
 
         $response->assertRedirect();
-        
+
         $newBooking = Booking::where('event_id', $this->event->id)->first();
         $this->assertNotEquals('AA', $newBooking->booking_code);
         $this->assertNotNull($newBooking->booking_code);

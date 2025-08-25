@@ -2,17 +2,17 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Models\Event;
-use App\Models\Room;
-use App\Models\Seat;
-use App\Models\Row;
 use App\Models\Block;
 use App\Models\Booking;
+use App\Models\Event;
+use App\Models\Room;
+use App\Models\Row;
+use App\Models\Seat;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
-use Carbon\Carbon;
 
 class BookingCoreTest extends TestCase
 {
@@ -34,28 +34,28 @@ class BookingCoreTest extends TestCase
             'reservation_ends_at' => Carbon::now()->addHours(1),
             'max_tickets' => 50,
         ]);
-        
+
         $block = Block::create([
             'room_id' => $room->id,
             'name' => 'Test Block',
             'type' => 'seating',
         ]);
-        
+
         $row = Row::create([
             'block_id' => $block->id,
             'name' => 'Row A',
             'order' => 1,
         ]);
-        
+
         $seat1 = Seat::create([
             'row_id' => $row->id,
             'label' => 'A1',
             'number' => 1,
         ]);
-        
+
         $seat2 = Seat::create([
             'row_id' => $row->id,
-            'label' => 'A2', 
+            'label' => 'A2',
             'number' => 2,
         ]);
 
@@ -67,7 +67,7 @@ class BookingCoreTest extends TestCase
         ]);
 
         $response->assertRedirect()
-                ->assertSessionHas('success');
+            ->assertSessionHas('success');
 
         // Verify bookings were created
         $this->assertDatabaseHas('bookings', [
@@ -115,18 +115,18 @@ class BookingCoreTest extends TestCase
             'room_id' => $room->id,
             'starts_at' => Carbon::now()->addDays(1),
         ]);
-        
+
         $block = Block::create([
             'room_id' => $room->id,
             'name' => 'Test Block',
             'type' => 'seating',
         ]);
-        
+
         $row = Row::create([
             'block_id' => $block->id,
             'name' => 'Row A',
         ]);
-        
+
         $seat = Seat::create([
             'row_id' => $row->id,
             'label' => 'A1',
@@ -148,10 +148,9 @@ class BookingCoreTest extends TestCase
         ]);
 
         $response->assertRedirect()
-                ->assertSessionHas('error', 'One or more selected seats are already booked.');
+            ->assertSessionHas('error', 'One or more selected seats are already booked.');
 
         // Verify only one booking exists
         $this->assertEquals(1, Booking::count());
     }
-
 }
