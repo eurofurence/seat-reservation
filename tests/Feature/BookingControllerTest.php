@@ -122,7 +122,7 @@ class BookingControllerTest extends TestCase
         // Admin users through user interface also get booking codes
         $booking = Booking::where('user_id', $this->admin->id)->first();
         $this->assertNotNull($booking->booking_code, 'Admin should get booking code through user interface');
-        $this->assertEquals(3, strlen($booking->booking_code), 'Booking code should be 3 characters');
+        $this->assertEquals(2, strlen($booking->booking_code), 'Booking code should be 2 characters');
     }
 
     /** @test */

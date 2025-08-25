@@ -45,7 +45,7 @@ class AdminController extends Controller
     public function lookupBookingCode(Request $request)
     {
         $request->validate([
-            'booking_code' => 'required|string|size:3',
+            'booking_code' => 'required|string|size:2',
         ]);
 
         $bookingCode = strtoupper($request->booking_code);

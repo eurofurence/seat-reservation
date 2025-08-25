@@ -58,8 +58,8 @@ class BookingCodeIntegrationTest extends TestCase
 
         $this->assertNotNull($booking, 'Booking should be created');
         $this->assertNotNull($booking->booking_code, 'Booking code should be generated for regular user');
-        $this->assertEquals(3, strlen($booking->booking_code), 'Booking code should be 3 characters');
-        $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}$/', $booking->booking_code);
+        $this->assertEquals(2, strlen($booking->booking_code), 'Booking code should be 2 characters');
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{2}$/', $booking->booking_code);
         $this->assertEquals('John Doe', $booking->name);
         $this->assertEquals('Test booking', $booking->comment);
         $this->assertEquals('online', $booking->type);
