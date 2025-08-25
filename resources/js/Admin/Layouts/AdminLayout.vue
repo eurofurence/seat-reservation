@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
-import { Calendar, Home, MapPin, Menu, X, ChevronRight } from 'lucide-vue-next'
+import { Calendar, Home, MapPin, Menu, X, ChevronRight, ArrowLeft } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import { Button } from '@/Components/ui/button'
 import ToastProvider from '@/Components/ToastProvider.vue'
@@ -156,9 +156,22 @@ const navigateTo = (route) => {
           <h1 class="text-2xl font-bold text-gray-900">{{ title }}</h1>
         </div>
 
-        <!-- Slot for additional header content (like action buttons) -->
-        <div class="mt-4">
-          <slot name="header" />
+        <!-- Action buttons and header content -->
+        <div class="flex items-center gap-3">
+          <Button
+            @click="navigateTo('/')"
+            variant="outline"
+            size="sm"
+            class="flex items-center gap-2"
+          >
+            <ArrowLeft class="h-4 w-4" />
+            Back to User Portal
+          </Button>
+          
+          <!-- Slot for additional header content -->
+          <div>
+            <slot name="header" />
+          </div>
         </div>
       </div>
 

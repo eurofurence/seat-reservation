@@ -206,7 +206,7 @@ const processManualBooking = () => {
             // Reset form and clear selected seats
             manualBookingForm.value = { guestName: '', comment: '', isProcessing: false }
             selectedSeats.value = []
-            
+
             // Clear selected seats from URL by navigating without the selected_seats parameter
             const params = {}
             if (props.search) params.search = props.search
@@ -284,7 +284,7 @@ const saveEditedBooking = () => {
 
     editModal.value.isProcessing = true
 
-    editForm.put(route('admin.events.bookings.update', [props.event.id, editModal.value.booking.id]), {
+    editForm.put(route('admin.events.update-booking', [props.event.id, editModal.value.booking.id]), {
         onSuccess: () => {
             editModal.value.show = false
         },
@@ -309,7 +309,7 @@ const deleteBooking = () => {
 
     deleteModal.value.isProcessing = true
 
-    deleteForm.delete(route('admin.events.bookings.delete', [props.event.id, deleteModal.value.booking.id]), {
+    deleteForm.delete(route('admin.events.delete-booking', [props.event.id, deleteModal.value.booking.id]), {
         onSuccess: () => {
             deleteModal.value.show = false
         },
@@ -372,7 +372,7 @@ const clearSearch = () => {
     if (selectedSeats.value.length > 0) {
         params.selected_seats = selectedSeats.value.join(',')
     }
-    
+
     router.get(route('admin.events.show', props.event.id),
         params, // Preserve selected seats but clear search, booking_code, and booking_id
         {

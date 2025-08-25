@@ -136,8 +136,8 @@ onMounted(() => {
         try {
           panzoomInstance.value = Panzoom(panzoomContent, {
             maxScale: 3,
-            minScale: 0.3,
-            startScale: 0.6, // Default zoom-out scale
+            minScale: 0.2,
+            startScale: 0.2, // Default zoom-out scale
             contain: 'outside',
             cursor: 'grab',
             panOnlyWhenZoomed: false,

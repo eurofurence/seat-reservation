@@ -80,16 +80,10 @@ const formatDate = (dateString: string) => {
                     </div>
 
                     <!-- Actions -->
-                    <div class="flex justify-center gap-4 pt-4">
+                    <div class="flex justify-center pt-4">
                         <Link :href="route('bookings.index')">
                             <Button as="span">View My Bookings</Button>
                         </Link>
-                        <Button
-                            variant="outline"
-                            @click="window.print()"
-                        >
-                            Print This Page
-                        </Button>
                     </div>
                 </CardContent>
             </Card>

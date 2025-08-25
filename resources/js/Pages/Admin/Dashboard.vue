@@ -143,12 +143,12 @@ const formatTime = (dateTime) => {
                   id="booking_code"
                   v-model="bookingCodeForm.booking_code"
                   type="text"
-                  placeholder="e.g. A7"
-                  maxlength="2"
+                  placeholder="e.g. A7B"
+                  maxlength="3"
                   class="uppercase font-mono text-lg"
                   :class="{ 'border-red-500': bookingCodeForm.errors.booking_code }"
                 />
-                <Button type="submit" :disabled="bookingCodeForm.processing || bookingCodeForm.booking_code.length !== 2">
+                <Button type="submit" :disabled="bookingCodeForm.processing || bookingCodeForm.booking_code.length !== 3">
                   <Search class="h-4 w-4 mr-1" />
                   Lookup
                 </Button>

@@ -122,7 +122,7 @@ class BookingControllerTest extends TestCase
         // Admin users through user interface also get booking codes
         $booking = Booking::where('user_id', $this->admin->id)->first();
         $this->assertNotNull($booking->booking_code, 'Admin should get booking code through user interface');
-        $this->assertEquals(2, strlen($booking->booking_code), 'Booking code should be 2 characters');
+        $this->assertEquals(3, strlen($booking->booking_code), 'Booking code should be 3 characters');
     }
 
     /** @test */
@@ -307,7 +307,8 @@ class BookingControllerTest extends TestCase
         $response = $this->actingAs($this->user)
             ->get(route('bookings.show', [$this->event, $booking]));
 
-        $response->assertStatus(403);
+        $response->assertRedirect(route('bookings.index'))
+            ->assertSessionHas('error', 'You are not authorized to view this booking.');
     }
 
     /** @test */

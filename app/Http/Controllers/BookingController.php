@@ -89,7 +89,7 @@ class BookingController extends Controller
             ->toArray();
 
         // Calculate tickets left manually to avoid heavy loading
-        $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
+        $maxTickets = $event->max_tickets ?? 0;
         $bookedTickets = $event->bookings()->count();
         $ticketsLeft = max(0, $maxTickets - $bookedTickets);
 
@@ -99,7 +99,7 @@ class BookingController extends Controller
             'blocks' => $blocks,
             'bookedSeats' => $bookedSeats,
             'selectedSeats' => $request->get('seats', []), // Pass selected seats from URL
-            'maxSeatsPerUser' => 2,
+            'maxSeatsPerUser' => min(2, $ticketsLeft),
             'userBookedCount' => Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
                 ->count(),
@@ -253,7 +253,8 @@ class BookingController extends Controller
     public function show(Event $event, Booking $booking)
     {
         if (auth()->user()->cannot('view', $booking)) {
-            abort(403);
+            return redirect()->route('bookings.index')
+                ->with(['error' => 'You are not authorized to view this booking.']);
         }
 
         // Load event with room including stage coordinates for seat layout
@@ -338,7 +339,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Generate a unique 2-character alphanumeric booking code
+     * Generate a unique 3-character alphanumeric booking code
      */
     private function generateUniqueBookingCode(): string
     {
@@ -347,7 +348,7 @@ class BookingController extends Controller
 
         while (true) {
             $code = '';
-            for ($i = 0; $i < 2; $i++) {
+            for ($i = 0; $i < 3; $i++) {
                 $code .= $characters[rand(0, $charactersLength - 1)];
             }
 
