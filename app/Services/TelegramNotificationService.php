@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Log;
 
 class TelegramNotificationService
 {
-    protected string $botToken;
+    protected ?string $botToken;
 
-    protected string $chatId;
+    protected ?string $chatId;
 
     public function __construct()
     {
