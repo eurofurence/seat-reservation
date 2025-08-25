@@ -275,7 +275,7 @@ class BookingController extends Controller
         $blocks = $event->room->blocks()
             ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
             ->with(['rows' => function($query) {
-                $query->select('id', 'block_id', 'name', 'order')
+                $query->select('id', 'block_id', 'name', 'order', 'alignment')
                     ->orderBy('order');
                 $query->with(['seats' => function($q) {
                     $q->select('id', 'row_id', 'label', 'number')

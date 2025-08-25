@@ -18,7 +18,7 @@ class RoomLayoutController extends Controller
             ->selectRaw('COUNT(DISTINCT rows.id) as rows_count')
             ->selectRaw('COUNT(seats.id) as total_seats')
             ->with(['rows' => function($query) {
-                $query->select('id', 'block_id', 'name', 'order', 'seats_count', 'custom_seat_count')
+                $query->select('id', 'block_id', 'name', 'order', 'seats_count', 'custom_seat_count', 'alignment')
                     ->orderBy('order');
             }])
             ->leftJoin('rows', 'blocks.id', '=', 'rows.block_id')
@@ -76,6 +76,7 @@ class RoomLayoutController extends Controller
             'blocks.*.rowsData.*.rowNumber' => 'integer|min:1|max:50',
             'blocks.*.rowsData.*.seatCount' => 'integer|min:1|max:100',
             'blocks.*.rowsData.*.isCustom' => 'nullable|boolean',
+            'blocks.*.rowsData.*.alignment' => 'nullable|string|in:left,center,right',
         ]);
 
         DB::transaction(function () use ($request, $room) {
@@ -134,12 +135,14 @@ class RoomLayoutController extends Controller
                         // Create new rows with specified seat counts and custom seat counts
                         foreach ($blockData['rowsData'] as $rowData) {
                             $customSeatCount = isset($rowData['isCustom']) && $rowData['isCustom'] ? $rowData['seatCount'] : null;
+                            $alignment = $rowData['alignment'] ?? 'center';
                             
                             $row = $block->rows()->create([
                                 'name' => "Row {$rowData['rowNumber']}",
                                 'order' => $rowData['rowNumber'],
                                 'seats_count' => $rowData['seatCount'],
                                 'custom_seat_count' => $customSeatCount,
+                                'alignment' => $alignment,
                             ]);
 
                             // Create seats for this row

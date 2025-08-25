@@ -25,6 +25,8 @@ npm run build          # Production build
 ```bash
 php artisan serve      # Start Laravel development server
 php artisan test       # Run PHPUnit tests
+php artisan test --filter="TestClass" # Run specific test class
+php artisan test --filter="test_method_name" # Run specific test method
 vendor/bin/pint        # Format PHP code with Laravel Pint
 
 # Route management
@@ -269,3 +271,138 @@ Room (stage_x, stage_y positioning)
 - Don't manually wrap templates in layout components
 - Use `defineOptions({ layout: AdminLayout })` only
 - Flash messages are handled globally in AdminLayout
+
+## Booking Code System
+
+### Architecture
+- 2-character alphanumeric booking codes (A-Z, 0-9) for easy ticket pickup
+- Generated for **ALL** user interface bookings (regular users and admins)
+- **NOT** generated for admin manual bookings (type: 'admin')
+- Session-unique codes with collision detection
+
+### Implementation Patterns
+
+#### Code Generation
+```php
+// BookingController::generateUniqueBookingCode()
+private function generateUniqueBookingCode(): string
+{
+    $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    while (true) {
+        $code = '';
+        for ($i = 0; $i < 2; $i++) {
+            $code .= $characters[rand(0, $charactersLength - 1)];
+        }
+        if (!Booking::where('booking_code', $code)->exists()) {
+            return $code;
+        }
+    }
+}
+```
+
+#### User Interface vs Admin Manual Bookings
+```php
+// User interface bookings (through BookingController) - GET booking codes
+$bookingCode = $this->generateUniqueBookingCode();
+foreach ($data['seats'] as $seatData) {
+    $event->bookings()->create([
+        'booking_code' => $bookingCode,  // Same code for all seats in one booking
+        'type' => 'online'
+    ]);
+}
+
+// Admin manual bookings (through EventAdminController) - NO booking codes  
+$bookings[] = [
+    'type' => 'admin',    // Mark as admin booking
+    'user_id' => null,    // No user association
+    'booking_code' => null // No booking code for manual bookings
+];
+```
+
+#### Admin Dashboard Lookup
+```php
+// AdminController::lookupBookingCode()
+public function lookupBookingCode(Request $request)
+{
+    $request->validate(['booking_code' => 'required|string|size:2']);
+    $bookingCode = strtoupper($request->booking_code);
+    
+    $booking = Booking::where('booking_code', $bookingCode)
+        ->with('event')
+        ->first();
+        
+    if (!$booking) {
+        return back()->withErrors(['booking_code' => 'No booking found with this code.']);
+    }
+    
+    // Redirect to event with booking code filter
+    return redirect()->route('admin.events.show', $booking->event->id)
+        ->with(['bookingcode' => $bookingCode]);
+}
+```
+
+## Performance Optimization Patterns
+
+### Database Query Optimization
+The codebase implements careful query optimization to avoid N+1 problems:
+
+```php
+// EventAdminController::show - Only load essential fields
+$bookingsQuery = Booking::where('event_id', $id)
+    ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code')
+    ->with([
+        'user:id,name',
+        'seat:id,row_id,label',
+        'seat.row:id,block_id,name', 
+        'seat.row.block:id,name'
+    ]);
+
+// Load room data separately to avoid heavy loading
+$room = $event->room()->select('id', 'name')->first();
+```
+
+### Manual Booking Controller Pattern
+Admin manual bookings use different validation and field names:
+
+```php
+// EventAdminController::manualBooking validates 'guest_name'
+$request->validate([
+    'guest_name' => 'required|string|max:255',  // Note: guest_name, not name
+    'comment' => 'nullable|string|max:1000',
+    'seat_ids' => 'required|array|min:1',
+    'seat_ids.*' => 'required|integer|exists:seats,id'
+]);
+
+// Vue component sends guest_name field  
+const form = useForm({
+    guest_name: manualBookingForm.value.guestName,
+    comment: manualBookingForm.value.comment,
+    seat_ids: selectedSeats.value
+})
+```
+
+## Testing Patterns
+
+### Inertia.js Test Data Access
+```php
+// Correct way to access Inertia props in tests
+$props = $response->getOriginalContent()->getData()['page']['props'];
+$bookings = $props['bookings'] ?? null;
+
+// Handle paginated results
+if (is_object($bookings) && method_exists($bookings, 'items')) {
+    $bookingItems = $bookings->items();
+} elseif (is_object($bookings) && isset($bookings->data)) {
+    $bookingItems = $bookings->data;
+}
+```
+
+### PDF Generation Testing
+```php
+// SeatingCards tests require picked_up_at to be set
+$booking = Booking::factory()->create([
+    'event_id' => $event->id,
+    'seat_id' => $seat->id,
+    'picked_up_at' => now()  // Required for PDF generation
+]);
+```

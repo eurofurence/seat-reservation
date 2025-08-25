@@ -40,8 +40,8 @@ const getSeatStatus = (seat: Seat) => {
 
   if (props.bookedSeats.includes(seatId)) {
     return {
-      classes: props.adminMode 
-        ? 'bg-red-500 border-red-600 text-white hover:bg-red-600 cursor-pointer' 
+      classes: props.adminMode
+        ? 'bg-red-500 border-red-600 text-white hover:bg-red-600 cursor-pointer'
         : 'bg-red-500 border-red-600 text-white cursor-not-allowed opacity-70',
       disabled: !props.adminMode
     }
@@ -63,14 +63,14 @@ const getSeatStatus = (seat: Seat) => {
 // Handle seat click
 const handleSeatClick = (seat: Seat) => {
   const isBooked = props.bookedSeats.includes(seat.id)
-  
+
   if (isBooked) {
     if (props.adminMode) {
       emit('booked-seat-click', seat)
     }
     return
   }
-  
+
   emit('seat-click', seat)
 }
 
@@ -86,6 +86,30 @@ const getRowOrder = (rows: Row[], rotation: number) => {
     return [...rows].reverse() // 90°: count down (10→1) - Row 1 on right, Row 10 on left
   }
   return rows // 0°: count up (1→10)
+}
+
+// Get justification class based on alignment and rotation
+const getJustificationClass = (alignment, rotation) => {
+  // Default to center if no alignment specified
+  if (!alignment) alignment = 'center'
+  
+  if (rotation === 90 || rotation === 270) {
+    // For vertical orientations, reverse the mapping
+    switch (alignment) {
+      case 'left': return 'justify-start'    // left becomes top (start)
+      case 'center': return 'justify-center' // center stays center
+      case 'right': return 'justify-end'     // right becomes bottom (end)
+      default: return 'justify-center'
+    }
+  } else {
+    // For horizontal orientations (0° and 180°)
+    switch (alignment) {
+      case 'left': return 'justify-start'
+      case 'center': return 'justify-center'
+      case 'right': return 'justify-end'
+      default: return 'justify-center'
+    }
+  }
 }
 
 // Get layout classes based on rotation
@@ -110,7 +134,7 @@ const getLayoutClasses = computed(() => {
       separator: 'flex flex-col items-center justify-center',
       separatorLine: 'flex-1 w-px bg-gray-300 min-h-10',
       separatorLabel: 'text-xs font-bold text-gray-600 bg-white px-2 py-1 border border-gray-300 rounded transform rotate-180 mr-2 [writing-mode:vertical-rl] [text-orientation:mixed]',
-      seats: 'flex flex-col gap-1 items-center'
+      seats: 'flex flex-col gap-1 items-start'
     }
   } else if (rotation === 180) {
     // For 180°: reverse the row order (seats first, then separator)
@@ -120,7 +144,7 @@ const getLayoutClasses = computed(() => {
       separator: 'flex items-center gap-2 mt-1.5',
       separatorLine: 'flex-1 h-px bg-gray-300',
       separatorLabel: 'text-xs font-bold text-gray-600 bg-white px-2 py-1 border border-gray-300 rounded whitespace-nowrap',
-      seats: 'flex flex-row gap-1 items-center justify-start flex-nowrap'
+      seats: 'flex flex-row gap-1 items-center flex-nowrap'
     }
   } else {
     // For 0°: normal order (separator first, then seats)
@@ -130,7 +154,7 @@ const getLayoutClasses = computed(() => {
       separator: 'flex items-center gap-2 mb-1.5',
       separatorLine: 'flex-1 h-px bg-gray-300',
       separatorLabel: 'text-xs font-bold text-gray-600 bg-white px-2 py-1 border border-gray-300 rounded whitespace-nowrap',
-      seats: 'flex flex-row gap-1 items-center justify-start flex-nowrap'
+      seats: 'flex flex-row gap-1 items-center flex-nowrap'
     }
   }
 })
@@ -184,7 +208,7 @@ const getBlockNameClasses = computed(() => {
           </div>
 
           <!-- Seats Container -->
-          <div :class="getLayoutClasses.seats">
+          <div :class="[getLayoutClasses.seats, getJustificationClass(row.alignment, block.rotation)]">
             <button
               v-for="seat in row.seats"
               :key="seat.id"
@@ -204,7 +228,7 @@ const getBlockNameClasses = computed(() => {
         <!-- For 90°: seats first, then separator (Seats | Row) -->
         <template v-else-if="block.rotation === 90">
           <!-- Seats Container -->
-          <div :class="getLayoutClasses.seats">
+          <div :class="[getLayoutClasses.seats, getJustificationClass(row.alignment, block.rotation)]">
             <button
               v-for="seat in row.seats"
               :key="seat.id"
@@ -238,7 +262,7 @@ const getBlockNameClasses = computed(() => {
           </div>
 
           <!-- Seats Container -->
-          <div :class="getLayoutClasses.seats">
+          <div :class="[getLayoutClasses.seats, getJustificationClass(row.alignment, block.rotation)]">
             <button
               v-for="seat in row.seats"
               :key="seat.id"

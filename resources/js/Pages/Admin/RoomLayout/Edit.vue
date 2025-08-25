@@ -6,6 +6,7 @@ import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 
 defineOptions({ layout: AdminLayout })
 
@@ -21,7 +22,16 @@ const props = defineProps({
 const GRID_ROWS = 8
 const GRID_COLS = 12
 
-// Form data for entire layout
+// Helper functions that need to be available during initialization
+const getOriginalSeatingBlock = (blockId) => {
+  return props.blocks.find(block => block.id === blockId)
+}
+
+const getOriginalStageBlock = (stageBlockId) => {
+  return props.stageBlocks.find(block => block.id === stageBlockId)
+}
+
+// Build complete form data from props with all editing capabilities
 const form = useForm({
   stageBlocks: props.stageBlocks.map(block => ({
     id: block.id,
@@ -29,13 +39,35 @@ const form = useForm({
     position_x: block.position_x != null ? block.position_x : -1,
     position_y: block.position_y != null ? block.position_y : -1
   })),
-  blocks: props.blocks.map(block => ({
-    id: block.id,
-    name: block.name,
-    position_x: block.position_x != null ? block.position_x : -1,
-    position_y: block.position_y != null ? block.position_y : -1,
-    rotation: block.rotation || 0
-  }))
+  blocks: props.blocks.map(block => {
+    const originalBlock = getOriginalSeatingBlock(block.id)
+
+    // Build row data for each block
+    const rows = []
+    const rowCount = originalBlock?.rows?.length || 10
+
+    for (let i = 1; i <= rowCount; i++) {
+      const existingRow = originalBlock?.rows?.find((r, idx) => idx + 1 === i)
+      rows.push({
+        rowNumber: i,
+        seatCount: existingRow?.seats_count || 25,
+        isCustom: existingRow?.custom_seat_count !== null && existingRow?.custom_seat_count !== undefined,
+        alignment: existingRow?.alignment || 'center'
+      })
+    }
+
+    return {
+      id: block.id,
+      name: block.name,
+      position_x: block.position_x != null ? block.position_x : -1,
+      position_y: block.position_y != null ? block.position_y : -1,
+      rotation: block.rotation || 0,
+      rowCount: rowCount,
+      defaultSeatsPerRow: 25,
+      rows: rows,
+      originalData: originalBlock
+    }
+  })
 })
 
 // UI State
@@ -46,13 +78,6 @@ const expandedRows = ref(new Set())
 const showNewBlockDialog = ref(false)
 const newBlockName = ref('')
 
-// Block editing state for seating blocks
-const blockEditor = ref({
-  blockId: null,
-  rows: 10,
-  seatsPerRow: 25,
-  customRowSeats: {}
-})
 
 // Create empty grid with block assignments
 const layoutGrid = computed(() => {
@@ -79,46 +104,19 @@ const layoutGrid = computed(() => {
   return grid
 })
 
-// Get all blocks with their placement status
-const allSeatingBlocks = computed(() => {
-  return form.blocks.map(block => {
-    const isPlaced = block.position_x >= 0 && block.position_x < GRID_COLS &&
-                     block.position_y >= 0 && block.position_y < GRID_ROWS &&
-                     block.position_x != null && block.position_y != null
-    return {
-      ...block,
-      isPlaced,
-      originalData: getOriginalSeatingBlock(block.id)
-    }
-  })
-})
-
-const allStageBlocks = computed(() => {
-  return form.stageBlocks.map(stageBlock => {
-    const isPlaced = stageBlock.position_x >= 0 && stageBlock.position_x < GRID_COLS &&
-                     stageBlock.position_y >= 0 && stageBlock.position_y < GRID_ROWS &&
-                     stageBlock.position_x != null && stageBlock.position_y != null
-    return {
-      ...stageBlock,
-      isPlaced,
-      originalData: getOriginalStageBlock(stageBlock.id)
-    }
-  })
-})
-
-// Get original block data for display
-const getOriginalSeatingBlock = (blockId) => {
-  return props.blocks.find(block => block.id === blockId)
+// Helper function to check if block is placed
+const getBlockPlacementStatus = (block) => {
+  return block.position_x >= 0 && block.position_x < GRID_COLS &&
+         block.position_y >= 0 && block.position_y < GRID_ROWS &&
+         block.position_x != null && block.position_y != null
 }
 
-const getOriginalStageBlock = (stageBlockId) => {
-  return props.stageBlocks.find(block => block.id === stageBlockId)
-}
 
-// Get total seats from the optimized count
+
+// Get total seats from the block's row data
 const getTotalSeats = (block) => {
-  const originalBlock = getOriginalSeatingBlock(block.id)
-  return originalBlock?.total_seats || 0
+  if (!block.rows || block.rows.length === 0) return 0
+  return block.rows.reduce((total, row) => total + (row.seatCount || 0), 0)
 }
 
 // Get orientation arrow
@@ -148,78 +146,8 @@ const isBlockExpanded = (blockId) => {
 const selectBlock = (block, type) => {
   selectedBlock.value = block
   selectedBlockType.value = type
-  
-  if (type === 'seating') {
-    const originalBlock = getOriginalSeatingBlock(block.id)
-    expandedRows.value.clear()
-
-    // Build custom row seats from existing data using the new custom_seat_count column
-    const customRowSeats = {}
-    let defaultSeatsPerRow = 25
-    let actualRowCount = originalBlock?.rows_count || 10
-
-    // If the block has rows data from database, load them
-    if (originalBlock?.rows && originalBlock.rows.length > 0) {
-      actualRowCount = originalBlock.rows.length
-      
-      // Calculate default from non-custom rows, or use most common if all are custom
-      const nonCustomSeatCounts = []
-      const allSeatCounts = []
-      
-      originalBlock.rows.forEach((row, index) => {
-        const rowNumber = index + 1
-        const seatCount = row.seats_count || 0
-        const customSeatCount = row.custom_seat_count
-        
-        if (seatCount > 0) {
-          allSeatCounts.push(seatCount)
-          
-          // If this row has a custom seat count, load it
-          if (customSeatCount !== null && customSeatCount !== undefined) {
-            customRowSeats[rowNumber] = customSeatCount
-          } else {
-            // This row uses the default
-            nonCustomSeatCounts.push(seatCount)
-          }
-        }
-      })
-
-      // Calculate default seats per row
-      if (nonCustomSeatCounts.length > 0) {
-        // Use the most common non-custom seat count as default
-        const countFrequency = {}
-        nonCustomSeatCounts.forEach(count => {
-          countFrequency[count] = (countFrequency[count] || 0) + 1
-        })
-        defaultSeatsPerRow = parseInt(Object.keys(countFrequency).reduce((a, b) => 
-          countFrequency[a] > countFrequency[b] ? a : b
-        ))
-      } else if (allSeatCounts.length > 0) {
-        // If all rows are custom, use the most common seat count as default
-        const countFrequency = {}
-        allSeatCounts.forEach(count => {
-          countFrequency[count] = (countFrequency[count] || 0) + 1
-        })
-        defaultSeatsPerRow = parseInt(Object.keys(countFrequency).reduce((a, b) => 
-          countFrequency[a] > countFrequency[b] ? a : b
-        ))
-      }
-    }
-
-    blockEditor.value = {
-      blockId: block.id,
-      rows: actualRowCount,
-      seatsPerRow: defaultSeatsPerRow,
-      customRowSeats: customRowSeats
-    }
-  }
 }
 
-const closeBlockEditor = () => {
-  selectedBlock.value = null
-  selectedBlockType.value = null
-  expandedRows.value.clear()
-}
 
 // Grid cell click handlers
 const handleCellClick = (rowIndex, colIndex) => {
@@ -284,7 +212,7 @@ const removeStageBlock = (index) => {
 const deleteSeatingBlock = (blockId) => {
   if (confirm('Are you sure you want to delete this block? This will permanently remove all rows and seats in this block.')) {
     const deleteForm = useForm({})
-    
+
     deleteForm.delete(route('admin.rooms.blocks.delete', { room: props.room.id, block: blockId }), {
       preserveScroll: true,
       onSuccess: () => {
@@ -298,43 +226,55 @@ const deleteSeatingBlock = (blockId) => {
   }
 }
 
+// Track form submission state
+const isSubmitting = ref(false)
+
 // Save all changes
 const saveLayout = () => {
-  // Clean up custom row seats before saving
-  if (blockEditor.value.blockId) {
-    blockEditor.value.customRowSeats = cleanupCustomRowSeats()
-  }
-  
-  // Include rows data for blocks that have been edited
-  const blocksWithRowData = form.blocks.map(block => {
-    const formattedBlock = { ...block }
-    
-    // If this block is currently being edited, include its row data
-    if (blockEditor.value.blockId === block.id && blockEditor.value.rows > 0) {
-      const rowsData = []
-      for (let i = 1; i <= blockEditor.value.rows; i++) {
-        const seatCount = getRowSeatCount(i)
-        const isCustom = blockEditor.value.customRowSeats[i] !== undefined && 
-                        blockEditor.value.customRowSeats[i] !== null && 
-                        blockEditor.value.customRowSeats[i] !== ''
-        
-        rowsData.push({
-          rowNumber: i,
-          seatCount: seatCount,
-          isCustom: isCustom
-        })
+  isSubmitting.value = true
+  // Build form data with row data for blocks that have rows configured
+  const formData = {
+    stageBlocks: form.stageBlocks.map(stageBlock => ({
+      id: stageBlock.id,
+      name: stageBlock.name,
+      position_x: stageBlock.position_x,
+      position_y: stageBlock.position_y
+    })),
+    blocks: form.blocks.map(block => {
+      const formattedBlock = {
+        id: block.id,
+        name: block.name,
+        position_x: block.position_x,
+        position_y: block.position_y,
+        rotation: block.rotation
       }
-      formattedBlock.rowsData = rowsData
-    }
-    
-    return formattedBlock
-  })
 
-  // Update the form data
-  form.blocks = blocksWithRowData
-  
-  // Submit the form
-  form.put(route('admin.rooms.layout.update', props.room.id))
+      // Include row data if block has rows configured
+      if (block.rows && block.rows.length > 0) {
+        formattedBlock.rowsData = block.rows.map(row => ({
+          rowNumber: row.rowNumber,
+          seatCount: row.seatCount,
+          isCustom: row.isCustom,
+          alignment: row.alignment
+        }))
+      }
+
+      return formattedBlock
+    })
+  }
+
+  console.log('Submitting form data:', formData)
+
+  // Create a new form instance with the data and submit
+  const submitForm = useForm(formData)
+  submitForm.put(route('admin.rooms.layout.update', props.room.id), {
+    onSuccess: () => {
+      isSubmitting.value = false
+    },
+    onError: () => {
+      isSubmitting.value = false
+    }
+  })
 }
 
 // Create new seating block
@@ -348,31 +288,38 @@ const closeNewBlockDialog = () => {
   newBlockName.value = ''
 }
 
-const createNewBlock = async () => {
+const createNewBlock = () => {
   if (!newBlockName.value.trim()) return
 
-  try {
-    const response = await fetch(route('admin.rooms.blocks.create', props.room.id), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        name: newBlockName.value
-      })
-    })
+  const createForm = useForm({
+    name: newBlockName.value
+  })
 
-    if (response.ok) {
-      // Refresh the page to show the new block
-      window.location.reload()
-    } else {
-      console.error('Failed to create block')
+  createForm.post(route('admin.rooms.blocks.create', props.room.id), {
+    onSuccess: () => {
+      // Add the new block to the form data instead of refreshing
+      const newBlock = {
+        id: Date.now(), // Temporary ID until page refresh
+        name: newBlockName.value,
+        position_x: -1,
+        position_y: -1,
+        rotation: 0,
+        rowCount: 10,
+        defaultSeatsPerRow: 25,
+        rows: Array.from({ length: 10 }, (_, i) => ({
+          rowNumber: i + 1,
+          seatCount: 25,
+          isCustom: false,
+          alignment: 'center'
+        }))
+      }
+      form.blocks.push(newBlock)
+      closeNewBlockDialog()
+    },
+    onError: (errors) => {
+      console.error('Failed to create block:', errors)
     }
-  } catch (error) {
-    console.error('Error creating block:', error)
-  }
+  })
 }
 
 // Row management for seating blocks
@@ -384,47 +331,39 @@ const toggleRowExpanded = (rowIndex) => {
   }
 }
 
-const isRowExpanded = (rowIndex) => {
-  return expandedRows.value.has(rowIndex)
-}
-
-const getRowSeatCount = (rowIndex) => {
-  // Check if this row has a custom seat count set
-  const customCount = blockEditor.value.customRowSeats[rowIndex]
-  if (customCount !== undefined && customCount !== null && customCount !== '') {
-    return parseInt(customCount) || blockEditor.value.seatsPerRow
-  }
-  return blockEditor.value.seatsPerRow
-}
-
-const calculateTotalSeats = () => {
-  let total = 0
-  for (let i = 1; i <= blockEditor.value.rows; i++) {
-    total += getRowSeatCount(i)
-  }
-  return total
-}
-
-// Clean up custom row seats - remove entries that equal the default
-const cleanupCustomRowSeats = () => {
-  const cleanedCustomRowSeats = { ...blockEditor.value.customRowSeats }
-  
-  Object.keys(cleanedCustomRowSeats).forEach(rowIndex => {
-    const customValue = cleanedCustomRowSeats[rowIndex]
-    if (customValue === blockEditor.value.seatsPerRow || customValue === '' || customValue === null || customValue === undefined) {
-      delete cleanedCustomRowSeats[rowIndex]
-    }
+// Row management functions
+const addRow = (block) => {
+  const newRowNumber = block.rows.length + 1
+  block.rows.push({
+    rowNumber: newRowNumber,
+    seatCount: 25, // Default seat count
+    isCustom: false,
+    alignment: 'center'
   })
-  
-  return cleanedCustomRowSeats
 }
 
-// Clear custom seat count for a specific row (makes it use default)
-const clearCustomRowSeat = (rowIndex) => {
-  if (blockEditor.value.customRowSeats[rowIndex] !== undefined) {
-    delete blockEditor.value.customRowSeats[rowIndex]
+const removeRow = (block) => {
+  if (block.rows.length > 1) {
+    block.rows.pop()
   }
 }
+
+const removeSpecificRow = (block, rowNumber) => {
+  if (block.rows.length > 1) {
+    // Remove the specific row
+    const index = block.rows.findIndex(row => row.rowNumber === rowNumber)
+    if (index !== -1) {
+      block.rows.splice(index, 1)
+
+      // Renumber all remaining rows to maintain sequential order
+      block.rows.forEach((row, idx) => {
+        row.rowNumber = idx + 1
+      })
+    }
+  }
+}
+
+
 </script>
 
 <template>
@@ -435,7 +374,7 @@ const clearCustomRowSeat = (rowIndex) => {
 
       <!-- Left Column: Stage & Block Management -->
       <div class="lg:col-span-2 space-y-4">
-        
+
         <!-- Stage Blocks Management -->
         <Card class="p-4">
           <div class="flex justify-between items-center mb-4">
@@ -447,7 +386,7 @@ const clearCustomRowSeat = (rowIndex) => {
 
           <div class="space-y-2 max-h-96 overflow-y-auto">
             <div
-              v-for="(stageBlock, index) in allStageBlocks"
+              v-for="(stageBlock, index) in form.stageBlocks"
               :key="`stage-${stageBlock.id || index}`"
               class="border border-gray-200 rounded-lg p-3"
               :class="{ 'ring-2 ring-red-500': selectedBlock?.id === stageBlock.id && selectedBlockType === 'stage' }"
@@ -471,34 +410,9 @@ const clearCustomRowSeat = (rowIndex) => {
                     🗑
                   </Button>
                 </div>
-                
-                <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label class="text-xs">X Position</Label>
-                    <Input
-                      v-model.number="stageBlock.position_x"
-                      type="number"
-                      min="-1"
-                      :max="GRID_COLS - 1"
-                      class="text-xs"
-                      @click.stop
-                    />
-                  </div>
-                  <div>
-                    <Label class="text-xs">Y Position</Label>
-                    <Input
-                      v-model.number="stageBlock.position_y"
-                      type="number"
-                      min="-1"
-                      :max="GRID_ROWS - 1"
-                      class="text-xs"
-                      @click.stop
-                    />
-                  </div>
-                </div>
-                
+
                 <div class="text-xs text-gray-500 mt-2">
-                  <span v-if="stageBlock.isPlaced" class="text-green-600">• Placed ({{ stageBlock.position_x }}, {{ stageBlock.position_y }})</span>
+                  <span v-if="getBlockPlacementStatus(stageBlock)" class="text-green-600">• Placed ({{ stageBlock.position_x }}, {{ stageBlock.position_y }})</span>
                   <span v-else class="text-orange-600">• Not placed</span>
                 </div>
               </div>
@@ -515,9 +429,9 @@ const clearCustomRowSeat = (rowIndex) => {
             </Button>
           </div>
 
-          <div class="space-y-2 max-h-96 overflow-y-auto">
+          <div class="space-y-2 overflow-y-auto">
             <div
-              v-for="block in allSeatingBlocks"
+              v-for="block in form.blocks"
               :key="block.id"
               class="border border-gray-200 rounded-lg"
               :class="{ 'ring-2 ring-blue-500': selectedBlock?.id === block.id && selectedBlockType === 'seating' }"
@@ -543,8 +457,8 @@ const clearCustomRowSeat = (rowIndex) => {
                       @click.stop
                     />
                     <div class="text-xs text-gray-500 mt-1">
-                      {{ getTotalSeats(block) }} seats • {{ block.originalData?.rows_count || 0 }} rows
-                      <span v-if="block.isPlaced" class="text-green-600">• Placed ({{ block.position_x }}, {{ block.position_y }})</span>
+                      {{ getTotalSeats(block) }} seats • {{ block.rows.length }} rows
+                      <span v-if="getBlockPlacementStatus(block)" class="text-green-600">• Placed ({{ block.position_x }}, {{ block.position_y }})</span>
                       <span v-else class="text-orange-600">• Not placed</span>
                     </div>
                   </div>
@@ -572,43 +486,75 @@ const clearCustomRowSeat = (rowIndex) => {
 
               <!-- Block Details (Expandable) -->
               <div v-if="isBlockExpanded(block.id)" class="border-t bg-gray-50 p-3">
-                <!-- Position Controls -->
-                <div class="mb-3">
-                  <Label class="text-xs">Position</Label>
-                  <div class="grid grid-cols-2 gap-2 mt-1">
-                    <Input
-                      v-model.number="block.position_x"
-                      type="number"
-                      min="-1"
-                      :max="GRID_COLS - 1"
-                      placeholder="X"
-                      class="text-xs"
-                    />
-                    <Input
-                      v-model.number="block.position_y"
-                      type="number"
-                      min="-1"
-                      :max="GRID_ROWS - 1"
-                      placeholder="Y"
-                      class="text-xs"
-                    />
-                  </div>
-                </div>
 
                 <!-- Row Configuration -->
                 <div>
-                  <Label class="text-xs">Rows</Label>
-                  <div class="space-y-1 max-h-32 overflow-y-auto mt-1">
-                    <div
-                      v-for="(row, index) in block.originalData?.rows || []"
-                      :key="row.id"
-                      class="flex justify-between items-center py-1 px-2 bg-white rounded text-xs border"
-                    >
-                      <span class="font-medium">{{ row.name }}</span>
-                      <span class="text-gray-500">{{ row.seats_count || 'Default' }} seats</span>
+                  <div class="flex justify-between items-center mb-2">
+                    <Label class="text-xs">Row Configuration ({{ block.rows.length }} rows)</Label>
+                    <div class="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        @click="addRow(block)"
+                        class="text-xs px-2 py-1"
+                        title="Add row"
+                      >
+                        + Row
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        @click="removeRow(block)"
+                        :disabled="block.rows.length <= 1"
+                        class="text-xs px-2 py-1"
+                        title="Remove last row"
+                      >
+                        - Row
+                      </Button>
                     </div>
-                    <div v-if="!block.originalData?.rows?.length" class="text-xs text-gray-500 italic py-2">
-                      No rows configured
+                  </div>
+                  <div class="space-y-1 max-h-60 overflow-y-auto">
+                    <div
+                      v-for="row in block.rows"
+                      :key="row.rowNumber"
+                      class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded text-xs"
+                    >
+                      <!-- Row Number -->
+                      <span class="font-medium w-12">Row {{ row.rowNumber }}</span>
+                      
+                      <!-- Seat Count Input -->
+                      <Input
+                        v-model.number="row.seatCount"
+                        type="number"
+                        min="1"
+                        max="100"
+                        class="text-xs h-7 w-16"
+                      />
+                      
+                      <!-- Alignment Select -->
+                      <select
+                        v-model="row.alignment"
+                        class="text-xs h-7 border border-gray-300 rounded px-2 flex-1"
+                      >
+                        <option value="left">Left</option>
+                        <option value="center">Center</option>
+                        <option value="right">Right</option>
+                      </select>
+                      
+                      <!-- Seat Count Display -->
+                      <span class="text-gray-500 w-16">{{ row.seatCount }} seats</span>
+                      
+                      <!-- Delete Button -->
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        @click="removeSpecificRow(block, row.rowNumber)"
+                        :disabled="block.rows.length <= 1"
+                        class="text-xs px-1 py-0 h-6 w-6 text-red-600 hover:bg-red-50 flex-shrink-0"
+                        title="Delete this row"
+                      >
+                        ×
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -667,34 +613,61 @@ const clearCustomRowSeat = (rowIndex) => {
                   </button>
 
                   <div v-if="isRowExpanded(rowIndex)" class="p-3 border-t">
-                    <Label class="text-xs">Custom Seat Count</Label>
-                    <div class="flex gap-2 mt-1">
-                      <Input
-                        v-model.number="blockEditor.customRowSeats[rowIndex]"
-                        type="number"
-                        min="1"
-                        max="100"
-                        :placeholder="`Default: ${blockEditor.seatsPerRow}`"
-                        class="text-sm flex-1"
-                      />
-                      <Button
-                        v-if="blockEditor.customRowSeats[rowIndex] !== undefined"
-                        variant="outline"
-                        size="sm"
-                        @click="clearCustomRowSeat(rowIndex)"
-                        class="text-xs px-2"
-                        title="Use default"
-                      >
-                        Reset
-                      </Button>
-                    </div>
-                    <div class="text-xs text-gray-500 mt-1">
-                      <span v-if="blockEditor.customRowSeats[rowIndex]">
-                        Using custom count: {{ blockEditor.customRowSeats[rowIndex] }}
-                      </span>
-                      <span v-else>
-                        Using default: {{ blockEditor.seatsPerRow }}
-                      </span>
+                    <div class="grid grid-cols-2 gap-4">
+                      <!-- Custom Seat Count -->
+                      <div>
+                        <Label class="text-xs">Custom Seat Count</Label>
+                        <div class="flex gap-2 mt-1">
+                          <Input
+                            v-model.number="blockEditor.customRowSeats[rowIndex]"
+                            type="number"
+                            min="1"
+                            max="100"
+                            :placeholder="`Default: ${blockEditor.seatsPerRow}`"
+                            class="text-sm flex-1"
+                          />
+                          <Button
+                            v-if="blockEditor.customRowSeats[rowIndex] !== undefined"
+                            variant="outline"
+                            size="sm"
+                            @click="clearCustomRowSeat(rowIndex)"
+                            class="text-xs px-2"
+                            title="Use default"
+                          >
+                            Reset
+                          </Button>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">
+                          <span v-if="blockEditor.customRowSeats[rowIndex]">
+                            Using custom count: {{ blockEditor.customRowSeats[rowIndex] }}
+                          </span>
+                          <span v-else>
+                            Using default: {{ blockEditor.seatsPerRow }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- Seat Alignment -->
+                      <div>
+                        <Label class="text-xs">Seat Alignment</Label>
+                        <Select
+                          :value="blockEditor.rowAlignments[rowIndex] || 'center'"
+                          @update:value="(value) => updateRowAlignment(rowIndex, value)"
+                          class="mt-1 w-full"
+                        >
+                          <SelectTrigger class="text-sm">
+                            <SelectValue>{{ blockEditor.rowAlignments[rowIndex] }}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="left">Left</SelectItem>
+                            <SelectItem value="center">Center</SelectItem>
+                            <SelectItem value="right">Right</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div class="text-xs text-gray-500 mt-1">
+                          Controls how seats are aligned within this row
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -771,7 +744,7 @@ const clearCustomRowSeat = (rowIndex) => {
 
                       <!-- Seat Count -->
                       <div class="text-xs text-gray-600">{{ getTotalSeats(cell) }} seats</div>
-                      <div class="text-xs text-gray-500">{{ getOriginalSeatingBlock(cell.id)?.rows_count || 0 }} rows</div>
+                      <div class="text-xs text-gray-500">{{ cell.rows?.length || 0 }} rows</div>
                     </div>
                   </td>
                 </tr>
@@ -789,11 +762,11 @@ const clearCustomRowSeat = (rowIndex) => {
         <div class="mt-6 flex justify-center">
           <Button
             @click="saveLayout"
-            :disabled="form.processing"
+            :disabled="isSubmitting"
             class="bg-green-600 hover:bg-green-700 text-white px-12 py-3"
             size="lg"
           >
-            <span v-if="form.processing">Saving...</span>
+            <span v-if="isSubmitting">Saving...</span>
             <span v-else>Save Entire Layout</span>
           </Button>
         </div>

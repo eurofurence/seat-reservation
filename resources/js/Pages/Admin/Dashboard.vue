@@ -130,11 +130,11 @@ const formatTime = (dateTime) => {
         <CardContent>
           <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p class="text-sm text-blue-800">
-              <strong>For Desk Attendees:</strong> Enter a booking code to open the event page and highlight the specific booking in the table. 
+              Enter a booking code to open the event page and highlight the specific booking in the table.
               This lookup does <strong>not</strong> mark the PAT as handed out - you must still check the pickup box manually.
             </p>
           </div>
-          
+
           <form @submit.prevent="lookupBookingCode" class="flex gap-4 items-end">
             <div class="flex-1">
               <Label for="booking_code">Booking Code</Label>

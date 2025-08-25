@@ -17,12 +17,23 @@ class Row extends Model
         'name',
         'order',
         'seats_count',
-        'custom_seat_count'
+        'custom_seat_count',
+        'alignment'
     ];
 
     protected $casts = [
-        'order' => 'integer'
+        'order' => 'integer',
+        'alignment' => 'string'
     ];
+
+    public function getAlignmentOptions(): array
+    {
+        return [
+            'left' => 'Left',
+            'center' => 'Center',
+            'right' => 'Right'
+        ];
+    }
 
     public function block()
     {

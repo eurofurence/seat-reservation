@@ -36,6 +36,7 @@ const navigateTo = (route) => {
   sidebarOpen.value = false
 }
 
+
 </script>
 
 <template>

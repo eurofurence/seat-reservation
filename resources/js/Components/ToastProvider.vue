@@ -31,7 +31,14 @@ onMounted(() => {
 
 // Watch for page prop changes to show flash messages
 watch(() => page.props.flash, (newFlash, oldFlash) => {
-  if (newFlash && newFlash !== oldFlash) {
+  // Show toast if there's any flash message, regardless of whether it changed
+  // This ensures toasts show on every form submission
+  if (newFlash && (
+    newFlash.success || 
+    newFlash.error || 
+    newFlash.warning || 
+    newFlash.info
+  )) {
     setTimeout(() => {
       showFlashMessages()
     }, 100)
