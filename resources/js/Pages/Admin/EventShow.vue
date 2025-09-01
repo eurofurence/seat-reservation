@@ -319,12 +319,17 @@ const deleteBooking = () => {
     })
 }
 
-// Get display name for booking
+// Get display name for booking (guest name from the booking)
 const getBookingDisplayName = (booking) => {
-    if (booking.user) {
+    // First priority: the name field on the booking (guest name)
+    if (booking.name) {
+        return booking.name
+    }
+    // Fallback: user name if no guest name is set
+    if (booking.user && booking.user.name) {
         return booking.user.name
     }
-    return booking.name || 'Unknown'
+    return 'Unknown'
 }
 
 // Get booker information (user name or "Admin Booking")
@@ -657,7 +662,7 @@ onMounted(scrollToHighlightedBooking)
                                             v-model="searchQuery"
                                             @input="debouncedSearch"
                                             :placeholder="props.bookingcode ? 'Filtered by booking code' : 'Search by name, seat, or comment...'"
-                                            :disabled="props.bookingcode"
+                                            :disabled="!!props.bookingcode"
                                             class="h-8 text-sm pr-8"
                                             :class="{ 'bg-gray-50': props.bookingcode }"
                                         />

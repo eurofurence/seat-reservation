@@ -39,11 +39,11 @@
 
         .card-name {
             font-family: 'orbitron', 'DejaVu Sans', sans-serif;
-            font-size: 40pt;
+            font-size: 80pt;
             font-weight: bold;
             color: #000;
             margin-bottom: 20mm;
-            width: 60%;
+            width: 75%;
             margin-left: auto;
             margin-right: auto;
             text-transform: uppercase;
@@ -54,7 +54,7 @@
 
         .card-location {
             font-family: 'orbitron', 'DejaVu Sans', sans-serif;
-            font-size: 24pt;
+            font-size: 32pt;
             font-weight: normal;
             color: #000;
             text-transform: uppercase;
