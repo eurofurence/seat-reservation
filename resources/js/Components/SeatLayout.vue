@@ -325,6 +325,7 @@ watch(() => props.selectedSeats, (newSeats) => {
   vertical-align: middle;
   cursor: not-allowed;
   user-select: none;
+  min-width: 200px;
 }
 
 /* Stage Text */
@@ -339,6 +340,7 @@ watch(() => props.selectedSeats, (newSeats) => {
   width: 100%;
   height: 100%;
   min-height: 60px;
+  min-width: 200px;
 }
 
 /* Empty Cell */

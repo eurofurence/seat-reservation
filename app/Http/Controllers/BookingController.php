@@ -88,6 +88,12 @@ class BookingController extends Controller
             ->pluck('seat_id')
             ->toArray();
 
+        // Load stage blocks for the room
+        $stageBlocks = $event->room->stageBlocks()
+            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'order')
+            ->orderBy('order')
+            ->get();
+
         // Calculate tickets left manually to avoid heavy loading
         $maxTickets = $event->max_tickets ?? 0;
         $bookedTickets = $event->bookings()->count();
@@ -97,6 +103,7 @@ class BookingController extends Controller
             'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at']), ['tickets_left' => $ticketsLeft]),
             'room' => $event->room->only(['id', 'name', 'stage_x', 'stage_y']),
             'blocks' => $blocks,
+            'stageBlocks' => $stageBlocks,
             'bookedSeats' => $bookedSeats,
             'selectedSeats' => $request->get('seats', []), // Pass selected seats from URL
             'maxSeatsPerUser' => min(2, $ticketsLeft),
