@@ -33,7 +33,7 @@
         }
 
         .text-content {
-            padding-top: 75mm;
+            padding-top: 35mm;
             text-align: center;
         }
 
@@ -69,9 +69,9 @@
         <div class="text-content">
             <div class="card-name">
                 @if($booking->name)
-                    {{ $booking->name }}
+                    {{ Str::limit($booking->name, 24, '') }}
                 @elseif($booking->user)
-                    {{ $booking->user->name }}
+                    {{ Str::limit($booking->user->name, 24, '') }}
                 @else
                     Unknown
                 @endif

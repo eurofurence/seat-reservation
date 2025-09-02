@@ -183,7 +183,7 @@ class BookingController extends Controller
         $data = $request->validate([
             'seats' => 'required|array',
             'seats.*.seat_id' => 'required|exists:seats,id',
-            'seats.*.name' => 'required|string|max:255',
+            'seats.*.name' => 'required|string|max:24',
             'seats.*.comment' => 'nullable|string|max:255',
         ]);
 
