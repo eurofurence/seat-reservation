@@ -406,9 +406,14 @@ const exportBookings = async () => {
     }
 }
 
+const includeUnpickedInPrint = ref(false)
+
 const printSeatCards = () => {
-    // Open seat cards PDF in new window
-    window.open(route('admin.events.seating-cards', props.event.id), '_blank')
+    const url = new URL(route('admin.events.seating-cards', props.event.id), window.location.origin)
+    if (includeUnpickedInPrint.value) {
+        url.searchParams.set('include_unpicked', '1')
+    }
+    window.open(url.toString(), '_blank')
 }
 
 const getSeatInfo = (booking) => {
@@ -493,10 +498,16 @@ onMounted(scrollToHighlightedBooking)
                         <Download class="mr-2 h-4 w-4"/>
                         Export Bookings
                     </Button>
-                    <Button @click="printSeatCards" variant="outline">
-                        <Download class="mr-2 h-4 w-4"/>
-                        Print Seat Cards
-                    </Button>
+                    <div class="flex flex-col items-end gap-1">
+                        <Button @click="printSeatCards" variant="outline">
+                            <Download class="mr-2 h-4 w-4"/>
+                            Print Seat Cards
+                        </Button>
+                        <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                            <input type="checkbox" v-model="includeUnpickedInPrint" class="h-3 w-3" />
+                            Include unpicked
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
