@@ -169,7 +169,7 @@ class SeatingCardsTest extends TestCase
         ]);
 
         $response = $this->actingAs($adminUser)
-            ->get(route('admin.events.seating-cards', $event->id) . '?include_unpicked=1');
+            ->get(route('admin.events.seating-cards', $event->id).'?include_unpicked=1');
 
         // PDF is generated (both bookings are included)
         $response->assertStatus(200);

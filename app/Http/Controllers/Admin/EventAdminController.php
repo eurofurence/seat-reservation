@@ -353,6 +353,7 @@ class EventAdminController extends Controller
 
             if ($alreadyBooked) {
                 DB::rollback();
+
                 return back()->with('error', 'One or more selected seats are already booked.');
             }
 
