@@ -22,7 +22,8 @@
         "tailwind-merge": "^3.3.1",
         "tailwindcss-animate": "^1.0.7",
         "vite": "^5.0.0",
-        "vue": "^3.4.0"
+        "vue": "^3.4.0",
+        "vue-tsc": "^2.2.12"
     },
     "dependencies": {
         "@panzoom/panzoom": "^4.6.0",
