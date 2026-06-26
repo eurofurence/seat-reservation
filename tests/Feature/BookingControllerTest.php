@@ -96,7 +96,7 @@ class BookingControllerTest extends TestCase
 
         $bookings = Booking::where('event_id', $this->event->id)->get();
         $this->assertTrue($bookings->every(fn ($booking) => $booking->booking_code !== null));
-        $this->assertTrue($bookings->every(fn ($booking) => strlen($booking->booking_code) === 2));
+        $this->assertTrue($bookings->every(fn ($booking) => strlen($booking->booking_code) === 3));
         $this->assertTrue($bookings->every(fn ($booking) => $booking->user_id === $this->user->id));
         $this->assertTrue($bookings->every(fn ($booking) => $booking->type === 'online'));
 
@@ -122,7 +122,7 @@ class BookingControllerTest extends TestCase
         // Admin users through user interface also get booking codes
         $booking = Booking::where('user_id', $this->admin->id)->first();
         $this->assertNotNull($booking->booking_code, 'Admin should get booking code through user interface');
-        $this->assertEquals(2, strlen($booking->booking_code), 'Booking code should be 2 characters');
+        $this->assertEquals(3, strlen($booking->booking_code), 'Booking code should be 3 characters');
     }
 
     /** @test */
@@ -235,8 +235,8 @@ class BookingControllerTest extends TestCase
         $response->assertRedirect();
         $booking = Booking::where('event_id', $this->event->id)->first();
         $this->assertNotNull($booking->booking_code);
-        $this->assertEquals(2, strlen($booking->booking_code));
-        $this->assertMatchesRegularExpression('/^[A-Z0-9]{2}$/', $booking->booking_code);
+        $this->assertEquals(3, strlen($booking->booking_code));
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}$/', $booking->booking_code);
     }
 
     /** @test */
@@ -275,8 +275,8 @@ class BookingControllerTest extends TestCase
 
         // Booking codes should be different (session unique)
         $this->assertNotEquals($firstBookingCode, $secondBookingCode);
-        $this->assertEquals(2, strlen($firstBookingCode));
-        $this->assertEquals(2, strlen($secondBookingCode));
+        $this->assertEquals(3, strlen($firstBookingCode));
+        $this->assertEquals(3, strlen($secondBookingCode));
     }
 
     /** @test */
@@ -483,6 +483,6 @@ class BookingControllerTest extends TestCase
         $newBooking = Booking::where('event_id', $this->event->id)->first();
         $this->assertNotEquals('AA', $newBooking->booking_code);
         $this->assertNotNull($newBooking->booking_code);
-        $this->assertEquals(2, strlen($newBooking->booking_code));
+        $this->assertEquals(3, strlen($newBooking->booking_code));
     }
 }

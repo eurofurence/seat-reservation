@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import { onMounted, watch } from 'vue'
-import { router, usePage } from '@inertiajs/vue3'
+import { usePage } from '@inertiajs/vue3'
 import { Toaster, useToast } from '@/Components/ui/toast'
 
 const page = usePage()
 const { success, error, warning, info } = useToast()
 
+type FlashMessages = {
+  success?: string
+  error?: string
+  warning?: string
+  info?: string
+}
+
 // Show toast for flash messages
 const showFlashMessages = () => {
-  const flash = page.props.flash
+  const flash = page.props.flash as FlashMessages | undefined
   
   if (flash?.success) {
     success('Success', flash.success)
@@ -30,7 +37,7 @@ onMounted(() => {
 })
 
 // Watch for page prop changes to show flash messages
-watch(() => page.props.flash, (newFlash, oldFlash) => {
+watch(() => page.props.flash as FlashMessages | undefined, (newFlash) => {
   // Show toast if there's any flash message, regardless of whether it changed
   // This ensures toasts show on every form submission
   if (newFlash && (

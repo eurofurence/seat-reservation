@@ -257,18 +257,21 @@ class EventAdminController extends Controller
         try {
             $event = Event::with('room')->findOrFail($id);
 
-            $bookings = Booking::where('event_id', $id)
-                ->whereNotNull('picked_up_at')
-                ->with(['user:id,name', 'seat:id,row_id,label,number', 'seat.row:id,block_id,name', 'seat.row.block:id,name'])
-                ->get()
-                ->sortBy([
-                    ['seat.row.block.name', 'asc'],
-                    ['seat.row.name', 'asc'],
-                    ['seat.number', 'asc'],
-                ]);
+            $bookingsQuery = Booking::where('event_id', $id)
+                ->with(['user:id,name', 'seat:id,row_id,label,number', 'seat.row:id,block_id,name', 'seat.row.block:id,name']);
+
+            if (! request()->boolean('include_unpicked')) {
+                $bookingsQuery->whereNotNull('picked_up_at');
+            }
+
+            $bookings = $bookingsQuery->get()->sortBy([
+                ['seat.row.block.name', 'asc'],
+                ['seat.row.name', 'asc'],
+                ['seat.number', 'asc'],
+            ]);
 
             if ($bookings->isEmpty()) {
-                return back()->with('error', 'No picked up bookings found for this event. Only bookings that have been picked up will generate seating cards.');
+                return back()->with('error', 'No bookings found for this event to generate seating cards.');
             }
 
             // mPDF configuration with custom Orbitron font
@@ -350,6 +353,7 @@ class EventAdminController extends Controller
 
             if ($alreadyBooked) {
                 DB::rollback();
+
                 return back()->with('error', 'One or more selected seats are already booked.');
             }
 

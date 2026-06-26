@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Block;
 use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
-use App\Models\Block;
 use App\Models\Row;
 use App\Models\Seat;
 use App\Models\User;
@@ -17,12 +17,19 @@ class BookingSecurityTest extends TestCase
     use RefreshDatabase;
 
     protected User $user1;
+
     protected User $user2;
+
     protected User $admin;
+
     protected Event $event;
+
     protected Room $room;
+
     protected $seats;
+
     protected Booking $user1Booking;
+
     protected Booking $user2Booking;
 
     protected function setUp(): void
@@ -349,7 +356,7 @@ class BookingSecurityTest extends TestCase
     {
         // Create a third user
         $user3 = User::factory()->create(['is_admin' => false]);
-        
+
         // User1 and User3 both have bookings
         $user3Booking = Booking::factory()->create([
             'user_id' => $user3->id,

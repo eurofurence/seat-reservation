@@ -51,7 +51,7 @@ class AdminDashboardTest extends TestCase
             'user_id' => $this->user->id,
             'event_id' => $this->event->id,
             'seat_id' => $seat->id,
-            'booking_code' => 'A7',
+            'booking_code' => 'A7X',
             'type' => 'online',
         ]);
     }
@@ -70,12 +70,12 @@ class AdminDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'A7',
+                'booking_code' => 'A7X',
             ]);
 
         $response->assertRedirect(route('admin.events.show', [
             'event' => $this->event->id,
-            'bookingcode' => 'A7',
+            'bookingcode' => 'A7X',
         ]));
     }
 
@@ -84,7 +84,7 @@ class AdminDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'ZZ',
+                'booking_code' => 'ZZZ',
             ]);
 
         $response->assertRedirect()
@@ -92,18 +92,18 @@ class AdminDashboardTest extends TestCase
     }
 
     /** @test */
-    public function booking_code_lookup_requires_exact_two_character_format()
+    public function booking_code_lookup_requires_exact_three_character_format()
     {
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'A',
+                'booking_code' => 'AB',
             ]);
 
         $response->assertSessionHasErrors('booking_code');
 
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'ABC',
+                'booking_code' => 'ABCD',
             ]);
 
         $response->assertSessionHasErrors('booking_code');
@@ -114,12 +114,12 @@ class AdminDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'a7',
+                'booking_code' => 'a7x',
             ]);
 
         $response->assertRedirect(route('admin.events.show', [
             'event' => $this->event->id,
-            'bookingcode' => 'A7',
+            'bookingcode' => 'A7X',
         ]));
     }
 
@@ -137,7 +137,7 @@ class AdminDashboardTest extends TestCase
     {
         $response = $this->actingAs($this->user)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'A7',
+                'booking_code' => 'A7X',
             ]);
 
         $response->assertStatus(403);
@@ -171,30 +171,30 @@ class AdminDashboardTest extends TestCase
             'user_id' => $this->user->id,
             'event_id' => $otherEvent->id,
             'seat_id' => $otherSeat->id,
-            'booking_code' => 'B3',
+            'booking_code' => 'B3X',
             'type' => 'online',
         ]);
 
         // Lookup first booking code
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'A7',
+                'booking_code' => 'A7X',
             ]);
 
         $response->assertRedirect(route('admin.events.show', [
             'event' => $this->event->id,
-            'bookingcode' => 'A7',
+            'bookingcode' => 'A7X',
         ]));
 
         // Lookup second booking code
         $response = $this->actingAs($this->admin)
             ->post(route('admin.lookup-booking-code'), [
-                'booking_code' => 'B3',
+                'booking_code' => 'B3X',
             ]);
 
         $response->assertRedirect(route('admin.events.show', [
             'event' => $otherEvent->id,
-            'bookingcode' => 'B3',
+            'bookingcode' => 'B3X',
         ]));
     }
 }

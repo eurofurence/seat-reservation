@@ -71,8 +71,8 @@ class BookingCodeGenerationTest extends TestCase
 
         $this->assertNotNull($booking, 'Booking should be created');
         $this->assertNotNull($booking->booking_code, 'Booking code should be generated');
-        $this->assertEquals(2, strlen($booking->booking_code), 'Booking code should be 2 characters');
-        $this->assertMatchesRegularExpression('/^[A-Z0-9]{2}$/', $booking->booking_code, 'Booking code should be alphanumeric uppercase');
+        $this->assertEquals(3, strlen($booking->booking_code), 'Booking code should be 3 characters');
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}$/', $booking->booking_code, 'Booking code should be alphanumeric uppercase');
         $this->assertEquals('online', $booking->type);
     }
 
@@ -99,8 +99,8 @@ class BookingCodeGenerationTest extends TestCase
 
         $this->assertNotNull($booking, 'Booking should be created');
         $this->assertNotNull($booking->booking_code, 'Admin using user interface should get booking code');
-        $this->assertEquals(2, strlen($booking->booking_code));
-        $this->assertMatchesRegularExpression('/^[A-Z0-9]{2}$/', $booking->booking_code);
+        $this->assertEquals(3, strlen($booking->booking_code));
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}$/', $booking->booking_code);
         $this->assertEquals('online', $booking->type);
     }
 
@@ -366,8 +366,8 @@ class BookingCodeGenerationTest extends TestCase
         $this->assertNotEmpty($codes, 'Should have generated some booking codes');
 
         foreach ($codes as $code) {
-            $this->assertEquals(2, strlen($code), "Code '$code' should be exactly 2 characters");
-            $this->assertMatchesRegularExpression('/^[A-Z0-9]{2}$/', $code, "Code '$code' should only contain uppercase letters and numbers");
+            $this->assertEquals(3, strlen($code), "Code '$code' should be exactly 3 characters");
+            $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}$/', $code, "Code '$code' should only contain uppercase letters and numbers");
         }
     }
 }

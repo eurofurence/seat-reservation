@@ -10,6 +10,7 @@ interface Seat {
 interface Row {
   id: number
   name: string
+  alignment?: 'left' | 'center' | 'right'
   seats: Seat[]
 }
 
@@ -89,13 +90,13 @@ const getRowOrder = (rows: Row[], rotation: number) => {
 }
 
 // Get justification class based on alignment and rotation
-const getJustificationClass = (alignment, rotation) => {
+const getJustificationClass = (alignment?: 'left' | 'center' | 'right', rotation?: number) => {
   // Default to center if no alignment specified
-  if (!alignment) alignment = 'center'
+  const effectiveAlignment = alignment ?? 'center'
   
   if (rotation === 90 || rotation === 270) {
     // For vertical orientations, reverse the mapping
-    switch (alignment) {
+    switch (effectiveAlignment) {
       case 'left': return 'justify-start'    // left becomes top (start)
       case 'center': return 'justify-center' // center stays center
       case 'right': return 'justify-end'     // right becomes bottom (end)
@@ -103,7 +104,7 @@ const getJustificationClass = (alignment, rotation) => {
     }
   } else {
     // For horizontal orientations (0° and 180°)
-    switch (alignment) {
+    switch (effectiveAlignment) {
       case 'left': return 'justify-start'
       case 'center': return 'justify-center'
       case 'right': return 'justify-end'

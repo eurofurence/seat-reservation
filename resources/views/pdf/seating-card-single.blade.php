@@ -62,6 +62,24 @@
             line-height: 1.6;
             display: flex;
         }
+
+        .not-picked-up {
+            font-family: 'orbitron', 'DejaVu Sans', sans-serif;
+            font-size: 28pt;
+            font-weight: bold;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background-color: #000;
+            padding: 4mm 10mm;
+            white-space: nowrap;
+        }
+
+        .not-picked-up-wrapper {
+            position: fixed;
+            bottom: 20mm;
+            right: 20mm;
+        }
     </style>
 </head>
 <body>
@@ -81,5 +99,12 @@
             </div>
         </div>
     </div>
+    @if(is_null($booking->picked_up_at))
+    <div class="not-picked-up-wrapper">
+        <table style="border-collapse: collapse; width: 1px;">
+            <tr><td class="not-picked-up">Not Picked Up</td></tr>
+        </table>
+    </div>
+    @endif
 </body>
 </html>

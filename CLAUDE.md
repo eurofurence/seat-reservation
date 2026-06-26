@@ -275,7 +275,7 @@ Room (stage_x, stage_y positioning)
 ## Booking Code System
 
 ### Architecture
-- 2-character alphanumeric booking codes (A-Z, 0-9) for easy ticket pickup
+- 3-character alphanumeric booking codes (A-Z, 0-9) for easy ticket pickup
 - Generated for **ALL** user interface bookings (regular users and admins)
 - **NOT** generated for admin manual bookings (type: 'admin')
 - Session-unique codes with collision detection
@@ -290,7 +290,7 @@ private function generateUniqueBookingCode(): string
     $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     while (true) {
         $code = '';
-        for ($i = 0; $i < 2; $i++) {
+        for ($i = 0; $i < 3; $i++) {
             $code .= $characters[rand(0, $charactersLength - 1)];
         }
         if (!Booking::where('booking_code', $code)->exists()) {
@@ -324,7 +324,7 @@ $bookings[] = [
 // AdminController::lookupBookingCode()
 public function lookupBookingCode(Request $request)
 {
-    $request->validate(['booking_code' => 'required|string|size:2']);
+    $request->validate(['booking_code' => 'required|string|size:3']);
     $bookingCode = strtoupper($request->booking_code);
     
     $booking = Booking::where('booking_code', $bookingCode)
@@ -339,6 +339,30 @@ public function lookupBookingCode(Request $request)
     return redirect()->route('admin.events.show', $booking->event->id)
         ->with(['bookingcode' => $bookingCode]);
 }
+```
+
+## Seat Card Printing
+
+### Print-time toggle: `?include_unpicked`
+The seating cards URL accepts an `include_unpicked` query parameter to control whether unpicked reservations are included.
+
+- **Default (omitted):** only bookings with `picked_up_at != null` are printed
+- **`?include_unpicked=1`:** all bookings are printed; unpicked ones display a visible **"Not Picked Up"** marker on the card
+
+The checkbox in the "Print Seat Cards" button in `EventShow.vue` sets this param at print time.
+
+```php
+// EventAdminController::seatingCards()
+if (! request()->boolean('include_unpicked')) {
+    $bookingsQuery->whereNotNull('picked_up_at');
+}
+```
+
+The marker is rendered in `resources/views/pdf/seating-card-single.blade.php`:
+```blade
+@if(is_null($booking->picked_up_at))
+    <div class="not-picked-up">Not Picked Up</div>
+@endif
 ```
 
 ## Performance Optimization Patterns
@@ -399,10 +423,12 @@ if (is_object($bookings) && method_exists($bookings, 'items')) {
 
 ### PDF Generation Testing
 ```php
-// SeatingCards tests require picked_up_at to be set
+// Picked-up bookings are always printed.
+// Unpicked bookings are printed only when include_unpicked=1,
+// and will display a visible 'Not Picked Up' marker on the seat card.
 $booking = Booking::factory()->create([
     'event_id' => $event->id,
     'seat_id' => $seat->id,
-    'picked_up_at' => now()  // Required for PDF generation
+    'picked_up_at' => now(), // omit or set null for unpicked
 ]);
 ```

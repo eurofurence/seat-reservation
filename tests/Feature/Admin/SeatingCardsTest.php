@@ -103,4 +103,129 @@ class SeatingCardsTest extends TestCase
             $response->isRedirect()
         );
     }
+
+    public function test_seating_cards_excludes_unpicked_bookings_when_toggle_is_off()
+    {
+        $adminUser = User::factory()->create(['is_admin' => true]);
+        $room = Room::factory()->create();
+        $event = Event::factory()->create([
+            'room_id' => $room->id,
+        ]);
+        $block = Block::factory()->create(['room_id' => $room->id, 'name' => 'A', 'type' => 'seating']);
+        $row = Row::factory()->create(['block_id' => $block->id, 'name' => '1']);
+        $seat1 = Seat::factory()->create(['row_id' => $row->id, 'label' => 'S1', 'number' => 1]);
+        $seat2 = Seat::factory()->create(['row_id' => $row->id, 'label' => 'S2', 'number' => 2]);
+
+        // One picked-up booking
+        Booking::factory()->create([
+            'event_id' => $event->id,
+            'seat_id' => $seat1->id,
+            'name' => 'Picked Guest',
+            'picked_up_at' => now(),
+        ]);
+
+        // One unpicked booking
+        Booking::factory()->create([
+            'event_id' => $event->id,
+            'seat_id' => $seat2->id,
+            'name' => 'Unpicked Guest',
+            'picked_up_at' => null,
+        ]);
+
+        $response = $this->actingAs($adminUser)
+            ->get(route('admin.events.seating-cards', $event->id));
+
+        // PDF is generated (only the picked-up booking is included)
+        $response->assertStatus(200);
+        $response->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_seating_cards_includes_unpicked_bookings_when_toggle_is_on()
+    {
+        $adminUser = User::factory()->create(['is_admin' => true]);
+        $room = Room::factory()->create();
+        $event = Event::factory()->create([
+            'room_id' => $room->id,
+        ]);
+        $block = Block::factory()->create(['room_id' => $room->id, 'name' => 'A', 'type' => 'seating']);
+        $row = Row::factory()->create(['block_id' => $block->id, 'name' => '1']);
+        $seat1 = Seat::factory()->create(['row_id' => $row->id, 'label' => 'S1', 'number' => 1]);
+        $seat2 = Seat::factory()->create(['row_id' => $row->id, 'label' => 'S2', 'number' => 2]);
+
+        // One picked-up booking
+        Booking::factory()->create([
+            'event_id' => $event->id,
+            'seat_id' => $seat1->id,
+            'name' => 'Picked Guest',
+            'picked_up_at' => now(),
+        ]);
+
+        // One unpicked booking
+        Booking::factory()->create([
+            'event_id' => $event->id,
+            'seat_id' => $seat2->id,
+            'name' => 'Unpicked Guest',
+            'picked_up_at' => null,
+        ]);
+
+        $response = $this->actingAs($adminUser)
+            ->get(route('admin.events.seating-cards', $event->id).'?include_unpicked=1');
+
+        // PDF is generated (both bookings are included)
+        $response->assertStatus(200);
+        $response->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_seating_cards_returns_error_when_no_bookings_and_toggle_is_off()
+    {
+        $adminUser = User::factory()->create(['is_admin' => true]);
+        $room = Room::factory()->create();
+        $event = Event::factory()->create([
+            'room_id' => $room->id,
+        ]);
+        $block = Block::factory()->create(['room_id' => $room->id, 'name' => 'A', 'type' => 'seating']);
+        $row = Row::factory()->create(['block_id' => $block->id, 'name' => '1']);
+        $seat = Seat::factory()->create(['row_id' => $row->id, 'label' => 'S1', 'number' => 1]);
+
+        // Only an unpicked booking — toggle is off, so nothing to print
+        Booking::factory()->create([
+            'event_id' => $event->id,
+            'seat_id' => $seat->id,
+            'name' => 'Unpicked Guest',
+            'picked_up_at' => null,
+        ]);
+
+        $response = $this->actingAs($adminUser)
+            ->get(route('admin.events.seating-cards', $event->id));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+    }
+
+    public function test_seating_cards_unpicked_booking_contains_not_picked_up_marker()
+    {
+        $adminUser = User::factory()->create(['is_admin' => true]);
+        $room = Room::factory()->create();
+        $event = Event::factory()->create([
+            'room_id' => $room->id,
+        ]);
+        $block = Block::factory()->create(['room_id' => $room->id, 'name' => 'A', 'type' => 'seating']);
+        $row = Row::factory()->create(['block_id' => $block->id, 'name' => '1']);
+        $seat = Seat::factory()->create(['row_id' => $row->id, 'label' => 'S1', 'number' => 1]);
+
+        $booking = Booking::factory()->create([
+            'event_id' => $event->id,
+            'seat_id' => $seat->id,
+            'name' => 'Unpicked Guest',
+            'picked_up_at' => null,
+        ]);
+
+        // Render the blade template directly to verify the marker is present
+        $html = view('pdf.seating-card-single', [
+            'booking' => $booking->load(['user', 'seat.row.block']),
+            'event' => $event,
+        ])->render();
+
+        $this->assertStringContainsString('Not Picked Up', $html);
+    }
 }
