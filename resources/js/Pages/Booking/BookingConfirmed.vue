@@ -81,7 +81,7 @@ const formatDate = (dateString: string) => {
 
                     <!-- Actions -->
                     <div class="flex justify-center pt-4">
-                        <Link :href="route('bookings.index')">
+                        <Link href="/bookings">
                             <Button as="span">View My Bookings</Button>
                         </Link>
                     </div>

@@ -8,7 +8,8 @@ import { Calendar } from '@/Components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
 import { CalendarIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
-import { DateFormatter, getLocalTimeZone, parseDate, CalendarDate } from '@internationalized/date'
+import { DateFormatter, parseDate } from '@internationalized/date'
+import type { DateValue } from 'reka-ui'
 import dayjs from 'dayjs'
 
 interface Event {
@@ -40,11 +41,11 @@ const df = new DateFormatter('en-US', {
 })
 
 // Convert datetime string to CalendarDate for the date picker
-const parseDateTime = (dateTimeString: string) => {
+const parseDateTime = (dateTimeString: string): DateValue | undefined => {
   if (!dateTimeString) return undefined
   try {
     const date = new Date(dateTimeString)
-    return parseDate(date.toISOString().split('T')[0])
+    return parseDate(date.toISOString().split('T')[0]) as DateValue
   } catch {
     return undefined
   }
@@ -70,13 +71,13 @@ const form = useForm({
 })
 
 // Separate date and time fields for better UX
-const startsAtDate = ref<CalendarDate | undefined>(parseDateTime(props.event?.starts_at || ''))
+const startsAtDate = ref<DateValue | undefined>(parseDateTime(props.event?.starts_at || ''))
 const startsAtTime = ref(parseTime(props.event?.starts_at || ''))
-const reservationEndsAtDate = ref<CalendarDate | undefined>(parseDateTime(props.event?.reservation_ends_at || ''))
+const reservationEndsAtDate = ref<DateValue | undefined>(parseDateTime(props.event?.reservation_ends_at || ''))
 const reservationEndsAtTime = ref(parseTime(props.event?.reservation_ends_at || ''))
 
 // Combine date and time into datetime string
-const combineDateTime = (date: CalendarDate | undefined, time: string) => {
+const combineDateTime = (date: DateValue | undefined, time: string) => {
   if (!date || !time) return ''
   try {
     const dateStr = date.toString() // YYYY-MM-DD format
@@ -96,12 +97,12 @@ watch([reservationEndsAtDate, reservationEndsAtTime], ([date, time]) => {
 })
 
 const submitForm = () => {
-  const data = { ...form.data() }
-  
-  // Convert empty strings to null for datetime fields
-  if (!data.starts_at) data.starts_at = null
-  if (!data.reservation_ends_at) data.reservation_ends_at = null
-  if (!data.max_tickets) data.max_tickets = null
+  const data = {
+    ...form.data(),
+    starts_at: form.starts_at || null,
+    reservation_ends_at: form.reservation_ends_at || null,
+    max_tickets: form.max_tickets || null,
+  }
   
   emit('submit', data)
 }
@@ -155,7 +156,7 @@ const isEditMode = computed(() => !!props.event?.id)
                 )"
               >
                 <CalendarIcon class="mr-2 h-4 w-4" />
-                {{ startsAtDate ? df.format(startsAtDate.toDate(getLocalTimeZone())) : "Pick a date" }}
+                {{ startsAtDate ? df.format(dayjs(startsAtDate.toString()).toDate()) : "Pick a date" }}
               </Button>
             </PopoverTrigger>
             <PopoverContent class="w-auto p-0">
@@ -190,7 +191,7 @@ const isEditMode = computed(() => !!props.event?.id)
                 )"
               >
                 <CalendarIcon class="mr-2 h-4 w-4" />
-                {{ reservationEndsAtDate ? df.format(reservationEndsAtDate.toDate(getLocalTimeZone())) : "Pick a date" }}
+                {{ reservationEndsAtDate ? df.format(dayjs(reservationEndsAtDate.toString()).toDate()) : "Pick a date" }}
               </Button>
             </PopoverTrigger>
             <PopoverContent class="w-auto p-0">
