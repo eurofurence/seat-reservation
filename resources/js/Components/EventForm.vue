@@ -9,7 +9,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover
 import { CalendarIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { DateFormatter, parseDate } from '@internationalized/date'
-import type { DateValue } from 'reka-ui'
 import dayjs from 'dayjs'
 
 interface Event {
@@ -41,11 +40,11 @@ const df = new DateFormatter('en-US', {
 })
 
 // Convert datetime string to CalendarDate for the date picker
-const parseDateTime = (dateTimeString: string): DateValue | undefined => {
+const parseDateTime = (dateTimeString: string): any => {
   if (!dateTimeString) return undefined
   try {
     const date = new Date(dateTimeString)
-    return parseDate(date.toISOString().split('T')[0]) as DateValue
+    return parseDate(date.toISOString().split('T')[0])
   } catch {
     return undefined
   }
@@ -71,13 +70,13 @@ const form = useForm({
 })
 
 // Separate date and time fields for better UX
-const startsAtDate = ref<DateValue | undefined>(parseDateTime(props.event?.starts_at || ''))
+const startsAtDate = ref<any>(parseDateTime(props.event?.starts_at || ''))
 const startsAtTime = ref(parseTime(props.event?.starts_at || ''))
-const reservationEndsAtDate = ref<DateValue | undefined>(parseDateTime(props.event?.reservation_ends_at || ''))
+const reservationEndsAtDate = ref<any>(parseDateTime(props.event?.reservation_ends_at || ''))
 const reservationEndsAtTime = ref(parseTime(props.event?.reservation_ends_at || ''))
 
 // Combine date and time into datetime string
-const combineDateTime = (date: DateValue | undefined, time: string) => {
+const combineDateTime = (date: any, time: string) => {
   if (!date || !time) return ''
   try {
     const dateStr = date.toString() // YYYY-MM-DD format
