@@ -174,6 +174,10 @@ const getEventStatus = (event) => {
                     <Calendar class="h-4 w-4 mr-1 text-gray-400" />
                     {{ dayjs(event.starts_at).format('MMM DD, YYYY HH:mm') }}
                   </div>
+                  <div class="flex items-center text-sm text-gray-500" v-if="event.booking_starts_at">
+                    <Clock class="h-4 w-4 mr-1 text-gray-400" />
+                    Booking opens {{ dayjs(event.booking_starts_at).format('MMM DD, HH:mm') }}
+                  </div>
                   <div class="flex items-center text-sm text-gray-500" v-if="event.reservation_ends_at">
                     <Clock class="h-4 w-4 mr-1 text-gray-400" />
                     Reservations until {{ dayjs(event.reservation_ends_at).format('MMM DD, HH:mm') }}

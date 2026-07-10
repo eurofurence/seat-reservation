@@ -90,7 +90,7 @@ class EventAdminController extends Controller
 
     public function show(Request $request, $id)
     {
-        $event = Event::select('id', 'name', 'starts_at', 'reservation_ends_at', 'max_tickets', 'room_id')
+        $event = Event::select('id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at', 'max_tickets', 'room_id')
             ->with('room:id,name,stage_x,stage_y')
             ->findOrFail($id);
 

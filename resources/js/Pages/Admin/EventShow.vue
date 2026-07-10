@@ -465,6 +465,9 @@ onMounted(scrollToHighlightedBooking)
                         <span class="font-medium">Registration Status:</span>
                         <span class="font-bold" :class="registrationStatus.color">{{ registrationStatus.status }}</span>
                     </div>
+                    <div v-if="event.booking_starts_at" class="text-sm text-muted-foreground">
+                        Booking opens {{ dayjs(event.booking_starts_at).format('MMM DD, YYYY HH:mm') }}
+                    </div>
                     <div v-if="event.reservation_ends_at" class="text-sm text-muted-foreground">
                         {{ registrationStatus.isOpen ? 'Closes' : 'Closed' }} {{ dayjs(event.reservation_ends_at).format('MMM DD, YYYY HH:mm') }}
                     </div>
