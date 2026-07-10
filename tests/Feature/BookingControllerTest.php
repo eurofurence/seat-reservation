@@ -197,6 +197,121 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
+    public function user_cannot_view_create_page_before_booking_starts_at()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertRedirect(route('events.index'))
+            ->assertSessionHas('message', 'Booking for this event has not started yet.');
+    }
+
+    /** @test */
+    public function user_cannot_store_booking_before_booking_starts_at()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+
+        $seatData = [
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
+        ];
+
+        $response = $this->actingAs($this->user)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => $seatData,
+            ]);
+
+        $response->assertRedirect(route('bookings.index'))
+            ->assertSessionHas('message', 'Booking for this event has not started yet.');
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    /** @test */
+    public function user_can_book_once_booking_starts_at_has_passed()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->subMinute()]);
+
+        $seatData = [
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
+        ];
+
+        $response = $this->actingAs($this->user)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => $seatData,
+            ]);
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('bookings/confirmed', $response->headers->get('Location'));
+        $this->assertDatabaseCount('bookings', 1);
+    }
+
+    /** @test */
+    public function user_can_book_when_booking_starts_at_is_null()
+    {
+        $this->assertNull($this->event->booking_starts_at);
+
+        $seatData = [
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
+        ];
+
+        $response = $this->actingAs($this->user)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => $seatData,
+            ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseCount('bookings', 1);
+    }
+
+    /** @test */
+    public function admin_can_view_create_page_and_book_before_booking_starts_at()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('bookings.create', $this->event));
+        $response->assertOk();
+
+        $seatData = [
+            ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
+        ];
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => $seatData,
+            ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseCount('bookings', 1);
+    }
+
+    /** @test */
+    public function events_index_excludes_events_whose_booking_has_not_started()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+
+        $openEvent = Event::factory()->create([
+            'room_id' => $this->room->id,
+            'starts_at' => Carbon::now()->addDays(7),
+            'reservation_ends_at' => Carbon::now()->addHours(2),
+            'max_tickets' => 100,
+            'booking_starts_at' => Carbon::now()->subMinute(),
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('events.index'));
+
+        $response->assertOk();
+        $events = $response->getOriginalContent()->getData()['page']['props']['events'];
+        $eventIds = collect($events)->pluck('id');
+
+        $this->assertFalse($eventIds->contains($this->event->id));
+        $this->assertTrue($eventIds->contains($openEvent->id));
+    }
+
+    /** @test */
     public function user_cannot_book_when_no_tickets_left()
     {
         $this->event->update(['max_tickets' => 1]);
