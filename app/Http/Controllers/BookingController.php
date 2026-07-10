@@ -43,6 +43,11 @@ class BookingController extends Controller
             }
         }
 
+        if (! Auth::user()->is_admin && ! $event->isBookingOpen()) {
+            return redirect()->route('events.index')
+                ->with(['message' => 'Booking for this event has not started yet.']);
+        }
+
         // Check if user has reached booking limit
         if (! Auth::user()->is_admin) {
             $existingBookings = Booking::where('user_id', Auth::id())
@@ -178,6 +183,11 @@ class BookingController extends Controller
         if ($event->reservation_ends_at->isPast()) {
             return redirect()->route('bookings.index')
                 ->with(['message' => 'The reservation period for this event has ended.']);
+        }
+
+        if (! Auth::user()->is_admin && ! $event->isBookingOpen()) {
+            return redirect()->route('bookings.index')
+                ->with(['message' => 'Booking for this event has not started yet.']);
         }
 
         $data = $request->validate([

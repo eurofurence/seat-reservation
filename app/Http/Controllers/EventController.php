@@ -14,6 +14,7 @@ class EventController extends Controller
         $events = Event::with('room:id,name')
             ->where('reservation_ends_at', '>', now())
             ->where('starts_at', '>', now())
+            ->where(fn ($q) => $q->whereNull('booking_starts_at')->orWhere('booking_starts_at', '<=', now()))
             ->select('id', 'room_id', 'name', 'starts_at', 'reservation_ends_at', 'tickets', 'max_tickets')
             ->get();
 
