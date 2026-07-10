@@ -62,10 +62,15 @@ npm run dev            # Vite dev server with HMR
 ### Docker
 
 ```bash
-docker-compose up -d
+docker compose up -d --build
+docker compose exec laravel.test php artisan migrate
+docker compose exec laravel.test npm install
+docker compose exec laravel.test npm run dev
 ```
 
-This starts a FrankenPHP container (serving the app on port 80, Vite HMR on 5173) alongside a MySQL container.
+This starts a FrankenPHP container (serving the app on port 80, Vite HMR on 5173) alongside a MySQL container. Run all `artisan`/`composer`/`npm` commands through `docker compose exec laravel.test ...` — there's no need for PHP or Node on the host.
+
+> **SELinux hosts (Fedora/RHEL):** the bind mount uses the `:z` flag in `docker-compose.yml` so Docker relabels the project directory for container access. Without it you'll see `Permission denied` errors from inside the container even though Unix file permissions look fine (a host/container SELinux category mismatch, visible via `ls -Zd .` vs `docker inspect <container> --format '{{.HostConfig.SecurityOpt}}'`). The flag is a no-op on non-SELinux hosts.
 
 ### Useful commands
 
