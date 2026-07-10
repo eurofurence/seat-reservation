@@ -185,41 +185,6 @@ const isEditMode = computed(() => !!props.event?.id)
     </div>
     
     <div>
-      <label class="block text-sm font-medium mb-2">Reservation Deadline</label>
-      <div class="flex gap-2">
-        <div class="flex-1">
-          <Popover>
-            <PopoverTrigger as-child>
-              <Button
-                variant="outline"
-                :class="cn(
-                  'w-full justify-start text-left font-normal',
-                  !reservationEndsAtDate && 'text-muted-foreground',
-                  form.errors.reservation_ends_at && 'border-red-500'
-                )"
-              >
-                <CalendarIcon class="mr-2 h-4 w-4" />
-                {{ reservationEndsAtDate ? df.format(dayjs(reservationEndsAtDate.toString()).toDate()) : "Pick a date" }}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent class="w-auto p-0">
-              <Calendar v-model="reservationEndsAtDate" initial-focus />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div class="w-32">
-          <Input
-            v-model="reservationEndsAtTime"
-            type="time"
-            placeholder="HH:MM"
-            :class="{ 'border-red-500': form.errors.reservation_ends_at }"
-          />
-        </div>
-      </div>
-      <span v-if="form.errors.reservation_ends_at" class="text-sm text-red-500">{{ form.errors.reservation_ends_at }}</span>
-    </div>
-    
-    <div>
       <label class="block text-sm font-medium mb-2">Booking Start Date & Time</label>
       <div class="flex gap-2">
         <div class="flex-1">
@@ -253,6 +218,42 @@ const isEditMode = computed(() => !!props.event?.id)
       </div>
       <span v-if="form.errors.booking_starts_at" class="text-sm text-red-500">{{ form.errors.booking_starts_at }}</span>
       <p class="text-sm text-muted-foreground mt-1">Leave empty to allow booking immediately</p>
+    </div>
+    
+    <div>
+      <label class="block text-sm font-medium mb-2">Reservation Deadline</label>
+      <div class="flex gap-2">
+        <div class="flex-1">
+          <Popover>
+            <PopoverTrigger as-child>
+              <Button
+                variant="outline"
+                :class="cn(
+                  'w-full justify-start text-left font-normal',
+                  !reservationEndsAtDate && 'text-muted-foreground',
+                  form.errors.reservation_ends_at && 'border-red-500'
+                )"
+              >
+                <CalendarIcon class="mr-2 h-4 w-4" />
+                {{ reservationEndsAtDate ? df.format(dayjs(reservationEndsAtDate.toString()).toDate()) : "Pick a date" }}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent class="w-auto p-0">
+              <Calendar v-model="reservationEndsAtDate" initial-focus />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div class="w-32">
+          <Input
+            v-model="reservationEndsAtTime"
+            type="time"
+            placeholder="HH:MM"
+            :class="{ 'border-red-500': form.errors.reservation_ends_at }"
+          />
+        </div>
+      </div>
+      <span v-if="form.errors.reservation_ends_at" class="text-sm text-red-500">{{ form.errors.reservation_ends_at }}</span>
+      <p class="text-sm text-muted-foreground mt-1">Leave empty for no reservation deadline (booking stays open indefinitely)</p>
     </div>
     
     <div>
