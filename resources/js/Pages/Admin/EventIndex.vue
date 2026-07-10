@@ -88,6 +88,9 @@ const getEventStatus = (event) => {
   if (event.reservation_ends_at && now.isAfter(reservationEnd)) {
     return { text: 'Locked', class: 'bg-orange-100 text-orange-800' }
   }
+  if (event.booking_starts_at && now.isBefore(dayjs(event.booking_starts_at))) {
+    return { text: 'Not Yet Open', class: 'bg-blue-100 text-blue-800' }
+  }
   return { text: 'Active', class: 'bg-green-100 text-green-800' }
 }
 </script>

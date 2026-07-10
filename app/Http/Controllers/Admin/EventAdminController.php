@@ -37,6 +37,7 @@ class EventAdminController extends Controller
             'room_id' => 'required|exists:rooms,id',
             'starts_at' => 'nullable|date',
             'reservation_ends_at' => 'nullable|date',
+            'booking_starts_at' => 'nullable|date',
             'max_tickets' => 'nullable|integer|min:1',
         ]);
 
@@ -45,6 +46,7 @@ class EventAdminController extends Controller
             'room_id',
             'starts_at',
             'reservation_ends_at',
+            'booking_starts_at',
             'max_tickets',
         ]));
 
@@ -59,6 +61,7 @@ class EventAdminController extends Controller
             'room_id' => 'required|exists:rooms,id',
             'starts_at' => 'nullable|date',
             'reservation_ends_at' => 'nullable|date',
+            'booking_starts_at' => 'nullable|date',
             'max_tickets' => 'nullable|integer|min:1',
         ]);
 
@@ -68,6 +71,7 @@ class EventAdminController extends Controller
             'room_id',
             'starts_at',
             'reservation_ends_at',
+            'booking_starts_at',
             'max_tickets',
         ]));
 

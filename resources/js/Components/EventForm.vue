@@ -17,6 +17,7 @@ interface Event {
   room_id: string | number
   starts_at: string
   reservation_ends_at: string
+  booking_starts_at: string
   max_tickets: string | number
 }
 
@@ -66,6 +67,7 @@ const form = useForm({
   room_id: props.event?.room_id ? props.event.room_id.toString() : '',
   starts_at: props.event?.starts_at || '',
   reservation_ends_at: props.event?.reservation_ends_at || '',
+  booking_starts_at: props.event?.booking_starts_at || '',
   max_tickets: props.event?.max_tickets || '',
 })
 
@@ -74,6 +76,8 @@ const startsAtDate = ref<any>(parseDateTime(props.event?.starts_at || ''))
 const startsAtTime = ref(parseTime(props.event?.starts_at || ''))
 const reservationEndsAtDate = ref<any>(parseDateTime(props.event?.reservation_ends_at || ''))
 const reservationEndsAtTime = ref(parseTime(props.event?.reservation_ends_at || ''))
+const bookingStartsAtDate = ref<any>(parseDateTime(props.event?.booking_starts_at || ''))
+const bookingStartsAtTime = ref(parseTime(props.event?.booking_starts_at || ''))
 
 // Combine date and time into datetime string
 const combineDateTime = (date: any, time: string) => {
@@ -95,11 +99,16 @@ watch([reservationEndsAtDate, reservationEndsAtTime], ([date, time]) => {
   form.reservation_ends_at = combineDateTime(date, time)
 })
 
+watch([bookingStartsAtDate, bookingStartsAtTime], ([date, time]) => {
+  form.booking_starts_at = combineDateTime(date, time)
+})
+
 const submitForm = () => {
   const data = {
     ...form.data(),
     starts_at: form.starts_at || null,
     reservation_ends_at: form.reservation_ends_at || null,
+    booking_starts_at: form.booking_starts_at || null,
     max_tickets: form.max_tickets || null,
   }
   
@@ -208,6 +217,42 @@ const isEditMode = computed(() => !!props.event?.id)
         </div>
       </div>
       <span v-if="form.errors.reservation_ends_at" class="text-sm text-red-500">{{ form.errors.reservation_ends_at }}</span>
+    </div>
+    
+    <div>
+      <label class="block text-sm font-medium mb-2">Booking Start Date & Time</label>
+      <div class="flex gap-2">
+        <div class="flex-1">
+          <Popover>
+            <PopoverTrigger as-child>
+              <Button
+                variant="outline"
+                :class="cn(
+                  'w-full justify-start text-left font-normal',
+                  !bookingStartsAtDate && 'text-muted-foreground',
+                  form.errors.booking_starts_at && 'border-red-500'
+                )"
+              >
+                <CalendarIcon class="mr-2 h-4 w-4" />
+                {{ bookingStartsAtDate ? df.format(dayjs(bookingStartsAtDate.toString()).toDate()) : "Pick a date" }}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent class="w-auto p-0">
+              <Calendar v-model="bookingStartsAtDate" initial-focus />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div class="w-32">
+          <Input
+            v-model="bookingStartsAtTime"
+            type="time"
+            placeholder="HH:MM"
+            :class="{ 'border-red-500': form.errors.booking_starts_at }"
+          />
+        </div>
+      </div>
+      <span v-if="form.errors.booking_starts_at" class="text-sm text-red-500">{{ form.errors.booking_starts_at }}</span>
+      <p class="text-sm text-muted-foreground mt-1">Leave empty to allow booking immediately</p>
     </div>
     
     <div>
