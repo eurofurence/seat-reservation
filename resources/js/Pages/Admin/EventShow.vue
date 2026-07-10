@@ -778,12 +778,15 @@ onMounted(scrollToHighlightedBooking)
                                     <template v-for="(link, index) in bookings.links" :key="index">
                                         <Button
                                             v-if="link.url"
-                                            variant="outline"
+                                            :variant="link.active ? 'secondary' : 'outline'"
                                             size="sm"
                                             @click="router.visit(link.url, { preserveState: true, preserveScroll: true, only: ['bookings'] })"
                                             :disabled="!link.url"
                                             v-html="link.label"
-                                            class="text-xs px-2"
+                                            :class="[
+                                                'text-xs px-2',
+                                                link.active && 'shadow-inner bg-gray-200 font-semibold'
+                                            ]"
                                         />
                                         <span v-else class="px-2 py-1 text-xs text-muted-foreground" v-html="link.label"/>
                                     </template>
