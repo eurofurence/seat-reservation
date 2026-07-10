@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3'
-import { ref, watch, computed } from 'vue'
+import { computed } from 'vue'
 import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
-import { Calendar } from '@/Components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
-import { CalendarIcon } from 'lucide-vue-next'
-import { cn } from '@/lib/utils'
-import { DateFormatter, parseDate } from '@internationalized/date'
-import dayjs from 'dayjs'
+import DateTimePicker from '@/Components/DateTimePicker.vue'
 
 interface Event {
   id?: number
@@ -36,32 +31,6 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const df = new DateFormatter('en-US', {
-  dateStyle: 'medium'
-})
-
-// Convert datetime string to CalendarDate for the date picker
-const parseDateTime = (dateTimeString: string): any => {
-  if (!dateTimeString) return undefined
-  try {
-    const date = new Date(dateTimeString)
-    return parseDate(date.toISOString().split('T')[0])
-  } catch {
-    return undefined
-  }
-}
-
-// Convert datetime string to time string for time input
-const parseTime = (dateTimeString: string) => {
-  if (!dateTimeString) return ''
-  try {
-    const date = new Date(dateTimeString)
-    return date.toTimeString().slice(0, 5) // HH:MM format
-  } catch {
-    return ''
-  }
-}
-
 const form = useForm({
   name: props.event?.name || '',
   room_id: props.event?.room_id ? props.event.room_id.toString() : '',
@@ -69,38 +38,6 @@ const form = useForm({
   reservation_ends_at: props.event?.reservation_ends_at || '',
   booking_starts_at: props.event?.booking_starts_at || '',
   max_tickets: props.event?.max_tickets || '',
-})
-
-// Separate date and time fields for better UX
-const startsAtDate = ref<any>(parseDateTime(props.event?.starts_at || ''))
-const startsAtTime = ref(parseTime(props.event?.starts_at || ''))
-const reservationEndsAtDate = ref<any>(parseDateTime(props.event?.reservation_ends_at || ''))
-const reservationEndsAtTime = ref(parseTime(props.event?.reservation_ends_at || ''))
-const bookingStartsAtDate = ref<any>(parseDateTime(props.event?.booking_starts_at || ''))
-const bookingStartsAtTime = ref(parseTime(props.event?.booking_starts_at || ''))
-
-// Combine date and time into datetime string
-const combineDateTime = (date: any, time: string) => {
-  if (!date || !time) return ''
-  try {
-    const dateStr = date.toString() // YYYY-MM-DD format
-    return `${dateStr}T${time}:00`
-  } catch {
-    return ''
-  }
-}
-
-// Watch for date/time changes and update form
-watch([startsAtDate, startsAtTime], ([date, time]) => {
-  form.starts_at = combineDateTime(date, time)
-})
-
-watch([reservationEndsAtDate, reservationEndsAtTime], ([date, time]) => {
-  form.reservation_ends_at = combineDateTime(date, time)
-})
-
-watch([bookingStartsAtDate, bookingStartsAtTime], ([date, time]) => {
-  form.booking_starts_at = combineDateTime(date, time)
 })
 
 const submitForm = () => {
@@ -149,113 +86,26 @@ const isEditMode = computed(() => !!props.event?.id)
       <span v-if="form.errors.room_id" class="text-sm text-red-500">{{ form.errors.room_id }}</span>
     </div>
     
-    <div>
-      <label class="block text-sm font-medium mb-2">Event Start Date & Time</label>
-      <div class="flex gap-2">
-        <div class="flex-1">
-          <Popover>
-            <PopoverTrigger as-child>
-              <Button
-                variant="outline"
-                :class="cn(
-                  'w-full justify-start text-left font-normal',
-                  !startsAtDate && 'text-muted-foreground',
-                  form.errors.starts_at && 'border-red-500'
-                )"
-              >
-                <CalendarIcon class="mr-2 h-4 w-4" />
-                {{ startsAtDate ? df.format(dayjs(startsAtDate.toString()).toDate()) : "Pick a date" }}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent class="w-auto p-0">
-              <Calendar v-model="startsAtDate" initial-focus />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div class="w-32">
-          <Input
-            v-model="startsAtTime"
-            type="time"
-            placeholder="HH:MM"
-            :class="{ 'border-red-500': form.errors.starts_at }"
-          />
-        </div>
-      </div>
-      <span v-if="form.errors.starts_at" class="text-sm text-red-500">{{ form.errors.starts_at }}</span>
-    </div>
-    
-    <div>
-      <label class="block text-sm font-medium mb-2">Booking Start Date & Time</label>
-      <div class="flex gap-2">
-        <div class="flex-1">
-          <Popover>
-            <PopoverTrigger as-child>
-              <Button
-                variant="outline"
-                :class="cn(
-                  'w-full justify-start text-left font-normal',
-                  !bookingStartsAtDate && 'text-muted-foreground',
-                  form.errors.booking_starts_at && 'border-red-500'
-                )"
-              >
-                <CalendarIcon class="mr-2 h-4 w-4" />
-                {{ bookingStartsAtDate ? df.format(dayjs(bookingStartsAtDate.toString()).toDate()) : "Pick a date" }}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent class="w-auto p-0">
-              <Calendar v-model="bookingStartsAtDate" initial-focus />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div class="w-32">
-          <Input
-            v-model="bookingStartsAtTime"
-            type="time"
-            placeholder="HH:MM"
-            :class="{ 'border-red-500': form.errors.booking_starts_at }"
-          />
-        </div>
-      </div>
-      <span v-if="form.errors.booking_starts_at" class="text-sm text-red-500">{{ form.errors.booking_starts_at }}</span>
-      <p class="text-sm text-muted-foreground mt-1">Leave empty to allow booking immediately</p>
-    </div>
-    
-    <div>
-      <label class="block text-sm font-medium mb-2">Reservation Deadline</label>
-      <div class="flex gap-2">
-        <div class="flex-1">
-          <Popover>
-            <PopoverTrigger as-child>
-              <Button
-                variant="outline"
-                :class="cn(
-                  'w-full justify-start text-left font-normal',
-                  !reservationEndsAtDate && 'text-muted-foreground',
-                  form.errors.reservation_ends_at && 'border-red-500'
-                )"
-              >
-                <CalendarIcon class="mr-2 h-4 w-4" />
-                {{ reservationEndsAtDate ? df.format(dayjs(reservationEndsAtDate.toString()).toDate()) : "Pick a date" }}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent class="w-auto p-0">
-              <Calendar v-model="reservationEndsAtDate" initial-focus />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div class="w-32">
-          <Input
-            v-model="reservationEndsAtTime"
-            type="time"
-            placeholder="HH:MM"
-            :class="{ 'border-red-500': form.errors.reservation_ends_at }"
-          />
-        </div>
-      </div>
-      <span v-if="form.errors.reservation_ends_at" class="text-sm text-red-500">{{ form.errors.reservation_ends_at }}</span>
-      <p class="text-sm text-muted-foreground mt-1">Leave empty for no reservation deadline (booking stays open indefinitely)</p>
-    </div>
-    
+    <DateTimePicker
+      v-model="form.starts_at"
+      label="Event Start Date & Time"
+      :error="form.errors.starts_at"
+    />
+
+    <DateTimePicker
+      v-model="form.booking_starts_at"
+      label="Booking Start Date & Time"
+      :error="form.errors.booking_starts_at"
+      hint="Leave empty to allow booking immediately"
+    />
+
+    <DateTimePicker
+      v-model="form.reservation_ends_at"
+      label="Reservation Deadline"
+      :error="form.errors.reservation_ends_at"
+      hint="Leave empty for no reservation deadline (booking stays open indefinitely)"
+    />
+
     <div>
       <label class="block text-sm font-medium mb-2">Max Tickets</label>
       <Input
