@@ -180,7 +180,7 @@ class BookingController extends Controller
 
     public function store(Request $request, Event $event)
     {
-        if ($event->reservation_ends_at->isPast()) {
+        if ($event->reservation_ends_at && $event->reservation_ends_at->isPast()) {
             return redirect()->route('bookings.index')
                 ->with(['message' => 'The reservation period for this event has ended.']);
         }
