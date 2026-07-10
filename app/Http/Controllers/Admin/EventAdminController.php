@@ -310,7 +310,7 @@ class EventAdminController extends Controller
                 return back()->with('error', 'No bookings found for this event to generate seating cards.');
             }
 
-            // mPDF configuration with custom Orbitron font
+            // mPDF configuration with custom Zhurzh font
             $mpdf = new \Mpdf\Mpdf([
                 'format' => 'A4-L',
                 'margin_left' => 0,
@@ -321,11 +321,11 @@ class EventAdminController extends Controller
                 'margin_footer' => 0,
                 'fontDir' => [resource_path('assets/fonts')],
                 'fontdata' => [
-                    'orbitron' => [
-                        'R' => 'Orbitron-Bold.ttf',
+                    'zhurzh' => [
+                        'R' => 'Zhurzh.ttf',
                     ],
                 ],
-                'default_font' => 'orbitron',
+                'default_font' => 'zhurzh',
             ]);
 
             // Set execution time limit for large batches
