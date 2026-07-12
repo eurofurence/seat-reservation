@@ -19,11 +19,10 @@ class EventController extends Controller
             ->select('id', 'room_id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at', 'tickets', 'max_tickets')
             ->get();
 
-        // Manually add tickets_left without triggering the heavy relationship loading
+        // tickets_left isn't in $appends (see Event model), so force it into each
+        // model's attributes here to include it in the response.
         $events->each(function ($event) {
-            $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
-            $bookedTickets = $event->bookings()->count();
-            $event->tickets_left = max(0, $maxTickets - $bookedTickets);
+            $event->tickets_left = $event->tickets_left;
             $event->is_booking_open = $event->isBookingOpen();
         });
 

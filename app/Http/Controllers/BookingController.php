@@ -35,12 +35,9 @@ class BookingController extends Controller
     public function create(Event $event, Request $request)
     {
         // Check if event has tickets available
-        if ($event->max_tickets && $event->max_tickets > 0) {
-            $bookedTickets = $event->bookings()->count();
-            if ($bookedTickets >= $event->max_tickets) {
-                return redirect()->route('events.index')
-                    ->with(['message' => 'This event is sold out.']);
-            }
+        if ($event->tickets_left <= 0) {
+            return redirect()->route('events.index')
+                ->with(['message' => 'This event is sold out.']);
         }
 
         if ($redirect = $this->denyIfBookingClosed($event, 'events.index')) {
@@ -102,10 +99,7 @@ class BookingController extends Controller
             ->orderBy('order')
             ->get();
 
-        // Calculate tickets left manually to avoid heavy loading
-        $maxTickets = $event->max_tickets ?? 0;
-        $bookedTickets = $event->bookings()->count();
-        $ticketsLeft = max(0, $maxTickets - $bookedTickets);
+        $ticketsLeft = $event->tickets_left;
 
         return Inertia::render('Booking/CreateBooking', [
             'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at']), ['tickets_left' => $ticketsLeft]),
@@ -128,10 +122,7 @@ class BookingController extends Controller
             'seats.*' => 'required|exists:seats,id',
         ]);
 
-        // Calculate tickets left manually to avoid heavy loading
-        $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
-        $bookedTickets = $event->bookings()->count();
-        $ticketsLeft = max(0, $maxTickets - $bookedTickets);
+        $ticketsLeft = $event->tickets_left;
 
         // Check if enough tickets are available
         if ($ticketsLeft < count($data['seats'])) {
@@ -198,10 +189,7 @@ class BookingController extends Controller
             'seats.*.comment' => 'nullable|string|max:255',
         ]);
 
-        // Calculate tickets left manually to avoid heavy loading
-        $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
-        $bookedTickets = $event->bookings()->count();
-        $ticketsLeft = max(0, $maxTickets - $bookedTickets);
+        $ticketsLeft = $event->tickets_left;
 
         // Check if enough tickets are available
         if ($ticketsLeft < count($data['seats'])) {

@@ -36,4 +36,12 @@ class Room extends Model
     {
         return $this->hasMany(Block::class)->orderBy('order');
     }
+
+    // Total bookable seats in this room (seating blocks only, stage blocks excluded)
+    public function totalSeatsCount(): int
+    {
+        return Seat::whereHas('row.block', function ($query) {
+            $query->seating()->where('room_id', $this->id);
+        })->count();
+    }
 }

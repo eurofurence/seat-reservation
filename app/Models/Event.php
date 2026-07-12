@@ -63,9 +63,7 @@ class Event extends Model
         $maxTickets = $this->max_tickets ?? $this->tickets ?? 0;
         if ($maxTickets === 0) {
             // If no ticket limit is set, use seat availability
-            $totalSeats = $this->room->blocks()->with('rows.seats')->get()
-                ->flatMap(fn ($block) => $block->rows->flatMap(fn ($row) => $row->seats))->count();
-            $maxTickets = $totalSeats;
+            $maxTickets = $this->room->totalSeatsCount();
         }
 
         $bookedTickets = $this->bookings()->count(); // Each booking = 1 ticket
