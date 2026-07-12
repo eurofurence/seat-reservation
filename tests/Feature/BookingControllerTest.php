@@ -173,7 +173,10 @@ class BookingControllerTest extends TestCase
                 'seats' => $seatData,
             ]);
 
-        $response->assertSessionHasErrors(['seats']);
+        $response->assertRedirect(route('bookings.create', $this->event))
+            ->assertSessionHas('error', 'Sorry, one or more of your selected seats were just booked by someone else. Please choose different seats.');
+
+        $this->assertDatabaseCount('bookings', 1); // No new booking created
     }
 
     /** @test */

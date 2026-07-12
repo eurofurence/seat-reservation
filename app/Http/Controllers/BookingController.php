@@ -8,7 +8,6 @@ use App\Models\Seat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class BookingController extends Controller
@@ -120,13 +119,13 @@ class BookingController extends Controller
 
         // Check if enough tickets are available
         if ($ticketsLeft < count($data['seats'])) {
-            return redirect()->back()
+            return redirect()->route('bookings.create', ['event' => $event->id])
                 ->with(['error' => 'Not enough tickets available for this event.']);
         }
 
         // Check if user can book these seats
         if ($this->exceedsBookingLimit($event, count($data['seats']))) {
-            return redirect()->back()
+            return redirect()->route('bookings.create', ['event' => $event->id])
                 ->with(['error' => 'You can only book a maximum of 2 seats per event.']);
         }
 
@@ -136,8 +135,11 @@ class BookingController extends Controller
             ->exists();
 
         if ($alreadyBooked) {
-            return redirect()->back()
-                ->with(['error' => 'Some of the selected seats are already booked.']);
+            // Redirect to a plain (query-string-free) URL rather than back()/referer: since
+            // this page's own URL contains the conflicting seats, redirecting back to the
+            // referer would just re-run this same check and loop forever.
+            return redirect()->route('bookings.create', ['event' => $event->id])
+                ->with(['error' => 'Sorry, one or more of the selected seats were just booked by someone else. Please choose different seats.']);
         }
 
         // Load seat information with minimal data
@@ -193,8 +195,9 @@ class BookingController extends Controller
 
         // Use transaction to ensure atomicity
         $bookingCode = null;
+        $seatConflict = false;
 
-        DB::transaction(function () use ($event, $data, &$bookingCode) {
+        DB::transaction(function () use ($event, $data, &$bookingCode, &$seatConflict) {
             // Lock seats to prevent race conditions
             $seatIds = collect($data['seats'])->pluck('seat_id')->toArray();
             Seat::whereIn('id', $seatIds)->lockForUpdate()->get();
@@ -205,9 +208,9 @@ class BookingController extends Controller
                 ->first();
 
             if ($existingBookings) {
-                throw ValidationException::withMessages([
-                    'seats' => 'Some of the selected seats have already been booked.',
-                ]);
+                $seatConflict = true;
+
+                return;
             }
 
             // Generate unique booking code for ALL bookings through user interface
@@ -225,6 +228,14 @@ class BookingController extends Controller
                 ]);
             }
         });
+
+        // Someone else grabbed one of the seats between selection and submission. Redirect to
+        // the plain seat-selection URL (not back()/referer) so we don't loop on a URL whose
+        // own query string still references the now-taken seats.
+        if ($seatConflict) {
+            return redirect()->route('bookings.create', ['event' => $event->id])
+                ->with(['error' => 'Sorry, one or more of your selected seats were just booked by someone else. Please choose different seats.']);
+        }
 
         // Redirect to confirmation page with booking code for ALL users
         if ($bookingCode) {
