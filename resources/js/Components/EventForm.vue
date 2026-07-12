@@ -19,15 +19,12 @@ interface Event {
 interface Props {
   event?: Event
   rooms: Array<{ id: number; name: string }>
-  isLoading?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  isLoading: false
-})
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  submit: [data: any]
+  submitted: []
   cancel: []
 }>()
 
@@ -40,23 +37,29 @@ const form = useForm({
   max_tickets: props.event?.max_tickets || '',
 })
 
+const isEditMode = computed(() => !!props.event?.id)
+
 const submitForm = () => {
-  const data = {
-    ...form.data(),
-    starts_at: form.starts_at || null,
-    reservation_ends_at: form.reservation_ends_at || null,
-    booking_starts_at: form.booking_starts_at || null,
-    max_tickets: form.max_tickets || null,
+  form.transform((data) => ({
+    ...data,
+    starts_at: data.starts_at || null,
+    reservation_ends_at: data.reservation_ends_at || null,
+    booking_starts_at: data.booking_starts_at || null,
+    max_tickets: data.max_tickets || null,
+  }))
+
+  const options = { onSuccess: () => emit('submitted') }
+
+  if (props.event?.id) {
+    form.put(route('admin.events.update', props.event.id), options)
+  } else {
+    form.post(route('admin.events.store'), options)
   }
-  
-  emit('submit', data)
 }
 
 const cancel = () => {
   emit('cancel')
 }
-
-const isEditMode = computed(() => !!props.event?.id)
 </script>
 
 <template>
@@ -118,10 +121,10 @@ const isEditMode = computed(() => !!props.event?.id)
     </div>
     
     <div class="flex justify-end gap-2 pt-4">
-      <Button variant="outline" @click="cancel" :disabled="isLoading">
+      <Button variant="outline" @click="cancel" :disabled="form.processing">
         Cancel
       </Button>
-      <Button @click="submitForm" :disabled="isLoading">
+      <Button @click="submitForm" :disabled="form.processing">
         {{ isEditMode ? 'Update Event' : 'Create Event' }}
       </Button>
     </div>

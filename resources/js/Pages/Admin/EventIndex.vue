@@ -22,7 +22,6 @@ const props = defineProps({
 const createDialogOpen = ref(false)
 const editDialogOpen = ref(false)
 const editingEvent = ref(null)
-const isLoading = ref(false)
 
 const openCreateDialog = () => {
   editingEvent.value = null
@@ -34,31 +33,13 @@ const openEditDialog = (event) => {
   editDialogOpen.value = true
 }
 
-const handleFormSubmit = (data) => {
-  isLoading.value = true
-  
-  if (editingEvent.value) {
-    // Update existing event
-    router.put(route('admin.events.update', editingEvent.value.id), data, {
-      onSuccess: () => {
-        editDialogOpen.value = false
-        editingEvent.value = null
-      },
-      onFinish: () => {
-        isLoading.value = false
-      }
-    })
-  } else {
-    // Create new event
-    router.post(route('admin.events.store'), data, {
-      onSuccess: () => {
-        createDialogOpen.value = false
-      },
-      onFinish: () => {
-        isLoading.value = false
-      }
-    })
-  }
+const handleCreateSubmitted = () => {
+  createDialogOpen.value = false
+}
+
+const handleUpdateSubmitted = () => {
+  editDialogOpen.value = false
+  editingEvent.value = null
 }
 
 const handleFormCancel = () => {
@@ -113,8 +94,7 @@ const getEventStatus = (event) => {
           </DialogHeader>
           <EventForm
             :rooms="rooms"
-            :is-loading="isLoading"
-            @submit="handleFormSubmit"
+            @submitted="handleCreateSubmitted"
             @cancel="handleFormCancel"
           />
         </DialogContent>
@@ -131,8 +111,7 @@ const getEventStatus = (event) => {
           v-if="editingEvent"
           :event="editingEvent"
           :rooms="rooms"
-          :is-loading="isLoading"
-          @submit="handleFormSubmit"
+          @submitted="handleUpdateSubmitted"
           @cancel="handleFormCancel"
         />
       </DialogContent>
