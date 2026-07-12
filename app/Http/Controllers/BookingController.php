@@ -43,6 +43,10 @@ class BookingController extends Controller
             }
         }
 
+        if ($redirect = $this->denyIfBookingClosed($event, 'events.index')) {
+            return $redirect;
+        }
+
         if ($redirect = $this->denyIfBookingNotOpen($event, 'events.index')) {
             return $redirect;
         }
@@ -179,9 +183,8 @@ class BookingController extends Controller
 
     public function store(Request $request, Event $event)
     {
-        if ($event->reservation_ends_at && $event->reservation_ends_at->isPast()) {
-            return redirect()->route('bookings.index')
-                ->with(['message' => 'The reservation period for this event has ended.']);
+        if ($redirect = $this->denyIfBookingClosed($event, 'bookings.index')) {
+            return $redirect;
         }
 
         if ($redirect = $this->denyIfBookingNotOpen($event, 'bookings.index')) {
@@ -361,6 +364,25 @@ class BookingController extends Controller
         if (! Auth::user()->is_admin && ! $event->isBookingOpen()) {
             return redirect()->route($redirectRoute)
                 ->with(['message' => 'Booking for this Event is not yet open.']);
+        }
+
+        return null;
+    }
+
+    /**
+     * Redirect to $redirectRoute if the event has ended or its reservation deadline ("locked", see
+     * EventIndex.vue::getEventStatus) has passed. Applies to everyone, including admins.
+     */
+    private function denyIfBookingClosed(Event $event, string $redirectRoute)
+    {
+        if ($event->hasEnded()) {
+            return redirect()->route($redirectRoute)
+                ->with(['message' => 'This event has already taken place.']);
+        }
+
+        if ($event->isReservationClosed()) {
+            return redirect()->route($redirectRoute)
+                ->with(['message' => 'The reservation period for this event has ended.']);
         }
 
         return null;

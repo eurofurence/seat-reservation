@@ -35,6 +35,18 @@ class Event extends Model
         return is_null($this->reservation_ends_at) || $this->reservation_ends_at->isFuture();
     }
 
+    // "Locked" state (see EventIndex.vue::getEventStatus) - reservation deadline has passed.
+    public function isReservationClosed(): bool
+    {
+        return $this->reservation_ends_at !== null && $this->reservation_ends_at->isPast();
+    }
+
+    // "Completed" state (see EventIndex.vue::getEventStatus) - the event itself has already started.
+    public function hasEnded(): bool
+    {
+        return $this->starts_at !== null && $this->starts_at->isPast();
+    }
+
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);
