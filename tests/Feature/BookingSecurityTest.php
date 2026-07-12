@@ -107,7 +107,7 @@ class BookingSecurityTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to update this booking!');
+            ->assertSessionHas('error', 'You are not allowed to update this booking!');
 
         // Verify the booking was not changed
         $this->user2Booking->refresh();
@@ -122,7 +122,7 @@ class BookingSecurityTest extends TestCase
             ->delete(route('bookings.destroy', [$this->event, $this->user2Booking]));
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to cancel this booking!');
+            ->assertSessionHas('error', 'You are not allowed to cancel this booking!');
 
         // Verify the booking still exists
         $this->assertDatabaseHas('bookings', [
@@ -224,7 +224,7 @@ class BookingSecurityTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'Booking updated!');
+            ->assertSessionHas('success', 'Booking updated!');
 
         // Verify the booking was changed
         $this->user1Booking->refresh();
@@ -239,7 +239,7 @@ class BookingSecurityTest extends TestCase
             ->delete(route('bookings.destroy', [$this->event, $this->user1Booking]));
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'Booking cancelled!');
+            ->assertSessionHas('success', 'Booking cancelled!');
 
         // Verify the booking was deleted
         $this->assertDatabaseMissing('bookings', [
@@ -260,7 +260,7 @@ class BookingSecurityTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to update this booking!');
+            ->assertSessionHas('error', 'You are not allowed to update this booking!');
 
         // Verify the booking was not changed
         $this->user1Booking->refresh();
@@ -278,7 +278,7 @@ class BookingSecurityTest extends TestCase
             ->delete(route('bookings.destroy', [$this->event, $this->user1Booking]));
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to cancel this booking!');
+            ->assertSessionHas('error', 'You are not allowed to cancel this booking!');
 
         // Verify the booking still exists
         $this->assertDatabaseHas('bookings', [
@@ -299,7 +299,7 @@ class BookingSecurityTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to update this booking!');
+            ->assertSessionHas('error', 'You are not allowed to update this booking!');
 
         // Verify the booking was not changed
         $this->user1Booking->refresh();
@@ -317,7 +317,7 @@ class BookingSecurityTest extends TestCase
             ->delete(route('bookings.destroy', [$this->event, $this->user1Booking]));
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to cancel this booking!');
+            ->assertSessionHas('error', 'You are not allowed to cancel this booking!');
 
         // Verify the booking still exists
         $this->assertDatabaseHas('bookings', [
@@ -384,7 +384,7 @@ class BookingSecurityTest extends TestCase
             ->delete(route('bookings.destroy', [$this->event, $user3Booking]));
 
         $response1Delete->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to cancel this booking!');
+            ->assertSessionHas('error', 'You are not allowed to cancel this booking!');
 
         // Verify User3's booking still exists
         $this->assertDatabaseHas('bookings', [

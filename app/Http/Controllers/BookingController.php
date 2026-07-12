@@ -37,7 +37,7 @@ class BookingController extends Controller
         // Check if event has tickets available
         if ($event->tickets_left <= 0) {
             return redirect()->route('events.index')
-                ->with(['message' => 'This event is sold out.']);
+                ->with(['warning' => 'This event is sold out.']);
         }
 
         if ($redirect = $this->denyIfBookingClosed($event, 'events.index')) {
@@ -56,7 +56,7 @@ class BookingController extends Controller
 
             if ($existingBookings >= 2) {
                 return redirect()->route('bookings.index')
-                    ->with(['message' => 'You have already booked the maximum number of seats for this event.']);
+                    ->with(['warning' => 'You have already booked the maximum number of seats for this event.']);
             }
         }
 
@@ -127,7 +127,7 @@ class BookingController extends Controller
         // Check if enough tickets are available
         if ($ticketsLeft < count($data['seats'])) {
             return redirect()->back()
-                ->with(['message' => 'Not enough tickets available for this event.']);
+                ->with(['warning' => 'Not enough tickets available for this event.']);
         }
 
         // Check if user can book these seats
@@ -138,7 +138,7 @@ class BookingController extends Controller
 
             if ($existingBookings + count($data['seats']) > 2) {
                 return redirect()->back()
-                    ->with(['message' => 'You can only book a maximum of 2 seats per event.']);
+                    ->with(['warning' => 'You can only book a maximum of 2 seats per event.']);
             }
         }
 
@@ -149,7 +149,7 @@ class BookingController extends Controller
 
         if ($alreadyBooked) {
             return redirect()->back()
-                ->with(['message' => 'Some of the selected seats are already booked.']);
+                ->with(['warning' => 'Some of the selected seats are already booked.']);
         }
 
         // Load seat information with minimal data
@@ -194,7 +194,7 @@ class BookingController extends Controller
         // Check if enough tickets are available
         if ($ticketsLeft < count($data['seats'])) {
             return redirect()->route('bookings.index')
-                ->with(['message' => 'Not enough tickets available for this event.']);
+                ->with(['warning' => 'Not enough tickets available for this event.']);
         }
 
         // Ensure user hasn't exceeded booking limit
@@ -205,7 +205,7 @@ class BookingController extends Controller
 
             if ($existingBookings + count($data['seats']) > 2) {
                 return redirect()->route('bookings.index')
-                    ->with(['message' => 'You can only book a maximum of 2 seats per event.']);
+                    ->with(['warning' => 'You can only book a maximum of 2 seats per event.']);
             }
         }
 
@@ -253,7 +253,7 @@ class BookingController extends Controller
         }
 
         return redirect()->route('bookings.index')
-            ->with(['message' => 'Your booking has been confirmed!']);
+            ->with(['success' => 'Your booking has been confirmed!']);
     }
 
     public function show(Event $event, Booking $booking)
@@ -317,7 +317,7 @@ class BookingController extends Controller
     {
         if ($request->user()->cannot('update', $booking)) {
             return redirect()->route('bookings.index')
-                ->with(['message' => 'You are not allowed to update this booking!']);
+                ->with(['error' => 'You are not allowed to update this booking!']);
         }
 
         $data = $request->validate([
@@ -328,20 +328,20 @@ class BookingController extends Controller
         $booking->update($data);
 
         return redirect()->route('bookings.index')
-            ->with(['message' => 'Booking updated!']);
+            ->with(['success' => 'Booking updated!']);
     }
 
     public function destroy(Event $event, Booking $booking)
     {
         if (auth()->user()->cannot('delete', $booking)) {
             return redirect()->route('bookings.index')
-                ->with(['message' => 'You are not allowed to cancel this booking!']);
+                ->with(['error' => 'You are not allowed to cancel this booking!']);
         }
 
         $booking->delete();
 
         return redirect()->route('bookings.index')
-            ->with(['message' => 'Booking cancelled!']);
+            ->with(['success' => 'Booking cancelled!']);
     }
 
     /**
@@ -351,7 +351,7 @@ class BookingController extends Controller
     {
         if (! Auth::user()->is_admin && ! $event->isBookingOpen()) {
             return redirect()->route($redirectRoute)
-                ->with(['message' => 'Booking for this Event is not yet open.']);
+                ->with(['warning' => 'Booking for this Event is not yet open.']);
         }
 
         return null;
@@ -369,12 +369,12 @@ class BookingController extends Controller
 
         if ($event->hasEnded()) {
             return redirect()->route($redirectRoute)
-                ->with(['message' => 'This event has already taken place.']);
+                ->with(['warning' => 'This event has already taken place.']);
         }
 
         if ($event->isReservationClosed()) {
             return redirect()->route($redirectRoute)
-                ->with(['message' => 'The reservation period for this event has ended.']);
+                ->with(['warning' => 'The reservation period for this event has ended.']);
         }
 
         return null;

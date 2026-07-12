@@ -150,7 +150,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('message', 'You can only book a maximum of 2 seats per event.');
+            ->assertSessionHas('warning', 'You can only book a maximum of 2 seats per event.');
 
         $this->assertDatabaseCount('bookings', 2); // No new booking created
     }
@@ -193,7 +193,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('message', 'The reservation period for this event has ended.');
+            ->assertSessionHas('warning', 'The reservation period for this event has ended.');
     }
 
     /** @test */
@@ -205,7 +205,7 @@ class BookingControllerTest extends TestCase
             ->get(route('bookings.create', $this->event));
 
         $response->assertRedirect(route('events.index'))
-            ->assertSessionHas('message', 'Booking for this Event is not yet open.');
+            ->assertSessionHas('warning', 'Booking for this Event is not yet open.');
     }
 
     /** @test */
@@ -223,7 +223,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'Booking for this Event is not yet open.');
+            ->assertSessionHas('warning', 'Booking for this Event is not yet open.');
 
         $this->assertDatabaseCount('bookings', 0);
     }
@@ -332,7 +332,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('message', 'Not enough tickets available for this event.');
+            ->assertSessionHas('warning', 'Not enough tickets available for this event.');
     }
 
     /** @test */
@@ -444,7 +444,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'Booking updated!');
+            ->assertSessionHas('success', 'Booking updated!');
 
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
@@ -469,7 +469,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to update this booking!');
+            ->assertSessionHas('error', 'You are not allowed to update this booking!');
     }
 
     /** @test */
@@ -485,7 +485,7 @@ class BookingControllerTest extends TestCase
             ->delete(route('bookings.destroy', [$this->event, $booking]));
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'Booking cancelled!');
+            ->assertSessionHas('success', 'Booking cancelled!');
 
         $this->assertDatabaseMissing('bookings', ['id' => $booking->id]);
     }
@@ -504,7 +504,7 @@ class BookingControllerTest extends TestCase
             ->delete(route('bookings.destroy', [$this->event, $booking]));
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to cancel this booking!');
+            ->assertSessionHas('error', 'You are not allowed to cancel this booking!');
 
         $this->assertDatabaseHas('bookings', ['id' => $booking->id]);
     }
