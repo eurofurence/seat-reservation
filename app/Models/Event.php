@@ -30,11 +30,6 @@ class Event extends Model
         return is_null($this->booking_starts_at) || $this->booking_starts_at->isPast();
     }
 
-    public function isReservationOpen(): bool
-    {
-        return is_null($this->reservation_ends_at) || $this->reservation_ends_at->isFuture();
-    }
-
     // "Locked" state (see EventIndex.vue::getEventStatus) - reservation deadline has passed.
     public function isReservationClosed(): bool
     {
