@@ -62,7 +62,11 @@ npm run dev            # Vite dev server with HMR
 ### Docker
 
 ```bash
+cp .env.example .env
+# then set DB_HOST=mysql (not 127.0.0.1) so the app can reach the mysql service
+
 docker compose up -d --build
+docker compose exec laravel.test php artisan key:generate
 docker compose exec laravel.test php artisan migrate
 docker compose exec laravel.test npm install
 docker compose exec laravel.test npm run dev
@@ -71,6 +75,8 @@ docker compose exec laravel.test npm run dev
 This starts a FrankenPHP container (serving the app on port 80, Vite HMR on 5173) alongside a MySQL container. Run all `artisan`/`composer`/`npm` commands through `docker compose exec laravel.test ...` — there's no need for PHP or Node on the host.
 
 > **SELinux hosts (Fedora/RHEL):** the bind mount uses the `:z` flag in `docker-compose.yml` so Docker relabels the project directory for container access. Without it you'll see `Permission denied` errors from inside the container even though Unix file permissions look fine (a host/container SELinux category mismatch, visible via `ls -Zd .` vs `docker inspect <container> --format '{{.HostConfig.SecurityOpt}}'`). The flag is a no-op on non-SELinux hosts.
+
+> **No TTY / hangs on some terminals:** if `docker compose exec laravel.test <cmd>` hangs indefinitely, add `-T` to disable TTY allocation: `docker compose exec -T laravel.test <cmd>`. This is common in non-interactive or embedded terminal setups.
 
 ### Useful commands
 
