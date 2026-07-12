@@ -103,7 +103,7 @@ const isEditMode = computed(() => !!props.event?.id)
       v-model="form.reservation_ends_at"
       label="Reservation Deadline"
       :error="form.errors.reservation_ends_at"
-      hint="Leave empty for no reservation deadline (booking stays open indefinitely)"
+      hint="Leave empty to allow booking right up until the event start"
     />
 
     <div>
