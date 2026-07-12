@@ -359,10 +359,14 @@ class BookingController extends Controller
 
     /**
      * Redirect to $redirectRoute if the event has ended or its reservation deadline ("locked", see
-     * EventIndex.vue::getEventStatus) has passed. Applies to everyone, including admins.
+     * EventIndex.vue::getEventStatus) has passed. Admins bypass this, same as denyIfBookingNotOpen.
      */
     private function denyIfBookingClosed(Event $event, string $redirectRoute)
     {
+        if (Auth::user()->is_admin) {
+            return null;
+        }
+
         if ($event->hasEnded()) {
             return redirect()->route($redirectRoute)
                 ->with(['message' => 'This event has already taken place.']);
