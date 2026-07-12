@@ -1,5 +1,6 @@
 <script setup>
 // Full width layout for components that need the entire viewport
+import ToastProvider from '@/Components/ToastProvider.vue'
 </script>
 
 <template>
@@ -7,6 +8,7 @@
     <div class="fullwidth-viewport">
       <slot></slot>
     </div>
+    <ToastProvider />
   </div>
 </template>
 

@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import ToastProvider from '@/Components/ToastProvider.vue'
 
 // Responsive viewport configuration
 const viewportMeta = ref({
@@ -13,6 +14,7 @@ const viewportMeta = ref({
 <template>
   <div class="layout-container">
     <slot></slot>
+    <ToastProvider />
   </div>
 </template>
 

@@ -103,14 +103,6 @@ const getBookingStatus = (booking) => {
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 pb-24 lg:pb-8">
-      <!-- Flash Message -->
-      <Alert v-if="$page.props.flash.message" class="mb-6 lg:mb-8 border-green-200 bg-green-50">
-        <CheckCircle class="h-4 w-4" />
-        <div class="text-green-800">
-          {{ $page.props.flash.message }}
-        </div>
-      </Alert>
-
       <!-- Instructions -->
       <Alert class="mb-6 lg:mb-8 border-blue-200 bg-blue-50">
         <Info class="h-4 w-4" />
