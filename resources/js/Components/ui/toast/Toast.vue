@@ -19,7 +19,9 @@ const toastVariants = cva(
       variant: {
         default: 'border bg-background text-foreground',
         destructive:
-          'destructive group border-destructive bg-destructive text-destructive-foreground',
+          'group border-red-200 bg-red-100 text-red-800',
+        warning:
+          'group border-orange-200 bg-orange-100 text-orange-800',
       },
     },
     defaultVariants: {
@@ -49,7 +51,7 @@ const handleClose = () => {
     </div>
     <button
       @click="handleClose"
-      class="absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100"
+      class="absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-70 transition-opacity hover:text-foreground hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2"
     >
       <X class="h-4 w-4" />
     </button>
