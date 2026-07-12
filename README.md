@@ -93,7 +93,6 @@ This starts a FrankenPHP container (serving the app on port 80, Vite HMR on 5173
 
 > **SELinux hosts (Fedora/RHEL):** the bind mount uses the `:z` flag in `docker-compose.yml` so Docker relabels the project directory for container access. Without it you'll see `Permission denied` errors from inside the container even though Unix file permissions look fine (a host/container SELinux category mismatch, visible via `ls -Zd .` vs `docker inspect <container> --format '{{.HostConfig.SecurityOpt}}'`). The flag is a no-op on non-SELinux hosts.
 
-> **No TTY / hangs on some terminals:** if `docker compose exec laravel.test <cmd>` hangs indefinitely, add `-T` to disable TTY allocation: `docker compose exec -T laravel.test <cmd>`. This is common in non-interactive or embedded terminal setups.
 
 ### Useful commands
 
@@ -109,6 +108,14 @@ php artisan route:list  # Inspect registered routes
 php artisan test                              # Run the full suite
 php artisan test --filter="TestClass"         # Run a specific test class
 ```
+
+### Running tests in Docker
+
+```bash
+docker compose exec laravel.test php artisan test
+docker compose exec laravel.test php artisan test --filter="TestClass"
+```
+
 
 Tests cover the public booking flow, booking authorization/security, and booking-code generation/lookup (`tests/Feature`), plus model and service unit tests (`tests/Unit`).
 
