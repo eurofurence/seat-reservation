@@ -197,7 +197,7 @@ const getBlockNameClasses = computed(() => {
       <div
         v-for="row in getRowOrder(block.rows, block.rotation)"
         :key="row.id"
-        :class="[getLayoutClasses.rowSection, 'mb-0 mr-3']"
+        :class="[getLayoutClasses.rowSection, 'mb-0']"
       >
         <!-- For 270°: separator first, then seats -->
         <template v-if="block.rotation === 270">

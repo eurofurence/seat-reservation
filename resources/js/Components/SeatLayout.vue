@@ -354,7 +354,7 @@ watch(() => props.selectedSeats, (newSeats) => {
 .block-cell {
   display: flex;
   align-items: flex-start;
-  justify-content: flex-start;
+  justify-content: center;
   width: 100%;
   height: 100%;
   overflow: visible;
