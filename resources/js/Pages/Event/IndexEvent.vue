@@ -13,12 +13,8 @@ defineProps({
     events: Array
 })
 
-const isBookingOpen = (event) => {
-  return !event.booking_starts_at || dayjs().isAfter(dayjs(event.booking_starts_at))
-}
-
 const getTicketAvailabilityStatus = (event) => {
-  if (!isBookingOpen(event)) return { color: 'bg-blue-100 text-blue-800 border-blue-200', text: 'Not Yet Open' }
+  if (!event.is_booking_open) return { color: 'bg-blue-100 text-blue-800 border-blue-200', text: 'Not Yet Open' }
   if (event.tickets_left === 0) return { color: 'bg-red-100 text-red-800 border-red-200', text: 'Sold Out' }
   if (event.tickets_left < 10) return { color: 'bg-orange-100 text-orange-800 border-orange-200', text: 'Few Left' }
   return { color: 'bg-green-100 text-green-800 border-green-200', text: 'Available' }
@@ -120,7 +116,7 @@ function goBack() {
                   ]"
                 >
                   <Users class="h-3 w-3 mr-1" />
-                  {{ isBookingOpen(event) ? `${event.tickets_left} tickets left` : getTicketAvailabilityStatus(event).text }}
+                  {{ event.is_booking_open ? `${event.tickets_left} tickets left` : getTicketAvailabilityStatus(event).text }}
                 </span>
                 
                 <span class="text-xs text-gray-500 lg:w-full lg:text-center">

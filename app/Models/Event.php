@@ -30,6 +30,11 @@ class Event extends Model
         return is_null($this->booking_starts_at) || $this->booking_starts_at->isPast();
     }
 
+    public function isReservationOpen(): bool
+    {
+        return is_null($this->reservation_ends_at) || $this->reservation_ends_at->isFuture();
+    }
+
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);

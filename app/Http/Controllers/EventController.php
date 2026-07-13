@@ -24,6 +24,7 @@ class EventController extends Controller
             $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
             $bookedTickets = $event->bookings()->count();
             $event->tickets_left = max(0, $maxTickets - $bookedTickets);
+            $event->is_booking_open = $event->isBookingOpen();
         });
 
         return Inertia::render('Event/IndexEvent', [

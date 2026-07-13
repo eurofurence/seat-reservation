@@ -41,7 +41,7 @@ class BookingPolicy
             return false;
         }
 
-        return is_null($event->reservation_ends_at) || $event->reservation_ends_at->isFuture();
+        return $event->isReservationOpen();
     }
 
     public function update(User $user, Booking $booking): bool
@@ -53,7 +53,7 @@ class BookingPolicy
 
         // Regular users can only update their own bookings before deadline and if not picked up
         return $user->id === $booking->user_id
-            && (is_null($booking->event->reservation_ends_at) || $booking->event->reservation_ends_at->isFuture())
+            && $booking->event->isReservationOpen()
             && is_null($booking->picked_up_at);
     }
 
@@ -66,7 +66,7 @@ class BookingPolicy
 
         // Regular users can only delete their own bookings before deadline and if not picked up
         return $user->id === $booking->user_id
-            && (is_null($booking->event->reservation_ends_at) || $booking->event->reservation_ends_at->isFuture())
+            && $booking->event->isReservationOpen()
             && is_null($booking->picked_up_at);
     }
 }
