@@ -205,7 +205,7 @@ class BookingControllerTest extends TestCase
             ->get(route('bookings.create', $this->event));
 
         $response->assertRedirect(route('events.index'))
-            ->assertSessionHas('message', 'Booking for this event has not started yet.');
+            ->assertSessionHas('message', 'Booking for this Event is not yet open.');
     }
 
     /** @test */
@@ -223,7 +223,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'Booking for this event has not started yet.');
+            ->assertSessionHas('message', 'Booking for this Event is not yet open.');
 
         $this->assertDatabaseCount('bookings', 0);
     }
@@ -288,7 +288,7 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
-    public function events_index_excludes_events_whose_booking_has_not_started()
+    public function events_index_includes_events_whose_booking_has_not_started()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
 
@@ -307,7 +307,7 @@ class BookingControllerTest extends TestCase
         $events = $response->getOriginalContent()->getData()['page']['props']['events'];
         $eventIds = collect($events)->pluck('id');
 
-        $this->assertFalse($eventIds->contains($this->event->id));
+        $this->assertTrue($eventIds->contains($this->event->id));
         $this->assertTrue($eventIds->contains($openEvent->id));
     }
 

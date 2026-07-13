@@ -4,7 +4,7 @@ import Layout from "@/Layouts/Layout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
-import { ArrowLeft, Volume2, Calendar, MapPin, Clock, Users, Search } from 'lucide-vue-next'
+import { ArrowLeft, Volume2, Calendar, MapPin, Clock, Users, Search, AlertTriangle } from 'lucide-vue-next'
 import dayjs from "dayjs"
 
 defineOptions({layout: Layout})
@@ -13,9 +13,14 @@ defineProps({
     events: Array
 })
 
-const getTicketAvailabilityStatus = (ticketsLeft) => {
-  if (ticketsLeft === 0) return { color: 'bg-red-100 text-red-800 border-red-200', text: 'Sold Out' }
-  if (ticketsLeft < 10) return { color: 'bg-orange-100 text-orange-800 border-orange-200', text: 'Few Left' }
+const isBookingOpen = (event) => {
+  return !event.booking_starts_at || dayjs().isAfter(dayjs(event.booking_starts_at))
+}
+
+const getTicketAvailabilityStatus = (event) => {
+  if (!isBookingOpen(event)) return { color: 'bg-blue-100 text-blue-800 border-blue-200', text: 'Not Yet Open' }
+  if (event.tickets_left === 0) return { color: 'bg-red-100 text-red-800 border-red-200', text: 'Sold Out' }
+  if (event.tickets_left < 10) return { color: 'bg-orange-100 text-orange-800 border-orange-200', text: 'Few Left' }
   return { color: 'bg-green-100 text-green-800 border-green-200', text: 'Available' }
 }
 
@@ -62,6 +67,14 @@ function goBack() {
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      <!-- Flash Message -->
+      <Alert v-if="$page.props.flash.message" class="mb-6 lg:mb-8 border-red-200 bg-red-50">
+        <AlertTriangle class="h-4 w-4" />
+        <div class="text-red-800">
+          {{ $page.props.flash.message }}
+        </div>
+      </Alert>
+
       <!-- Page Description -->
       <Alert class="mb-6 lg:mb-8 border-blue-200 bg-blue-50">
         <Volume2 class="h-4 w-4" />
@@ -103,15 +116,15 @@ function goBack() {
                 <span 
                   :class="[
                     'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border lg:w-full lg:justify-center',
-                    getTicketAvailabilityStatus(event.tickets_left).color
+                    getTicketAvailabilityStatus(event).color
                   ]"
                 >
                   <Users class="h-3 w-3 mr-1" />
-                  {{ event.tickets_left }} tickets left
+                  {{ isBookingOpen(event) ? `${event.tickets_left} tickets left` : getTicketAvailabilityStatus(event).text }}
                 </span>
                 
                 <span class="text-xs text-gray-500 lg:w-full lg:text-center">
-                  {{ getTicketAvailabilityStatus(event.tickets_left).text }}
+                  {{ getTicketAvailabilityStatus(event).text }}
                 </span>
               </div>
             </div>

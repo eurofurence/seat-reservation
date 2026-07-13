@@ -360,7 +360,7 @@ class BookingController extends Controller
     {
         if (! Auth::user()->is_admin && ! $event->isBookingOpen()) {
             return redirect()->route($redirectRoute)
-                ->with(['message' => 'Booking for this event has not started yet.']);
+                ->with(['message' => 'Booking for this Event is not yet open.']);
         }
 
         return null;
