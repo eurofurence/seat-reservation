@@ -103,7 +103,7 @@ class BookingController extends Controller
             'stageBlocks' => $stageBlocks,
             'bookedSeats' => $bookedSeats,
             'selectedSeats' => $request->get('seats', []), // Pass selected seats from URL
-            'maxSeatsPerUser' => min(2, $ticketsLeft),
+            'maxSeatsPerUser' => min(self::MAX_SEATS_PER_EVENT, $event->tickets_left),
             'userBookedCount' => Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
                 ->count(),
@@ -128,7 +128,7 @@ class BookingController extends Controller
         // Check if user can book these seats
         if ($this->exceedsBookingLimit($event, count($data['seats']))) {
             return redirect()->route('bookings.create', ['event' => $event->id])
-                ->with(['error' => 'You can only book a maximum of 2 seats per event.']);
+                ->with(['error' => 'You can only book a maximum of '. self::MAX_SEATS_PER_EVENT . ' seats per event.']);
         }
 
         // Check if any seats are already booked
@@ -192,7 +192,7 @@ class BookingController extends Controller
         // Ensure user hasn't exceeded booking limit
         if ($this->exceedsBookingLimit($event, count($data['seats']))) {
             return redirect()->route('bookings.index')
-                ->with(['error' => 'You can only book a maximum of 2 seats per event.']);
+                ->with(['error' => 'You can only book a maximum of '. self::MAX_SEATS_PER_EVENT .' seats per event.']);
         }
 
         // Use transaction to ensure atomicity
@@ -380,13 +380,20 @@ class BookingController extends Controller
      */
     private function hasReachedBookingLimit(Event $event): bool
     {
-        return ! Auth::user()->is_admin
-            && Booking::where('user_id', Auth::id())->where('event_id', $event->id)->count() >= self::MAX_SEATS_PER_EVENT;
+        if (Auth::user()->is_admin) {
+            return false;
+        }
+
+        $existingBookings = Booking::where('user_id', Auth::id())
+            ->where('event_id', $event->id)
+            ->count();
+
+        return $existingBookings >= self::MAX_SEATS_PER_EVENT;
     }
 
     /**
      * Whether booking $additionalSeats more seats would push the current user over the
-     * 2-seats-per-event limit for this event. Admins are exempt.
+     * limit for this event. Admins are exempt.
      */
     private function exceedsBookingLimit(Event $event, int $additionalSeats): bool
     {
