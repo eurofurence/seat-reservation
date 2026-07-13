@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -31,15 +32,32 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
-                'warning' => fn () => $request->session()->get('warning'),
-                'info' => fn () => $request->session()->get('info'),
-            ],
+            'flash' => fn () => $this->flash($request),
             'auth' => [
                 'user' => $request->user(),
             ],
         ];
+    }
+
+    /**
+     * Build the flash prop.
+     *
+     * @return array<string, string|null>|null
+     */
+    protected function flash(Request $request): ?array
+    {
+        $messages = array_filter([
+            'success' => $request->session()->pull('success'),
+            'error' => $request->session()->pull('error'),
+            'warning' => $request->session()->pull('warning'),
+            'info' => $request->session()->pull('info'),
+        ]);
+
+        if (empty($messages)) {
+            return null;
+        }
+
+        // id is used to prevent it from showing up multiple times on reloads
+        return [...$messages, 'id' => (string) Str::uuid()];
     }
 }
