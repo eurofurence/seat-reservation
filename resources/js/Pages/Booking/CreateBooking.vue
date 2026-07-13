@@ -135,6 +135,11 @@ function goBack() {
                 <span class="font-medium mr-2">Date & Time:</span>
                 <span>{{ dayjs(event.starts_at).format('MMM DD, YYYY - HH:mm') }}</span>
               </div>
+              <div v-if="!event.is_booking_open && event.booking_starts_at" class="flex items-center text-sm lg:text-base text-amber-600">
+                <AlertCircle class="h-4 w-4 mr-2 flex-shrink-0" />
+                <span class="font-medium mr-2">Booking Opens:</span>
+                <span>{{ dayjs(event.booking_starts_at).format('MMM DD, YYYY - HH:mm') }}</span>
+              </div>
             </div>
           </Card>
 
