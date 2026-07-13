@@ -396,7 +396,7 @@ class EventAdminController extends Controller
             $bookingCount = count($request->seat_ids);
             $seatText = $bookingCount === 1 ? 'seat' : 'seats';
 
-            return back()->with('success', "Successfully booked {$bookingCount} {$seatText} for {$request->name}");
+            return back()->with('success', "Successfully booked {$bookingCount} {$seatText} for {$request->guest_name}");
 
         } catch (\Exception $e) {
             DB::rollback();
