@@ -32,7 +32,7 @@ const availableSeats = computed(() => {
 })
 
 const canProceed = computed(() => {
-    return selectedSeats.value.length > 0 && selectedSeats.value.length <= availableSeats.value
+    return props.event.is_booking_open && selectedSeats.value.length > 0 && selectedSeats.value.length <= availableSeats.value
 })
 
 function handleSeatsChanged(seats) {
@@ -95,6 +95,14 @@ function goBack() {
       <div class="lg:grid lg:grid-cols-12 lg:gap-8">
         <!-- Left Sidebar: Event Info & Instructions (Desktop) -->
         <div class="lg:col-span-4 xl:col-span-3 space-y-6 mb-6 lg:mb-0">
+          <!-- Booking Not Yet Open Alert -->
+          <Alert v-if="!event.is_booking_open" variant="default">
+            <AlertCircle class="h-4 w-4" />
+            <div class="font-medium">
+              Booking for this event is not yet open{{ event.booking_starts_at ? ` (opens ${dayjs(event.booking_starts_at).format('MMM DD, YYYY - HH:mm')})` : '' }}. You can browse the seating layout, but seats cannot be booked yet.
+            </div>
+          </Alert>
+
           <!-- Selection Status Alert -->
           <Alert
             :variant="selectedSeats.length === availableSeats ? 'destructive' : 'default'"

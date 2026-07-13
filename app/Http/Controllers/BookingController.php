@@ -45,18 +45,19 @@ class BookingController extends Controller
             return $redirect;
         }
 
-        if ($redirect = $this->denyIfBookingNotOpen($event, 'events.index')) {
-            return $redirect;
-        }
-
         // Check if user has reached booking limit
         if ($this->hasReachedBookingLimit($event)) {
             return redirect()->route('bookings.index')
                 ->with(['error' => 'You have already booked the maximum number of seats for this event.']);
         }
 
-        // Check if we're coming from seat selection (validation page)
+        // Check if we're coming from seat selection (validation page). Users may browse the
+        // seat layout before the booking window opens, but proceeding past it is still gated.
         if ($request->has('seats') && $request->has('validate')) {
+            if ($redirect = $this->denyIfBookingNotOpen($event, 'bookings.create', ['event' => $event->id])) {
+                return $redirect;
+            }
+
             return $this->validateBooking($request, $event);
         }
 
@@ -97,7 +98,10 @@ class BookingController extends Controller
         $ticketsLeft = $event->tickets_left;
 
         return Inertia::render('Booking/CreateBooking', [
-            'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at']), ['tickets_left' => $ticketsLeft]),
+            'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at']), [
+                'tickets_left' => $event->tickets_left,
+                'is_booking_open' => Auth::user()->is_admin || $event->isBookingOpen(),
+            ]),
             'room' => $event->room->only(['id', 'name', 'stage_x', 'stage_y']),
             'blocks' => $blocks,
             'stageBlocks' => $stageBlocks,
@@ -342,10 +346,10 @@ class BookingController extends Controller
     /**
      * Redirect to $redirectRoute if the event's booking period hasn't opened yet for non-admins.
      */
-    private function denyIfBookingNotOpen(Event $event, string $redirectRoute)
+    private function denyIfBookingNotOpen(Event $event, string $redirectRoute, array $routeParams = [])
     {
         if (! Auth::user()->is_admin && ! $event->isBookingOpen()) {
-            return redirect()->route($redirectRoute)
+            return redirect()->route($redirectRoute, $routeParams)
                 ->with(['error' => 'Booking for this event is not yet open.']);
         }
 

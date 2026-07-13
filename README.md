@@ -40,7 +40,7 @@ The following rules are enforced in the current application behavior.
 - Per-account limit: non-admin users can book at most 2 seats per event (across all booking attempts, not per single request).
 - Event capacity limit: booking is blocked when the event has no tickets left (`max_tickets` reached).
 - Seat conflict protection: already-booked seats cannot be booked again, including concurrent requests (seat rows are locked during booking transaction).
-- Booking window start: non-admin users cannot open or submit bookings before `booking_starts_at` (if set).
+- Booking window start: non-admin users can browse the seat layout before `booking_starts_at`, but cannot proceed past seat selection or submit bookings until it has passed (if set).
 - Booking window end: new bookings are blocked after `reservation_ends_at`.
 - Admin bypass for booking start: admins can still create bookings before `booking_starts_at` through the user booking flow.
 - Booking codes (user booking flow): every successful booking flow generates a 3-character alphanumeric code (`A-Z`, `0-9`), reused across all seats in that same submission.

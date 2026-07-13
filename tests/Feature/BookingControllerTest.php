@@ -200,14 +200,27 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
-    public function user_cannot_view_create_page_before_booking_starts_at()
+    public function user_can_view_create_page_before_booking_starts_at_but_it_is_marked_not_open()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
 
         $response = $this->actingAs($this->user)
             ->get(route('bookings.create', $this->event));
 
-        $response->assertRedirect(route('events.index'))
+        $response->assertOk();
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertFalse($props['event']['is_booking_open']);
+    }
+
+    /** @test */
+    public function user_cannot_proceed_past_seat_selection_before_booking_starts_at()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', ['event' => $this->event, 'seats' => [$this->seats[0]->id], 'validate' => true]));
+
+        $response->assertRedirect(route('bookings.create', $this->event))
             ->assertSessionHas('error', 'Booking for this event is not yet open.');
     }
 
