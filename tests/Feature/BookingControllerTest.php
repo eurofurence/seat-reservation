@@ -208,7 +208,7 @@ class BookingControllerTest extends TestCase
             ->get(route('bookings.create', $this->event));
 
         $response->assertRedirect(route('events.index'))
-            ->assertSessionHas('error', 'Booking for this Event is not yet open.');
+            ->assertSessionHas('error', 'Booking for this event is not yet open.');
     }
 
     /** @test */
@@ -226,7 +226,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('error', 'Booking for this Event is not yet open.');
+            ->assertSessionHas('error', 'Booking for this event is not yet open.');
 
         $this->assertDatabaseCount('bookings', 0);
     }
