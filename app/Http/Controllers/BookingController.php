@@ -12,6 +12,8 @@ use Inertia\Inertia;
 
 class BookingController extends Controller
 {
+    private const MAX_SEATS_PER_EVENT = 2;
+
     public function index()
     {
         $bookings = Booking::where('user_id', auth()->id())
@@ -48,7 +50,7 @@ class BookingController extends Controller
         }
 
         // Check if user has reached booking limit
-        if ($this->exceedsBookingLimit($event, 1)) {
+        if ($this->hasReachedBookingLimit($event)) {
             return redirect()->route('bookings.index')
                 ->with(['error' => 'You have already booked the maximum number of seats for this event.']);
         }
@@ -374,6 +376,15 @@ class BookingController extends Controller
     }
 
     /**
+     * Whether the current user has already booked the max seats for this event. Admins are exempt.
+     */
+    private function hasReachedBookingLimit(Event $event): bool
+    {
+        return ! Auth::user()->is_admin
+            && Booking::where('user_id', Auth::id())->where('event_id', $event->id)->count() >= self::MAX_SEATS_PER_EVENT;
+    }
+
+    /**
      * Whether booking $additionalSeats more seats would push the current user over the
      * 2-seats-per-event limit for this event. Admins are exempt.
      */
@@ -387,7 +398,7 @@ class BookingController extends Controller
             ->where('event_id', $event->id)
             ->count();
 
-        return $existingBookings + $additionalSeats > 2;
+        return $existingBookings + $additionalSeats > self::MAX_SEATS_PER_EVENT;
     }
 
     /**
