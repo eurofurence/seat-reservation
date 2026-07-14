@@ -123,6 +123,14 @@ docker compose exec laravel.test php artisan test --filter="TestClass"
 
 Tests cover the public booking flow, booking authorization/security, and booking-code generation/lookup (`tests/Feature`), plus model and service unit tests (`tests/Unit`).
 
+### End-to-end tests (Playwright)
+
+Browser-driven tests covering the booking flow and admin panel against a running dev server (Docker). See [tests/e2e/README.md](tests/e2e/README.md) for one-time setup, fixtures, and what's covered.
+
+```bash
+docker compose exec laravel.test npm run test:e2e
+```
+
 ## License
 
 Licensed under the [MIT License](LICENSE).

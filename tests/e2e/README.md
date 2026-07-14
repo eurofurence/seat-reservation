@@ -1,8 +1,8 @@
 # E2E tests (Playwright)
 
-GUI tests for the booking window/validation, notification, and admin-UI fixes
-on the `fix/event-booking-validation` branch. Run against the Sail dev
-container — nothing here manages the app server itself.
+GUI tests for the booking flow, admin panel, and booking-window/validation
+fixes. Run against the Sail dev container — nothing here manages the app
+server itself.
 
 ## One-time setup per environment
 
@@ -22,28 +22,67 @@ docker compose exec laravel.test npx playwright install --with-deps chromium
    `auth.setup.ts` for the exact snippet/behavior). It's intentionally never
    committed — remove it again before committing app changes.
 2. Seed deterministic fixtures: `docker compose exec laravel.test php artisan e2e:seed`
-   (also runs automatically via the `pretest:e2e` npm script).
+   (also runs automatically via the `pretest:e2e` npm script, so step 3 alone
+   is enough in practice).
 
 ## Running
 
 ```bash
-docker compose exec laravel.test npm run test:e2e        # headless
+docker compose exec laravel.test npm run test:e2e        # headless, all specs
 docker compose exec laravel.test npm run test:e2e:ui     # interactive UI mode
+
+# A single file or directory:
+docker compose exec laravel.test npx playwright test tests/e2e/user/booking-window.spec.ts
+
+# Only one project (guest / user / admin):
+docker compose exec laravel.test npx playwright test --project=admin
 ```
+
+`workers: 1` is hardcoded in `playwright.config.ts` (even locally) - every
+"user" spec shares ONE dev-login session/cookie (same for "admin"), and
+Laravel's session-flash data is read-and-cleared per request, so concurrent
+requests under the same session ID can silently drop each other's flash
+message. Don't remove/raise it without re-verifying that isn't still true.
+
+On a slow machine, running the whole suite can take a minute or two - prefer
+scoping to a single file/project while iterating on one spec (see above).
+
+## What's covered
+
+- `guest/login.spec.ts` - unauthenticated smoke checks
+- `admin/smoke.spec.ts` - dashboard/events/rooms render for an admin session
+- `admin/events-crud.spec.ts`, `admin/rooms-crud.spec.ts` - admin CRUD dialogs
+- `admin/event-form-validation.spec.ts` - starts_at/reservation_ends_at/booking_starts_at
+  ordering validation on the event form, and that its errors render inline
+- `admin/booking-parity.spec.ts` - admins get no special treatment in the
+  customer-facing booking flow (blocked before the window opens, after the
+  event ends, and past the reservation deadline, same as a regular user)
+- `admin/manual-booking.spec.ts` - the admin panel's separate manual-booking
+  flow still bypasses those guards on purpose, its success toast shows the
+  real guest name, and reverting a picked-up ticket asks for confirmation
+- `user/booking-flow.spec.ts` - happy-path seat booking to confirmation
+- `user/seat-selection.spec.ts` - seat-picker edge cases (deselect, max-seats
+  cap, blank-name client-side validation)
+- `user/booking-window.spec.ts` - browsing before the booking window opens
+  (banner, hidden booked seats, disabled continue), and redirects for
+  sold-out/ended/closed-reservation events
+- `user/seat-conflict-redirect.spec.ts` - submitting after someone else took
+  the seat mid-checkout redirects cleanly instead of looping
+- `user/ui-polish.spec.ts` - error toast persistence/styling, seat-block centering
 
 ## Fixtures
 
 `php artisan e2e:seed` (`app/Console/Commands/SeedE2EData.php`) creates one
-"E2E Test Room" (10 seats: Block A, Row 1-2, 5 seats each) and four events on
+"E2E Test Room" (10 seats: Block A, Row 1-2, 5 seats each) and five events on
 it, each isolated from the others since booking limits are per-event:
 
 - **E2E Test Event** — booking window open, event/deadline in the future.
-  Has one filler booking (seat "Row 1-1") to prove booked seats are visible
-  once the window is open. Real POSTed bookings against this event are kept
-  to a single spec file (see `user/booking-window.spec.ts`) to avoid other
-  parallel specs' bookings exhausting the 2-seat-per-user cap.
-- **E2E Not Open Event** — `booking_starts_at` in the future. Also has a
-  filler booking, which must stay hidden while the window isn't open yet.
+  Real POSTed bookings/selections against this event are spread across a few
+  specs, each pinned to its own seat (see comments in `SeedE2EData.php` and
+  each spec) to avoid colliding with the shared dev-login user's 2-seat cap.
+- **E2E Sold Out Event** — `max_tickets` already met by a filler booking.
+- **E2E Not Open Event** — `booking_starts_at` in the future. Has a filler
+  booking, which must stay hidden while the window isn't open yet.
 - **E2E Ended Event** — `starts_at` in the past (`Event::hasEnded()`).
 - **E2E Closed Reservation Event** — `reservation_ends_at` in the past but
   `starts_at` still in the future (`Event::isReservationClosed()`, distinct
@@ -54,3 +93,4 @@ the future, so "E2E Ended Event" and "E2E Closed Reservation Event" never
 show up on `/events` — reach their seat picker by navigating directly to
 `/events/{id}/bookings/create` (look the id up via `/admin/events` first,
 using an admin-authenticated context).
+
