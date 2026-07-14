@@ -86,9 +86,10 @@ class BookingController extends Controller
             ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
             ->get();
 
-        // Get already booked seats for this event efficiently. Non-admins browsing before the
+        // Get already booked seats for this event efficiently. Users browsing before the
         // booking window opens shouldn't see which seats are taken, since they can't book yet.
-        $isBookingOpen = Auth::user()->is_admin || $event->isBookingOpen();
+        // Admins get no special treatment here — use the admin panel to manage bookings early.
+        $isBookingOpen = $event->isBookingOpen();
         $bookedSeats = $isBookingOpen
             ? Booking::where('event_id', $event->id)->pluck('seat_id')->toArray()
             : [];
@@ -346,11 +347,12 @@ class BookingController extends Controller
     }
 
     /**
-     * Redirect to $redirectRoute if the event's booking period hasn't opened yet for non-admins.
+     * Redirect to $redirectRoute if the event's booking period hasn't opened yet. Admins get no
+     * special treatment here — use the admin panel to manage bookings early.
      */
     private function denyIfBookingNotOpen(Event $event, string $redirectRoute, array $routeParams = [])
     {
-        if (! Auth::user()->is_admin && ! $event->isBookingOpen()) {
+        if (! $event->isBookingOpen()) {
             return redirect()->route($redirectRoute, $routeParams)
                 ->with(['error' => 'Booking for this event is not yet open.']);
         }
@@ -360,14 +362,11 @@ class BookingController extends Controller
 
     /**
      * Redirect to $redirectRoute if the event has ended or its reservation deadline ("locked", see
-     * EventIndex.vue::getEventStatus) has passed. Admins bypass this, same as denyIfBookingNotOpen.
+     * EventIndex.vue::getEventStatus) has passed. Admins get no special treatment here — use the
+     * admin panel to manage bookings after the deadline.
      */
     private function denyIfBookingClosed(Event $event, string $redirectRoute)
     {
-        if (Auth::user()->is_admin) {
-            return null;
-        }
-
         if ($event->hasEnded()) {
             return redirect()->route($redirectRoute)
                 ->with(['error' => 'This event has already taken place.']);
@@ -382,14 +381,11 @@ class BookingController extends Controller
     }
 
     /**
-     * Whether the current user has already booked the max seats for this event. Admins are exempt.
+     * Whether the current user has already booked the max seats for this event. Admins get no
+     * special treatment here — use the admin panel's manual booking to bypass the limit.
      */
     private function hasReachedBookingLimit(Event $event): bool
     {
-        if (Auth::user()->is_admin) {
-            return false;
-        }
-
         $existingBookings = Booking::where('user_id', Auth::id())
             ->where('event_id', $event->id)
             ->count();
@@ -399,14 +395,11 @@ class BookingController extends Controller
 
     /**
      * Whether booking $additionalSeats more seats would push the current user over the
-     * limit for this event. Admins are exempt.
+     * limit for this event. Admins get no special treatment here — use the admin panel's
+     * manual booking to bypass the limit.
      */
     private function exceedsBookingLimit(Event $event, int $additionalSeats): bool
     {
-        if (Auth::user()->is_admin) {
-            return false;
-        }
-
         $existingBookings = Booking::where('user_id', Auth::id())
             ->where('event_id', $event->id)
             ->count();
