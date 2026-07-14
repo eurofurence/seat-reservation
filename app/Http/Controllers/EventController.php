@@ -19,10 +19,9 @@ class EventController extends Controller
             ->select('id', 'room_id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at', 'tickets', 'max_tickets')
             ->get();
 
-        // tickets_left isn't in $appends (see Event model), so append it per-instance
+        // tickets_left isn't a database column, so compute and attach it per-instance
         // here to include it in the response.
         $events->each(function ($event) {
-            $event->append('tickets_left');
             $event->is_booking_open = $event->isBookingOpen();
         });
 

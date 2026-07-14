@@ -31,13 +31,15 @@ class EventTest extends TestCase
         $seat2 = Seat::factory()->create(['row_id' => $row->id]);
         $seat3 = Seat::factory()->create(['row_id' => $row->id]);
 
+        $this->assertEquals(10, $event->calculateTicketsLeft());
+
         // Create 3 bookings
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat1->id]);
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat2->id]);
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat3->id]);
 
         // Should have 7 tickets left (10 - 3)
-        $this->assertEquals(7, $event->tickets_left);
+        $this->assertEquals(7, $event->calculateTicketsLeft());
     }
 
     /** @test */
@@ -58,12 +60,14 @@ class EventTest extends TestCase
         $seat4 = Seat::factory()->create(['row_id' => $row->id]);
         $seat5 = Seat::factory()->create(['row_id' => $row->id]);
 
+        $this->assertEquals(5, $event->calculateTicketsLeft());
+
         // Create 2 bookings
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat1->id]);
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat2->id]);
 
         // Should have 3 tickets left (5 seats - 2 bookings)
-        $this->assertEquals(3, $event->tickets_left);
+        $this->assertEquals(3, $event->calculateTicketsLeft());
     }
 
     /** @test */
@@ -82,12 +86,14 @@ class EventTest extends TestCase
         $seat2 = Seat::factory()->create(['row_id' => $row->id]);
         $seat3 = Seat::factory()->create(['row_id' => $row->id]);
 
+        $this->assertEquals(2, $event->calculateTicketsLeft());
+
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat1->id]);
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat2->id]);
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat3->id]);
 
         // Should return 0, not negative
-        $this->assertEquals(0, $event->tickets_left);
+        $this->assertEquals(0, $event->calculateTicketsLeft());
     }
 
     /** @test */
@@ -106,9 +112,11 @@ class EventTest extends TestCase
         $seat1 = Seat::factory()->create(['row_id' => $row->id]);
         $seat2 = Seat::factory()->create(['row_id' => $row->id]);
 
+        $this->assertEquals(8, $event->calculateTicketsLeft());
+
         Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat1->id]);
 
         // Should have 7 tickets left (8 - 1)
-        $this->assertEquals(7, $event->tickets_left);
+        $this->assertEquals(7, $event->calculateTicketsLeft());
     }
 }

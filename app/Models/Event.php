@@ -13,9 +13,6 @@ class Event extends Model
 
     protected $guarded = [];
 
-    // appends - disabled to prevent heavy loading
-    // protected $appends = ['tickets_left'];
-
     protected $casts = [
         'starts_at' => 'datetime',
         'reservation_ends_at' => 'datetime',
@@ -52,8 +49,8 @@ class Event extends Model
         return $this->hasMany(Booking::class);
     }
 
-    // custom tickets left attribute - count how many seats are booked
-    public function getTicketsLeftAttribute(): int
+    // Counts how many seats are still bookable.
+    public function calculateTicketsLeft(): int
     {
         $maxTickets = $this->max_tickets ?? $this->tickets ?? 0;
         if ($maxTickets === 0) {

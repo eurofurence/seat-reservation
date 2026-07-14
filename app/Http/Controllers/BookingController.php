@@ -35,8 +35,10 @@ class BookingController extends Controller
 
     public function create(Event $event, Request $request)
     {
+        $ticketsLeft = $event->calculateTicketsLeft();
+
         // Check if event has tickets available
-        if ($event->tickets_left <= 0) {
+        if ($ticketsLeft <= 0) {
             return redirect()->route('events.index')
                 ->with(['error' => 'This event is sold out.']);
         }
@@ -95,11 +97,9 @@ class BookingController extends Controller
             ->orderBy('order')
             ->get();
 
-        $ticketsLeft = $event->tickets_left;
-
         return Inertia::render('Booking/CreateBooking', [
             'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at']), [
-                'tickets_left' => $event->tickets_left,
+                'tickets_left' => $ticketsLeft,
                 'is_booking_open' => Auth::user()->is_admin || $event->isBookingOpen(),
             ]),
             'room' => $event->room->only(['id', 'name', 'stage_x', 'stage_y']),
@@ -107,7 +107,7 @@ class BookingController extends Controller
             'stageBlocks' => $stageBlocks,
             'bookedSeats' => $bookedSeats,
             'selectedSeats' => $request->get('seats', []), // Pass selected seats from URL
-            'maxSeatsPerUser' => min(self::MAX_SEATS_PER_EVENT, $event->tickets_left),
+            'maxSeatsPerUser' => min(self::MAX_SEATS_PER_EVENT, $ticketsLeft),
             'userBookedCount' => Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
                 ->count(),
@@ -121,7 +121,7 @@ class BookingController extends Controller
             'seats.*' => 'required|exists:seats,id',
         ]);
 
-        $ticketsLeft = $event->tickets_left;
+        $ticketsLeft = $event->calculateTicketsLeft();
 
         // Check if enough tickets are available
         if ($ticketsLeft < count($data['seats'])) {
@@ -132,7 +132,7 @@ class BookingController extends Controller
         // Check if user can book these seats
         if ($this->exceedsBookingLimit($event, count($data['seats']))) {
             return redirect()->route('bookings.create', ['event' => $event->id])
-                ->with(['error' => 'You can only book a maximum of '. self::MAX_SEATS_PER_EVENT . ' seats per event.']);
+                ->with(['error' => 'You can only book a maximum of '.self::MAX_SEATS_PER_EVENT.' seats per event.']);
         }
 
         // Check if any seats are already booked
@@ -185,7 +185,7 @@ class BookingController extends Controller
             'seats.*.comment' => 'nullable|string|max:255',
         ]);
 
-        $ticketsLeft = $event->tickets_left;
+        $ticketsLeft = $event->calculateTicketsLeft();
 
         // Check if enough tickets are available
         if ($ticketsLeft < count($data['seats'])) {
@@ -196,7 +196,7 @@ class BookingController extends Controller
         // Ensure user hasn't exceeded booking limit
         if ($this->exceedsBookingLimit($event, count($data['seats']))) {
             return redirect()->route('bookings.index')
-                ->with(['error' => 'You can only book a maximum of '. self::MAX_SEATS_PER_EVENT .' seats per event.']);
+                ->with(['error' => 'You can only book a maximum of '.self::MAX_SEATS_PER_EVENT.' seats per event.']);
         }
 
         // Use transaction to ensure atomicity
