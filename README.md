@@ -42,7 +42,7 @@ The following rules are enforced in the current application behavior.
 - Seat conflict protection: already-booked seats cannot be booked again, including concurrent requests (seat rows are locked during booking transaction).
 - Booking window start: non-admin users can browse the seat layout before `booking_starts_at`, but cannot proceed past seat selection or submit bookings until it has passed (if set).
 - Booking window end: new bookings are blocked after `reservation_ends_at`.
-- Admin bypass for booking start: admins can still create bookings before `booking_starts_at` through the user booking flow.
+- Booking window start applies to admins too: admins cannot create bookings through the user booking flow before `booking_starts_at` either; only manual admin bookings (via the admin panel) bypass this.
 - Booking codes (user booking flow): every successful booking flow generates a 3-character alphanumeric code (`A-Z`, `0-9`), reused across all seats in that same submission.
 - Booking code uniqueness: generated codes are checked against existing bookings and regenerated on collision.
 - Manual admin bookings: bookings created from admin manual booking use type `admin`, have no `user_id`, and do not get a booking code.
