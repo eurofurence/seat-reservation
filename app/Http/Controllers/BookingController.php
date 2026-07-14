@@ -148,7 +148,7 @@ class BookingController extends Controller
             // this page's own URL contains the conflicting seats, redirecting back to the
             // referer would just re-run this same check and loop forever.
             return redirect()->route('bookings.create', ['event' => $event->id])
-                ->with(['error' => 'Sorry, one or more of the selected seats were just booked by someone else. Please choose different seats.']);
+                ->with(['error' => 'Sorry, one or more of your selected seats were just booked by someone else. Please choose different seats.']);
         }
 
         // Load seat information with minimal data
