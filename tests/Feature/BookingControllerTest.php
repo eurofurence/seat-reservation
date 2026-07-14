@@ -213,6 +213,60 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
+    public function booked_seats_are_hidden_from_layout_before_booking_starts_at()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+            'type' => 'admin',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertOk();
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertEmpty($props['bookedSeats']);
+    }
+
+    /** @test */
+    public function booked_seats_are_shown_in_layout_once_booking_starts_at_has_passed()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->subMinute()]);
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+            'type' => 'admin',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertOk();
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertEquals([$this->seats[0]->id], $props['bookedSeats']);
+    }
+
+    /** @test */
+    public function admin_sees_booked_seats_in_layout_before_booking_starts_at()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+            'type' => 'admin',
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertOk();
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertEquals([$this->seats[0]->id], $props['bookedSeats']);
+    }
+
+    /** @test */
     public function user_cannot_proceed_past_seat_selection_before_booking_starts_at()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);

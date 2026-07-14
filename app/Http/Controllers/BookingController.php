@@ -86,10 +86,12 @@ class BookingController extends Controller
             ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
             ->get();
 
-        // Get already booked seats for this event efficiently
-        $bookedSeats = Booking::where('event_id', $event->id)
-            ->pluck('seat_id')
-            ->toArray();
+        // Get already booked seats for this event efficiently. Non-admins browsing before the
+        // booking window opens shouldn't see which seats are taken, since they can't book yet.
+        $isBookingOpen = Auth::user()->is_admin || $event->isBookingOpen();
+        $bookedSeats = $isBookingOpen
+            ? Booking::where('event_id', $event->id)->pluck('seat_id')->toArray()
+            : [];
 
         // Load stage blocks for the room
         $stageBlocks = $event->room->stageBlocks()
@@ -100,7 +102,7 @@ class BookingController extends Controller
         return Inertia::render('Booking/CreateBooking', [
             'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at']), [
                 'tickets_left' => $ticketsLeft,
-                'is_booking_open' => Auth::user()->is_admin || $event->isBookingOpen(),
+                'is_booking_open' => $isBookingOpen,
             ]),
             'room' => $event->room->only(['id', 'name', 'stage_x', 'stage_y']),
             'blocks' => $blocks,

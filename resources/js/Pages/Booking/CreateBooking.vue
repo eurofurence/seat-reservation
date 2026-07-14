@@ -90,19 +90,21 @@ function goBack() {
       </div>
     </div>
 
+    <!-- Booking Not Yet Open Banner -->
+    <div v-if="!event.is_booking_open" class="bg-amber-100 border-b border-amber-300">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-amber-800">
+        <AlertCircle class="h-5 w-5 flex-shrink-0" />
+        <p class="text-sm lg:text-base font-medium">
+          Booking is not open yet{{ event.booking_starts_at ? ` — opens ${dayjs(event.booking_starts_at).format('MMM DD, YYYY - HH:mm')}` : '' }}. You can browse the seating layout, but seats cannot be booked until then.
+        </p>
+      </div>
+    </div>
+
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
       <div class="lg:grid lg:grid-cols-12 lg:gap-8">
         <!-- Left Sidebar: Event Info & Instructions (Desktop) -->
         <div class="lg:col-span-4 xl:col-span-3 space-y-6 mb-6 lg:mb-0">
-          <!-- Booking Not Yet Open Alert -->
-          <Alert v-if="!event.is_booking_open" variant="default">
-            <AlertCircle class="h-4 w-4" />
-            <div class="font-medium">
-              Booking for this event is not yet open{{ event.booking_starts_at ? ` (opens ${dayjs(event.booking_starts_at).format('MMM DD, YYYY - HH:mm')})` : '' }}. You can browse the seating layout, but seats cannot be booked yet.
-            </div>
-          </Alert>
-
           <!-- Selection Status Alert -->
           <Alert
             :variant="selectedSeats.length === availableSeats ? 'destructive' : 'default'"
