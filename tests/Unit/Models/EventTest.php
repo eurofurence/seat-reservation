@@ -119,4 +119,18 @@ class EventTest extends TestCase
         // Should have 7 tickets left (8 - 1)
         $this->assertEquals(7, $event->calculateTicketsLeft());
     }
+
+    /** @test */
+    public function event_calculates_tickets_left_without_crashing_when_room_is_missing()
+    {
+        // room_id is non-nullable in the schema, so this can't happen for a persisted
+        // Event, but calculateTicketsLeft() shouldn't crash on an event without a room.
+        $event = Event::factory()->make([
+            'room_id' => null,
+            'max_tickets' => null,
+            'tickets' => null,
+        ]);
+
+        $this->assertEquals(0, $event->calculateTicketsLeft());
+    }
 }
