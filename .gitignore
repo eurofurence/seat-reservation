@@ -22,8 +22,7 @@ frankenphp
 logs/
 update-dev.sh
 .pr42_comments.txt
-tests/e2e/.auth/admin.json
-test-results/.last-run.json
-playwright-report/index.html
-tests/e2e/.auth/user.json
-playwright-report/
+/test-results
+/playwright-report
+/blob-report
+/tests/e2e/.auth

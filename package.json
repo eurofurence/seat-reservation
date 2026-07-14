@@ -4,10 +4,14 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "type-check": "vue-tsc --noEmit"
+        "type-check": "vue-tsc --noEmit",
+        "pretest:e2e": "php artisan e2e:seed",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^2.1.2",
+        "@playwright/test": "^1.55.0",
         "@tailwindcss/forms": "^0.5.3",
         "@tailwindcss/postcss": "^4.1.12",
         "@vitejs/plugin-vue": "^5.0.0",
