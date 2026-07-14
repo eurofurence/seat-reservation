@@ -465,6 +465,9 @@ onMounted(scrollToHighlightedBooking)
                         <span class="font-medium">Registration Status:</span>
                         <span class="font-bold" :class="registrationStatus.color">{{ registrationStatus.status }}</span>
                     </div>
+                    <div v-if="event.booking_starts_at" class="text-sm text-muted-foreground">
+                        Booking opens {{ dayjs(event.booking_starts_at).format('MMM DD, YYYY HH:mm') }}
+                    </div>
                     <div v-if="event.reservation_ends_at" class="text-sm text-muted-foreground">
                         {{ registrationStatus.isOpen ? 'Closes' : 'Closed' }} {{ dayjs(event.reservation_ends_at).format('MMM DD, YYYY HH:mm') }}
                     </div>
@@ -778,12 +781,15 @@ onMounted(scrollToHighlightedBooking)
                                     <template v-for="(link, index) in bookings.links" :key="index">
                                         <Button
                                             v-if="link.url"
-                                            variant="outline"
+                                            :variant="link.active ? 'secondary' : 'outline'"
                                             size="sm"
                                             @click="router.visit(link.url, { preserveState: true, preserveScroll: true, only: ['bookings'] })"
                                             :disabled="!link.url"
                                             v-html="link.label"
-                                            class="text-xs px-2"
+                                            :class="[
+                                                'text-xs px-2',
+                                                link.active && 'shadow-inner bg-gray-200 font-semibold'
+                                            ]"
                                         />
                                         <span v-else class="px-2 py-1 text-xs text-muted-foreground" v-html="link.label"/>
                                     </template>

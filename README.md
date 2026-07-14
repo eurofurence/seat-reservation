@@ -1,66 +1,117 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# EF Seating Reservation
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+An admin panel and booking system for managing event seating layouts and ticket/seat reservations, built with **Laravel 12**, **Inertia.js**, and **Vue 3**.
 
-## About Laravel
+## About
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+The application models venues as a hierarchy:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+```
+Room -> Block (seating section or stage, positioned/rotated) -> Row (aligned) -> Seat
+```
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Each **Event** belongs to a **Room** and accepts **Bookings**, where a booking links a user to a seat for that event. Bookings made through the public interface get a 3-character alphanumeric pickup code (used to look up and check in guests); bookings created manually by an admin (e.g. comped/reserved seats) don't get a code.
 
-## Learning Laravel
+## Features
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Public
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- Browse upcoming events with live ticket availability
+- Interactive seat picker showing the room layout and already-booked seats
+- Booking confirmation with a 3-character pickup code
+- Personal booking history
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Admin
 
-## Laravel Sponsors
+- Dashboard with event/booking overview stats
+- Full CRUD for rooms and events
+- Interactive floor-plan editor: drag-and-drop blocks, rotate (0/90/180/270), edit rows/seat counts
+- Booking management: manual/bulk booking, mark as picked up, edit or delete a booking
+- Booking-code lookup for quick guest check-in
+- CSV export of bookings
+- Seating-card PDF generation, with an option to include or exclude unpicked-up bookings
+- OAuth login (Laravel Socialite) with group-based admin role mapping
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Booking Behavior and Limits
 
-### Premium Partners
+The following rules are enforced in the current application behavior.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+- Authentication required: booking routes require login; guests are redirected to the login route.
+- Per-account limit: non-admin users can book at most 2 seats per event (across all booking attempts, not per single request).
+- Event capacity limit: booking is blocked when the event has no tickets left (`max_tickets` reached).
+- Seat conflict protection: already-booked seats cannot be booked again, including concurrent requests (seat rows are locked during booking transaction).
+- Booking window start: non-admin users cannot open or submit bookings before `booking_starts_at` (if set).
+- Booking window end: new bookings are blocked after `reservation_ends_at`.
+- Admin bypass for booking start: admins can still create bookings before `booking_starts_at` through the user booking flow.
+- Booking codes (user booking flow): every successful booking flow generates a 3-character alphanumeric code (`A-Z`, `0-9`), reused across all seats in that same submission.
+- Booking code uniqueness: generated codes are checked against existing bookings and regenerated on collision.
+- Manual admin bookings: bookings created from admin manual booking use type `admin`, have no `user_id`, and do not get a booking code.
+- Booking ownership/permissions: regular users can view, update, or cancel only their own bookings; admins can manage any booking.
+- Update/cancel restrictions: regular users cannot update or cancel once reservation has ended or ticket pickup has been marked.
 
-## Contributing
+See [CLAUDE.md](CLAUDE.md) for detailed architecture notes, coding conventions, and route/controller reference.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Tech Stack
 
-## Code of Conduct
+- **Backend:** Laravel 12, running on Octane + FrankenPHP
+- **Frontend:** Inertia.js 2, Vue 3 (TypeScript), Tailwind CSS 4, shadcn/vue
+- **Database:** MySQL
+- **PDF generation:** mPDF
+- **Auth:** Laravel Socialite (OpenID Connect)
+- **Monitoring:** Sentry
+- **Containerization:** Docker (FrankenPHP + MySQL via `docker-compose.yml`)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Getting Started
 
-## Security Vulnerabilities
+### Local development
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate:fresh --seed
+
+php artisan serve      # Laravel dev server
+npm run dev            # Vite dev server with HMR
+```
+
+### Docker
+
+```bash
+cp .env.example .env
+# then set DB_HOST=mysql (not 127.0.0.1) so the app can reach the mysql service
+
+docker compose up -d --build
+docker compose exec laravel.test php artisan key:generate
+docker compose exec laravel.test php artisan migrate
+docker compose exec laravel.test npm install
+docker compose exec laravel.test npm run dev
+```
+
+This starts a FrankenPHP container (serving the app on port 80, Vite HMR on 5173) alongside a MySQL container. Run all `artisan`/`composer`/`npm` commands through `docker compose exec laravel.test ...` — there's no need for PHP or Node on the host.
+
+> **SELinux hosts (Fedora/RHEL):** the bind mount uses the `:z` flag in `docker-compose.yml` so Docker relabels the project directory for container access. Without it you'll see `Permission denied` errors from inside the container even though Unix file permissions look fine (a host/container SELinux category mismatch, visible via `ls -Zd .` vs `docker inspect <container> --format '{{.HostConfig.SecurityOpt}}'`). The flag is a no-op on non-SELinux hosts.
+
+> **No TTY / hangs on some terminals:** if `docker compose exec laravel.test <cmd>` hangs indefinitely, add `-T` to disable TTY allocation: `docker compose exec -T laravel.test <cmd>`. This is common in non-interactive or embedded terminal setups.
+
+### Useful commands
+
+```bash
+npm run build           # Production frontend build
+vendor/bin/pint         # Format PHP code
+php artisan route:list  # Inspect registered routes
+```
+
+## Testing
+
+```bash
+php artisan test                              # Run the full suite
+php artisan test --filter="TestClass"         # Run a specific test class
+```
+
+Tests cover the public booking flow, booking authorization/security, and booking-code generation/lookup (`tests/Feature`), plus model and service unit tests (`tests/Unit`).
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Licensed under the [MIT License](LICENSE).

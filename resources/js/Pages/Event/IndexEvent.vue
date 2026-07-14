@@ -1,29 +1,37 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3'
+import { computed } from 'vue'
 import Layout from "@/Layouts/Layout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
-import { ArrowLeft, Volume2, Calendar, MapPin, Clock, Users, Search } from 'lucide-vue-next'
+import { ArrowLeft, Volume2, Calendar, MapPin, Clock, Users, Search, AlertTriangle } from 'lucide-vue-next'
 import dayjs from "dayjs"
 
 defineOptions({layout: Layout})
 
-defineProps({
+const props = defineProps({
     events: Array
 })
 
-const getTicketAvailabilityStatus = (ticketsLeft) => {
-  if (ticketsLeft === 0) return { color: 'bg-red-100 text-red-800 border-red-200', text: 'Sold Out' }
-  if (ticketsLeft < 10) return { color: 'bg-orange-100 text-orange-800 border-orange-200', text: 'Few Left' }
+const openEvents = computed(() => props.events.filter(event => event.is_booking_open))
+const upcomingEvents = computed(() => props.events.filter(event => !event.is_booking_open))
+
+const getTicketBadgeText = (event) => {
+  if (event.is_booking_open) return `${event.tickets_left} tickets left`
+  return event.booking_starts_at
+    ? `Opens ${formatDateTime(event.booking_starts_at)}`
+    : getTicketAvailabilityStatus(event).text
+}
+
+const getTicketAvailabilityStatus = (event) => {
+  if (!event.is_booking_open) return { color: 'bg-blue-100 text-blue-800 border-blue-200', text: 'Not Yet Open' }
+  if (event.tickets_left === 0) return { color: 'bg-red-100 text-red-800 border-red-200', text: 'Sold Out' }
+  if (event.tickets_left < 10) return { color: 'bg-orange-100 text-orange-800 border-orange-200', text: 'Few Left' }
   return { color: 'bg-green-100 text-green-800 border-green-200', text: 'Available' }
 }
 
 const formatDateTime = (dateTime) => {
-  return dayjs(dateTime).format('MMM DD, HH:mm')
-}
-
-const formatDeadline = (dateTime) => {
   return dayjs(dateTime).format('MMM DD, YYYY - HH:mm')
 }
 
@@ -34,7 +42,7 @@ function goBack() {
 
 <template>
   <Head title="Events" />
-  
+
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <div class="bg-white shadow-sm border-b">
@@ -62,6 +70,14 @@ function goBack() {
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      <!-- Flash Message -->
+      <Alert v-if="$page.props.flash.message" class="mb-6 lg:mb-8 border-red-200 bg-red-50">
+        <AlertTriangle class="h-4 w-4" />
+        <div class="text-red-800">
+          {{ $page.props.flash.message }}
+        </div>
+      </Alert>
+
       <!-- Page Description -->
       <Alert class="mb-6 lg:mb-8 border-blue-200 bg-blue-50">
         <Volume2 class="h-4 w-4" />
@@ -71,54 +87,77 @@ function goBack() {
       </Alert>
 
       <!-- Events List -->
-      <div v-if="events.length" class="space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:space-y-0">
-        <Link 
-          v-for="event in events" 
-          :key="event.id"
-          :href="route('bookings.create', {event: event.id})"
-          class="block"
+      <template v-if="events.length">
+        <div
+          v-for="(group, index) in [openEvents, upcomingEvents]"
+          :key="index"
         >
-          <Card class="p-4 lg:p-6 hover:shadow-md lg:hover:shadow-lg transition-shadow cursor-pointer h-full">
-            <div class="flex items-start justify-between lg:flex-col lg:space-y-4">
-              <div class="flex-1 min-w-0 lg:w-full">
-                <h3 class="text-lg lg:text-xl font-semibold text-gray-900 mb-2 lg:mb-3">{{ event.name }}</h3>
-                
-                <div class="space-y-2 lg:space-y-3 text-sm lg:text-base text-gray-600">
-                  <div class="flex items-center">
-                    <MapPin class="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span>{{ event.room.name }}</span>
+          <!-- Separator before the upcoming (not open yet) group -->
+          <div
+            v-if="index === 1 && group.length"
+            class="flex items-center gap-4 mb-6 lg:mb-8"
+            :class="{ 'mt-10 lg:mt-12': openEvents.length }"
+          >
+            <div class="flex-1 h-px bg-gray-200"></div>
+            <span class="text-sm font-medium text-gray-500 text-center">
+              Not open yet
+            </span>
+            <div class="flex-1 h-px bg-gray-200"></div>
+          </div>
+
+          <div v-if="group.length" class="space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:space-y-0">
+            <Link
+              v-for="event in group"
+              :key="event.id"
+              :href="route('bookings.create', {event: event.id})"
+              class="block"
+            >
+              <Card
+                class="p-4 lg:p-6 hover:shadow-md lg:hover:shadow-lg transition-shadow cursor-pointer h-full"
+                :class="{ 'opacity-75': !event.is_booking_open }"
+              >
+                <div class="relative flex items-start justify-between lg:flex-col lg:space-y-4">
+                  <div class="flex-1 min-w-0 lg:w-full">
+                    <h3 class="text-lg lg:text-xl font-semibold text-gray-900 mb-2 lg:mb-3">{{ event.name }}</h3>
+
+                    <div class="space-y-2 lg:space-y-3 text-sm lg:text-base text-gray-600">
+                      <div class="flex items-center">
+                        <MapPin class="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>{{ event.room.name }}</span>
+                      </div>
+                      <div class="flex items-center">
+                        <Clock class="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>{{ formatDateTime(event.starts_at) }}</span>
+                      </div>
+                      <div class="flex items-center">
+                        <Calendar class="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span class="text-xs lg:text-sm">Booking Deadline: {{ formatDateTime(event.reservation_ends_at) }}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="flex items-center">
-                    <Clock class="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span>{{ formatDateTime(event.starts_at) }}</span>
-                  </div>
-                  <div class="flex items-center">
-                    <Calendar class="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span class="text-xs lg:text-sm">Deadline: {{ formatDeadline(event.reservation_ends_at) }}</span>
+
+                  <div class="absolute top-0 right-0 flex flex-col items-end space-y-2 lg:static lg:ml-0 lg:w-full lg:items-start lg:pt-4 lg:border-t">
+                    <span
+                      :class="[
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border lg:w-full lg:justify-center',
+                        getTicketAvailabilityStatus(event).color
+                      ]"
+                    >
+                      <Users class="h-3 w-3 mr-1" />
+                      {{ getTicketBadgeText(event) }}
+                    </span>
+
+                    <span class="text-xs text-gray-500 text-right lg:w-full lg:text-center">
+                      {{ getTicketAvailabilityStatus(event).text }}
+                    </span>
                   </div>
                 </div>
-              </div>
-              
-              <div class="flex flex-col items-end space-y-2 ml-4 lg:ml-0 lg:w-full lg:items-start lg:pt-4 lg:border-t">
-                <span 
-                  :class="[
-                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border lg:w-full lg:justify-center',
-                    getTicketAvailabilityStatus(event.tickets_left).color
-                  ]"
-                >
-                  <Users class="h-3 w-3 mr-1" />
-                  {{ event.tickets_left }} tickets left
-                </span>
-                
-                <span class="text-xs text-gray-500 lg:w-full lg:text-center">
-                  {{ getTicketAvailabilityStatus(event.tickets_left).text }}
-                </span>
-              </div>
-            </div>
-          </Card>
-        </Link>
-      </div>
-      
+              </Card>
+            </Link>
+          </div>
+        </div>
+      </template>
+
       <!-- Empty State -->
       <div v-else class="text-center py-16 lg:py-24">
         <div class="flex flex-col items-center">

@@ -10,11 +10,13 @@ class EventController extends Controller
 {
     public function index()
     {
-        // Load events with only essential data for the listing page
+        // Load events with only essential data for the listing page.
+        // Events are shown even before their booking window opens, so staff/users
+        // can see what's planned; the seat picker itself blocks booking until open.
         $events = Event::with('room:id,name')
             ->where('reservation_ends_at', '>', now())
             ->where('starts_at', '>', now())
-            ->select('id', 'room_id', 'name', 'starts_at', 'reservation_ends_at', 'tickets', 'max_tickets')
+            ->select('id', 'room_id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at', 'tickets', 'max_tickets')
             ->get();
 
         // Manually add tickets_left without triggering the heavy relationship loading
@@ -22,6 +24,7 @@ class EventController extends Controller
             $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
             $bookedTickets = $event->bookings()->count();
             $event->tickets_left = max(0, $maxTickets - $bookedTickets);
+            $event->is_booking_open = $event->isBookingOpen();
         });
 
         return Inertia::render('Event/IndexEvent', [

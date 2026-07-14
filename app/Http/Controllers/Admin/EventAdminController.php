@@ -32,21 +32,7 @@ class EventAdminController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'room_id' => 'required|exists:rooms,id',
-            'starts_at' => 'nullable|date',
-            'reservation_ends_at' => 'nullable|date',
-            'max_tickets' => 'nullable|integer|min:1',
-        ]);
-
-        Event::create($request->only([
-            'name',
-            'room_id',
-            'starts_at',
-            'reservation_ends_at',
-            'max_tickets',
-        ]));
+        Event::create($this->validatedEventData($request));
 
         return redirect()->route('admin.events.index')
             ->with('success', 'Event created successfully');
@@ -54,25 +40,32 @@ class EventAdminController extends Controller
 
     public function update(Request $request, $id)
     {
+        $event = Event::findOrFail($id);
+        $event->update($this->validatedEventData($request));
+
+        return redirect()->route('admin.events.index')
+            ->with('success', 'Event updated successfully');
+    }
+
+    private function validatedEventData(Request $request): array
+    {
         $request->validate([
             'name' => 'required|string|max:255',
             'room_id' => 'required|exists:rooms,id',
             'starts_at' => 'nullable|date',
             'reservation_ends_at' => 'nullable|date',
+            'booking_starts_at' => 'nullable|date',
             'max_tickets' => 'nullable|integer|min:1',
         ]);
 
-        $event = Event::findOrFail($id);
-        $event->update($request->only([
+        return $request->only([
             'name',
             'room_id',
             'starts_at',
             'reservation_ends_at',
+            'booking_starts_at',
             'max_tickets',
-        ]));
-
-        return redirect()->route('admin.events.index')
-            ->with('success', 'Event updated successfully');
+        ]);
     }
 
     public function destroy($id)
@@ -86,7 +79,7 @@ class EventAdminController extends Controller
 
     public function show(Request $request, $id)
     {
-        $event = Event::select('id', 'name', 'starts_at', 'reservation_ends_at', 'max_tickets', 'room_id')
+        $event = Event::select('id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at', 'max_tickets', 'room_id')
             ->with('room:id,name,stage_x,stage_y')
             ->findOrFail($id);
 

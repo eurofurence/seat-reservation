@@ -43,6 +43,10 @@ class BookingController extends Controller
             }
         }
 
+        if ($redirect = $this->denyIfBookingNotOpen($event, 'events.index')) {
+            return $redirect;
+        }
+
         // Check if user has reached booking limit
         if (! Auth::user()->is_admin) {
             $existingBookings = Booking::where('user_id', Auth::id())
@@ -175,9 +179,13 @@ class BookingController extends Controller
 
     public function store(Request $request, Event $event)
     {
-        if ($event->reservation_ends_at->isPast()) {
+        if ($event->reservation_ends_at && $event->reservation_ends_at->isPast()) {
             return redirect()->route('bookings.index')
                 ->with(['message' => 'The reservation period for this event has ended.']);
+        }
+
+        if ($redirect = $this->denyIfBookingNotOpen($event, 'bookings.index')) {
+            return $redirect;
         }
 
         $data = $request->validate([
@@ -343,6 +351,19 @@ class BookingController extends Controller
 
         return redirect()->route('bookings.index')
             ->with(['message' => 'Booking cancelled!']);
+    }
+
+    /**
+     * Redirect to $redirectRoute if the event's booking period hasn't opened yet for non-admins.
+     */
+    private function denyIfBookingNotOpen(Event $event, string $redirectRoute)
+    {
+        if (! Auth::user()->is_admin && ! $event->isBookingOpen()) {
+            return redirect()->route($redirectRoute)
+                ->with(['message' => 'Booking for this Event is not yet open.']);
+        }
+
+        return null;
     }
 
     /**
