@@ -156,6 +156,31 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
+    public function admin_cannot_book_more_than_two_seats_per_event_through_user_interface()
+    {
+        Booking::factory()->create([
+            'user_id' => $this->admin->id,
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+        ]);
+        Booking::factory()->create([
+            'user_id' => $this->admin->id,
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[1]->id,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => [['seat_id' => $this->seats[2]->id, 'name' => 'John Doe', 'comment' => null]],
+            ]);
+
+        $response->assertRedirect()
+            ->assertSessionHas('error', 'You can only book a maximum of 2 seats per event.');
+
+        $this->assertDatabaseCount('bookings', 2); // No new booking created
+    }
+
+    /** @test */
     public function user_cannot_book_already_booked_seats()
     {
         // Create existing booking

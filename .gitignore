@@ -20,4 +20,4 @@ yarn-error.log
 /.trunk
 frankenphp
 logs/
-dev-update.sh
+update-dev.sh

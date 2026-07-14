@@ -327,6 +327,72 @@ class EventAdminController2Test extends TestCase
     }
 
     /** @test */
+    public function event_validation_rejects_reservation_deadline_after_event_start()
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('admin.events.store'), [
+            'name' => 'Test Event',
+            'room_id' => $this->room->id,
+            'starts_at' => Carbon::now()->addDays(5)->toDateTimeString(),
+            'reservation_ends_at' => Carbon::now()->addDays(6)->toDateTimeString(),
+        ]);
+
+        $response->assertSessionHasErrors(['reservation_ends_at']);
+        $this->assertDatabaseMissing('events', ['name' => 'Test Event']);
+    }
+
+    /** @test */
+    public function event_validation_rejects_booking_start_after_reservation_deadline()
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('admin.events.store'), [
+            'name' => 'Test Event',
+            'room_id' => $this->room->id,
+            'starts_at' => Carbon::now()->addDays(5)->toDateTimeString(),
+            'reservation_ends_at' => Carbon::now()->addDays(3)->toDateTimeString(),
+            'booking_starts_at' => Carbon::now()->addDays(4)->toDateTimeString(),
+        ]);
+
+        $response->assertSessionHasErrors(['booking_starts_at']);
+        $this->assertDatabaseMissing('events', ['name' => 'Test Event']);
+    }
+
+    /** @test */
+    public function event_validation_rejects_booking_start_after_event_start()
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('admin.events.store'), [
+            'name' => 'Test Event',
+            'room_id' => $this->room->id,
+            'starts_at' => Carbon::now()->addDays(3)->toDateTimeString(),
+            'booking_starts_at' => Carbon::now()->addDays(4)->toDateTimeString(),
+        ]);
+
+        $response->assertSessionHasErrors(['booking_starts_at']);
+        $this->assertDatabaseMissing('events', ['name' => 'Test Event']);
+    }
+
+    /** @test */
+    public function event_validation_accepts_correctly_ordered_dates()
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('admin.events.store'), [
+            'name' => 'Test Event',
+            'room_id' => $this->room->id,
+            'starts_at' => Carbon::now()->addDays(5)->toDateTimeString(),
+            'reservation_ends_at' => Carbon::now()->addDays(3)->toDateTimeString(),
+            'booking_starts_at' => Carbon::now()->addDays(1)->toDateTimeString(),
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+        $this->assertDatabaseHas('events', ['name' => 'Test Event']);
+    }
+
+    /** @test */
     public function non_admin_cannot_access_events_routes()
     {
         $user = User::factory()->create(['is_admin' => false]);
