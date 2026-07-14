@@ -23,6 +23,7 @@ class EventController extends Controller
         // here to include it in the response.
         $events->each(function ($event) {
             $event->is_booking_open = $event->isBookingOpen();
+            $event->tickets_left = $event->calculateTicketsLeft();
         });
 
         return Inertia::render('Event/IndexEvent', [
