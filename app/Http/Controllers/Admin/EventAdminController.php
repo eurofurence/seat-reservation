@@ -294,17 +294,31 @@ class EventAdminController extends Controller
             $event = Event::with('room')->findOrFail($id);
 
             $bookingsQuery = Booking::where('event_id', $id)
-                ->with(['user:id,name', 'seat:id,row_id,label,number', 'seat.row:id,block_id,name', 'seat.row.block:id,name']);
+                ->with([
+                    'user:id,name',
+                    'seat:id,row_id,label,number',
+                    'seat.row:id,block_id,name,order',
+                    'seat.row.block:id,name,position_x,position_y',
+                ]);
 
             if (! request()->boolean('include_unpicked')) {
                 $bookingsQuery->whereNotNull('picked_up_at');
             }
 
-            $bookings = $bookingsQuery->get()->sortBy([
-                ['seat.row.block.name', 'asc'],
-                ['seat.row.name', 'asc'],
-                ['seat.number', 'asc'],
-            ]);
+            $bookings = $bookingsQuery->get()->sortBy(function ($booking) {
+                $block = $booking->seat->row->block;
+                $rowOrder = $booking->seat->row->order;
+                $seatNumber = $booking->seat->number;
+
+                $seatSort = $rowOrder % 2 === 1 ? $seatNumber : -$seatNumber;
+
+                return [
+                    $block->position_y,
+                    $block->position_x,
+                    $rowOrder,
+                    $seatSort,
+                ];
+            });
 
             if ($bookings->isEmpty()) {
                 return back()->with('error', 'No bookings found for this event to generate seating cards.');
