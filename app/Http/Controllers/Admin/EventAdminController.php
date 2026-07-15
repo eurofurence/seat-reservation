@@ -17,7 +17,7 @@ class EventAdminController extends Controller
     {
         $events = Event::with(['room:id,name'])
             ->withCount('bookings')
-            ->orderBy('starts_at', 'desc')
+            ->orderBy('starts_at')
             ->get();
 
         $rooms = Room::select('id', 'name')->orderBy('name')->get();

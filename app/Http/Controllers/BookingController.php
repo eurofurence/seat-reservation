@@ -16,7 +16,8 @@ class BookingController extends Controller
     public function index()
     {
         $bookings = Booking::where('user_id', auth()->id())
-            ->select('id', 'event_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code')
+            ->join('events', 'bookings.event_id', '=', 'events.id')
+            ->select('bookings.id', 'bookings.event_id', 'bookings.seat_id', 'bookings.name', 'bookings.comment', 'bookings.picked_up_at', 'bookings.created_at', 'bookings.booking_code')
             ->with([
                 'event:id,name,starts_at,reservation_ends_at,room_id',
                 'event.room:id,name',
@@ -24,7 +25,9 @@ class BookingController extends Controller
                 'seat.row:id,block_id,name',
                 'seat.row.block:id,name',
             ])
-            ->orderBy('created_at', 'desc')
+            ->orderByRaw('bookings.picked_up_at is null desc')
+            ->orderBy('events.reservation_ends_at')
+            ->orderBy('events.starts_at')
             ->paginate(20);
 
         return Inertia::render('Booking/IndexBooking', [

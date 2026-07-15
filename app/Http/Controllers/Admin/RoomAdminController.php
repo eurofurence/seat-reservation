@@ -21,6 +21,7 @@ class RoomAdminController extends Controller
                     ->whereColumn('blocks.room_id', 'rooms.id')
                     ->selectRaw('count(seats.id)'),
             ])
+            ->orderBy('name')
             ->get();
 
         return Inertia::render('Admin/RoomIndex', [
