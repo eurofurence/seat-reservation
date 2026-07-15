@@ -214,10 +214,14 @@ class EventAdminController extends Controller
     {
         $event = Event::with('room')->findOrFail($id);
 
-        $bookings = Booking::where('event_id', $id)
-            ->whereNotNull('picked_up_at')
-            ->with(['user', 'seat.row.block'])
-            ->get();
+        $bookingsQuery = Booking::where('event_id', $id)
+            ->with(['user', 'seat.row.block']);
+
+        if (! request()->boolean('include_unpicked')) {
+            $bookingsQuery->whereNotNull('picked_up_at');
+        }
+
+        $bookings = $bookingsQuery->get();
 
         $csv = "Room,Event,Name,Guest Name,Comment,Block,Row,Seat,Picked Up,Booked At\n";
 

@@ -395,9 +395,12 @@ const clearSearch = () => {
     )
 }
 
+const includeUnpicked = ref(false)
+
 const exportBookings = async () => {
     try {
         const response = await axios.get(route('admin.events.export', props.event.id), {
+            params: includeUnpicked.value ? { include_unpicked: 1 } : {},
             responseType: 'blob',
         })
 
@@ -413,11 +416,9 @@ const exportBookings = async () => {
     }
 }
 
-const includeUnpickedInPrint = ref(false)
-
 const printSeatCards = () => {
     const url = new URL(route('admin.events.seating-cards', props.event.id), window.location.origin)
-    if (includeUnpickedInPrint.value) {
+    if (includeUnpicked.value) {
         url.searchParams.set('include_unpicked', '1')
     }
     window.open(url.toString(), '_blank')
@@ -503,21 +504,21 @@ onMounted(scrollToHighlightedBooking)
                         {{ bookings.total || bookings.length }} bookings
                     </div>
                 </div>
-                <div class="flex gap-2">
-                    <Button @click="exportBookings">
-                        <Download class="mr-2 h-4 w-4"/>
-                        Export Bookings
-                    </Button>
-                    <div class="flex flex-col items-end gap-1">
+                <div class="flex flex-col items-end gap-1">
+                    <div class="flex gap-2">
+                        <Button @click="exportBookings">
+                            <Download class="mr-2 h-4 w-4"/>
+                            Export Bookings
+                        </Button>
                         <Button @click="printSeatCards" variant="outline">
                             <Download class="mr-2 h-4 w-4"/>
                             Print Seat Cards
                         </Button>
-                        <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                            <input type="checkbox" v-model="includeUnpickedInPrint" class="h-3 w-3" />
-                            Include unpicked
-                        </label>
                     </div>
+                    <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                        <input type="checkbox" v-model="includeUnpicked" class="h-3 w-3" />
+                        Include unpicked
+                    </label>
                 </div>
             </div>
         </div>
