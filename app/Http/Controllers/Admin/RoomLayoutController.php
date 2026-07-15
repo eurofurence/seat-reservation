@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class RoomLayoutController extends Controller
@@ -60,15 +61,26 @@ class RoomLayoutController extends Controller
 
     public function update(Request $request, Room $room)
     {
+        $roomBlockIds = $room->blocks()->pluck('id')->all();
 
         $request->validate([
             'stageBlocks' => 'sometimes|array',
-            'stageBlocks.*.id' => 'nullable|exists:blocks,id',
+            'stageBlocks.*.id' => ['nullable', Rule::in($room->stageBlocks()->pluck('id')->all())],
             'stageBlocks.*.name' => 'required|string|max:255',
             'stageBlocks.*.position_x' => 'required|integer|min:-1',
             'stageBlocks.*.position_y' => 'required|integer|min:-1',
             'blocks' => 'required|array',
-            'blocks.*.id' => 'required',
+            'blocks.*.id' => [
+                'required',
+                function (string $attribute, $value, $fail) use ($roomBlockIds) {
+                    $isTempId = is_string($value) && str_starts_with($value, 'temp-');
+                    $isExistingRoomBlock = is_numeric($value) && in_array((int) $value, $roomBlockIds, true);
+
+                    if (! $isTempId && ! $isExistingRoomBlock) {
+                        $fail('The selected block id is invalid for this room.');
+                    }
+                },
+            ],
             'blocks.*.name' => 'required|string|max:255',
             'blocks.*.position_x' => 'required|integer|min:-1',
             'blocks.*.position_y' => 'required|integer|min:-1',
@@ -117,9 +129,11 @@ class RoomLayoutController extends Controller
                 }
             }
 
+            $nextBlockOrder = ($room->blocks()->max('order') ?? -1) + 1;
+
             // Update blocks
             foreach ($request->blocks as $blockData) {
-                $isTempId = ! is_numeric($blockData['id']);
+                $isTempId = is_string($blockData['id']) && str_starts_with($blockData['id'], 'temp-');
 
                 if ($isTempId) {
                     $block = $room->allBlocks()->create([
@@ -128,7 +142,7 @@ class RoomLayoutController extends Controller
                         'position_x' => $blockData['position_x'],
                         'position_y' => $blockData['position_y'],
                         'rotation' => $blockData['rotation'],
-                        'order' => ($room->blocks()->max('order') ?? -1) + 1,
+                        'order' => $nextBlockOrder++,
                     ]);
                     $blockIdMap[$blockData['id']] = $block->id;
                 } else {

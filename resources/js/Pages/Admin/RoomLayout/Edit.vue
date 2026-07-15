@@ -6,8 +6,11 @@ import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
+import { useToast } from '@/Components/ui/toast'
 
 defineOptions({ layout: AdminLayout })
+
+const { error: errorToast } = useToast()
 
 const props = defineProps({
   room: Object,
@@ -276,11 +279,10 @@ const saveLayout = () => {
     },
     onError: (errors) => {
       isSubmitting.value = false
-      console.error('Failed to save layout:', errors)
       const messages = Object.values(errors)
-      alert(
-        'Layout could not be saved:\n\n' +
-        (messages.length ? messages.join('\n') : 'Please reload the page and try again.')
+      errorToast(
+        'Layout could not be saved',
+        messages.length ? messages.join('\n') : 'Please reload the page or try again.'
       )
     }
   })
@@ -318,7 +320,7 @@ const createNewBlock = () => {
   const name = newBlockName.value.trim()
   if (!name) return
 
-  const { x, y } = findFirstFreeCell()
+  const { x, y } = nextFreeCell.value
 
   form.blocks.push({
     id: `temp-${++tempBlockCounter}`,
@@ -420,7 +422,7 @@ const removeSpecificRow = (block, rowNumber) => {
                 </div>
 
                 <div class="text-xs text-gray-500 mt-2">
-                  <span v-if="getBlockPlacementStatus(stageBlock)" class="text-green-600">• Placed ({{ stageBlock.position_x }}, {{ stageBlock.position_y }})</span>
+                  <span v-if="getBlockPlacementStatus(stageBlock)" class="text-green-600">• Placed ({{ stageBlock.position_y }}, {{ stageBlock.position_x }})</span>
                   <span v-else class="text-orange-600">• Not placed</span>
                 </div>
               </div>
@@ -466,7 +468,7 @@ const removeSpecificRow = (block, rowNumber) => {
                     />
                     <div class="text-xs text-gray-500 mt-1">
                       {{ getTotalSeats(block) }} seats • {{ block.rows.length }} rows
-                      <span v-if="getBlockPlacementStatus(block)" class="text-green-600">• Placed ({{ block.position_x }}, {{ block.position_y }})</span>
+                      <span v-if="getBlockPlacementStatus(block)" class="text-green-600">• Placed ({{ block.position_y }}, {{ block.position_x }})</span>
                       <span v-else class="text-orange-600">• Not placed</span>
                     </div>
                   </div>

@@ -190,6 +190,87 @@ class RoomLayoutControllerTest extends TestCase
     }
 
     /** @test */
+    public function layout_update_creates_block_from_temp_id_and_returns_mapping()
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                [
+                    'id' => 'temp-1',
+                    'name' => 'Block',
+                    'position_x' => 2,
+                    'position_y' => 3,
+                    'rotation' => 90,
+                    'rowsData' => [
+                        ['rowNumber' => 1, 'seatCount' => 5, 'isCustom' => false, 'alignment' => 'center'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', [
+            'room_id' => $this->room->id,
+            'name' => 'Block',
+            'type' => 'seating',
+            'position_x' => 2,
+            'position_y' => 3,
+            'rotation' => 90,
+        ]);
+
+        $realId = Block::where('room_id', $this->room->id)->where('name', 'Block')->value('id');
+        $response->assertSessionHas('blockIdMap', ['temp-1' => $realId]);
+    }
+
+    /** @test */
+    public function layout_update_rejects_block_id_from_another_room()
+    {
+        $this->actingAs($this->admin);
+        $otherRoom = Room::factory()->create();
+        $foreignBlock = Block::factory()->seating()->create(['room_id' => $otherRoom->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                [
+                    'id' => $foreignBlock->id,
+                    'name' => 'Block',
+                    'position_x' => 0,
+                    'position_y' => 0,
+                    'rotation' => 0,
+                ],
+            ],
+        ])->assertSessionHasErrors('blocks.0.id');
+
+        $this->assertDatabaseHas('blocks', [
+            'id' => $foreignBlock->id,
+            'name' => $foreignBlock->name,
+            'room_id' => $otherRoom->id,
+        ]);
+    }
+
+    /** @test */
+    public function layout_update_rejects_invalid_block_ids()
+    {
+        $this->actingAs($this->admin);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                [
+                    'id' => 'not-a-id',
+                    'name' => 'Nope',
+                    'position_x' => 0,
+                    'position_y' => 0,
+                    'rotation' => 0,
+                ],
+            ],
+        ])->assertSessionHasErrors('blocks.0.id');
+
+        $this->assertDatabaseMissing('blocks', ['name' => 'Nope']);
+    }
+
+    /** @test */
     public function admin_can_create_new_seating_block()
     {
         $this->actingAs($this->admin);
