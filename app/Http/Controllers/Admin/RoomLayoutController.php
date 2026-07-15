@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,8 +45,19 @@ class RoomLayoutController extends Controller
             ]);
         }
 
+        // Bookings tied to this room (via its events). Editing the layout deletes rows and
+        // seats, which cascades to these bookings, so the UI warns/guards when > 0.
+        //
+        // TEMPORARY: this destructive behaviour is a stopgap. Until layout edits can
+        // preserve/re-map existing bookings, we surface a warning banner and a typed
+        // confirmation in the editor. Remove the warning/guard once bookings survive edits.
+        $bookingsCount = Booking::whereHas('event', function ($query) use ($room) {
+            $query->where('room_id', $room->id);
+        })->count();
+
         return Inertia::render('Admin/RoomLayout/Edit', [
             'room' => $room->only(['id', 'name']),
+            'bookingsCount' => $bookingsCount,
             'blocks' => $blocks,
             'stageBlocks' => $stageBlocks,
             'title' => 'Floor Plan Editor',
