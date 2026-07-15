@@ -226,24 +226,50 @@ class EventAdminController extends Controller
         $csv = "Room,Event,Name,Guest Name,Comment,Block,Row,Seat,Picked Up,Booked At\n";
 
         foreach ($bookings as $booking) {
-            $csv .= sprintf(
-                "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-                $this->escapeCsvField($event->room->name ?? 'N/A'),
-                $this->escapeCsvField($event->name),
-                $this->escapeCsvField($booking->user ? $booking->user->name : 'N/A'),
-                $this->escapeCsvField($booking->name ?? 'N/A'),
-                $this->escapeCsvField($booking->comment ?? ''),
-                $this->escapeCsvField($booking->seat->row->block->name ?? 'N/A'),
-                $this->escapeCsvField($booking->seat->row->name ?? 'N/A'),
-                $this->escapeCsvField($booking->seat->label ?? 'N/A'),
-                $booking->picked_up_at ? 'Yes' : 'No',
-                $booking->created_at->format('Y-m-d H:i:s')
-            );
+            $csv .= $this->bookingCsvRow($event, $booking);
         }
 
         return response($csv)
             ->header('Content-Type', 'text/csv')
             ->header('Content-Disposition', 'attachment; filename="bookings-'.$event->name.'-'.date('Y-m-d').'.csv"');
+    }
+
+    public function exportAll()
+    {
+        $bookingsQuery = Booking::with(['event.room', 'user', 'seat.row.block']);
+
+        if (! request()->boolean('include_unpicked')) {
+            $bookingsQuery->whereNotNull('picked_up_at');
+        }
+
+        $bookings = $bookingsQuery->get();
+
+        $csv = "Room,Event,Name,Guest Name,Comment,Block,Row,Seat,Picked Up,Booked At\n";
+
+        foreach ($bookings as $booking) {
+            $csv .= $this->bookingCsvRow($booking->event, $booking);
+        }
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', 'attachment; filename="bookings-all-events-'.date('Y-m-d').'.csv"');
+    }
+
+    private function bookingCsvRow($event, $booking)
+    {
+        return sprintf(
+            "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+            $this->escapeCsvField($event->room->name ?? 'N/A'),
+            $this->escapeCsvField($event->name),
+            $this->escapeCsvField($booking->user ? $booking->user->name : 'N/A'),
+            $this->escapeCsvField($booking->name ?? 'N/A'),
+            $this->escapeCsvField($booking->comment ?? ''),
+            $this->escapeCsvField($booking->seat->row->block->name ?? 'N/A'),
+            $this->escapeCsvField($booking->seat->row->name ?? 'N/A'),
+            $this->escapeCsvField($booking->seat->label ?? 'N/A'),
+            $booking->picked_up_at ? 'Yes' : 'No',
+            $booking->created_at->format('Y-m-d H:i:s')
+        );
     }
 
     private function escapeCsvField($field)

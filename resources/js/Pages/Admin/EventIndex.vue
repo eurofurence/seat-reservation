@@ -1,11 +1,12 @@
 <script setup>
 import { Head, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
+import axios from 'axios'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Table } from '@/Components/ui/table'
-import { Plus, Edit, Trash2, Calendar, Clock, MapPin, Users } from 'lucide-vue-next'
+import { Plus, Edit, Trash2, Calendar, Clock, MapPin, Users, Download } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog'
 import EventForm from '@/Components/EventForm.vue'
@@ -58,6 +59,25 @@ const viewEvent = (event) => {
   router.visit(`/admin/events/${event.id}`)
 }
 
+const exportAllBookings = async () => {
+  try {
+    const response = await axios.get(route('admin.events.export-all'), {
+      params: { include_unpicked: 1 },
+      responseType: 'blob',
+    })
+
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `bookings-all-events-${Date.now()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  } catch (error) {
+    console.error('Error exporting bookings:', error)
+  }
+}
+
 const getEventStatus = (event) => {
   const now = dayjs()
   const eventStart = dayjs(event.starts_at)
@@ -80,7 +100,11 @@ const getEventStatus = (event) => {
   <Head :title="title" />
   
   <div>
-    <div class="flex justify-end items-center mb-6">
+    <div class="flex justify-end items-center gap-2 mb-6">
+      <Button @click="exportAllBookings" variant="outline">
+        <Download class="mr-2 h-4 w-4" />
+        Export All Bookings
+      </Button>
       <Dialog :open="createDialogOpen" @update:open="createDialogOpen = $event">
         <DialogTrigger as-child>
           <Button @click="openCreateDialog">

@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
 
         // Events
         Route::get('/events', [\App\Http\Controllers\Admin\EventAdminController::class, 'index'])->name('events.index');
+        Route::get('/events/export-all', [\App\Http\Controllers\Admin\EventAdminController::class, 'exportAll'])->name('events.export-all');
         Route::post('/events', [\App\Http\Controllers\Admin\EventAdminController::class, 'store'])->name('events.store');
         Route::put('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'update'])->name('events.update');
         Route::delete('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'destroy'])->name('events.destroy');
