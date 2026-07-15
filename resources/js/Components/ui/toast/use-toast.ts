@@ -4,7 +4,7 @@ export interface Toast {
   id: string
   title?: string
   description?: string
-  variant?: 'default' | 'destructive'
+  variant?: 'default' | 'destructive' | 'warning'
   duration?: number
 }
 
@@ -63,7 +63,8 @@ export function useToast() {
     return addToast({
       title,
       description,
-      variant: 'destructive'
+      variant: 'destructive',
+      duration: 0, // stays until dismissed
     })
   }
 
@@ -71,7 +72,8 @@ export function useToast() {
     return addToast({
       title,
       description,
-      variant: 'default'
+      variant: 'warning',
+      duration: 0, // stays until dismissed
     })
   }
 

@@ -67,7 +67,7 @@ class BookingCoreTest extends TestCase
         ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('success');
+            ->assertSessionHas('success', 'Successfully booked 2 seats for John Doe');
 
         // Verify bookings were created
         $this->assertDatabaseHas('bookings', [

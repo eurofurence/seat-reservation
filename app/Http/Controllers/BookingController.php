@@ -8,11 +8,12 @@ use App\Models\Seat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class BookingController extends Controller
 {
+    private const MAX_SEATS_PER_EVENT = 2;
+
     public function index()
     {
         $bookings = Booking::where('user_id', auth()->id())
@@ -37,33 +38,31 @@ class BookingController extends Controller
 
     public function create(Event $event, Request $request)
     {
+        $ticketsLeft = $event->calculateTicketsLeft();
+
         // Check if event has tickets available
-        if ($event->max_tickets && $event->max_tickets > 0) {
-            $bookedTickets = $event->bookings()->count();
-            if ($bookedTickets >= $event->max_tickets) {
-                return redirect()->route('events.index')
-                    ->with(['message' => 'This event is sold out.']);
-            }
+        if ($ticketsLeft <= 0) {
+            return redirect()->route('events.index')
+                ->with(['error' => 'This event is sold out.']);
         }
 
-        if ($redirect = $this->denyIfBookingNotOpen($event, 'events.index')) {
+        if ($redirect = $this->denyIfBookingClosed($event, 'events.index')) {
             return $redirect;
         }
 
         // Check if user has reached booking limit
-        if (! Auth::user()->is_admin) {
-            $existingBookings = Booking::where('user_id', Auth::id())
-                ->where('event_id', $event->id)
-                ->count();
-
-            if ($existingBookings >= 2) {
-                return redirect()->route('bookings.index')
-                    ->with(['message' => 'You have already booked the maximum number of seats for this event.']);
-            }
+        if ($this->hasReachedBookingLimit($event)) {
+            return redirect()->route('bookings.index')
+                ->with(['error' => 'You have already booked the maximum number of seats for this event.']);
         }
 
-        // Check if we're coming from seat selection (validation page)
+        // Check if we're coming from seat selection (validation page). Users may browse the
+        // seat layout before the booking window opens, but proceeding past it is still gated.
         if ($request->has('seats') && $request->has('validate')) {
+            if ($redirect = $this->denyIfBookingNotOpen($event, 'bookings.create', ['event' => $event->id])) {
+                return $redirect;
+            }
+
             return $this->validateBooking($request, $event);
         }
 
@@ -90,10 +89,13 @@ class BookingController extends Controller
             ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
             ->get();
 
-        // Get already booked seats for this event efficiently
-        $bookedSeats = Booking::where('event_id', $event->id)
-            ->pluck('seat_id')
-            ->toArray();
+        // Get already booked seats for this event efficiently. Users browsing before the
+        // booking window opens shouldn't see which seats are taken, since they can't book yet.
+        // Admins get no special treatment here — use the admin panel to manage bookings early.
+        $isBookingOpen = $event->isBookingOpen();
+        $bookedSeats = $isBookingOpen
+            ? Booking::where('event_id', $event->id)->pluck('seat_id')->toArray()
+            : [];
 
         // Load stage blocks for the room
         $stageBlocks = $event->room->stageBlocks()
@@ -101,19 +103,17 @@ class BookingController extends Controller
             ->orderBy('order')
             ->get();
 
-        // Calculate tickets left manually to avoid heavy loading
-        $maxTickets = $event->max_tickets ?? 0;
-        $bookedTickets = $event->bookings()->count();
-        $ticketsLeft = max(0, $maxTickets - $bookedTickets);
-
         return Inertia::render('Booking/CreateBooking', [
-            'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at']), ['tickets_left' => $ticketsLeft]),
+            'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at']), [
+                'tickets_left' => $ticketsLeft,
+                'is_booking_open' => $isBookingOpen,
+            ]),
             'room' => $event->room->only(['id', 'name', 'stage_x', 'stage_y']),
             'blocks' => $blocks,
             'stageBlocks' => $stageBlocks,
             'bookedSeats' => $bookedSeats,
             'selectedSeats' => $request->get('seats', []), // Pass selected seats from URL
-            'maxSeatsPerUser' => min(2, $ticketsLeft),
+            'maxSeatsPerUser' => min(self::MAX_SEATS_PER_EVENT, $ticketsLeft),
             'userBookedCount' => Booking::where('user_id', Auth::id())
                 ->where('event_id', $event->id)
                 ->count(),
@@ -127,27 +127,18 @@ class BookingController extends Controller
             'seats.*' => 'required|exists:seats,id',
         ]);
 
-        // Calculate tickets left manually to avoid heavy loading
-        $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
-        $bookedTickets = $event->bookings()->count();
-        $ticketsLeft = max(0, $maxTickets - $bookedTickets);
+        $ticketsLeft = $event->calculateTicketsLeft();
 
         // Check if enough tickets are available
         if ($ticketsLeft < count($data['seats'])) {
-            return redirect()->back()
-                ->with(['message' => 'Not enough tickets available for this event.']);
+            return redirect()->route('bookings.create', ['event' => $event->id])
+                ->with(['error' => 'Not enough tickets available for this event.']);
         }
 
         // Check if user can book these seats
-        if (! Auth::user()->is_admin) {
-            $existingBookings = Booking::where('user_id', Auth::id())
-                ->where('event_id', $event->id)
-                ->count();
-
-            if ($existingBookings + count($data['seats']) > 2) {
-                return redirect()->back()
-                    ->with(['message' => 'You can only book a maximum of 2 seats per event.']);
-            }
+        if ($this->exceedsBookingLimit($event, count($data['seats']))) {
+            return redirect()->route('bookings.create', ['event' => $event->id])
+                ->with(['error' => 'You can only book a maximum of '.self::MAX_SEATS_PER_EVENT.' seats per event.']);
         }
 
         // Check if any seats are already booked
@@ -156,8 +147,11 @@ class BookingController extends Controller
             ->exists();
 
         if ($alreadyBooked) {
-            return redirect()->back()
-                ->with(['message' => 'Some of the selected seats are already booked.']);
+            // Redirect to a plain (query-string-free) URL rather than back()/referer: since
+            // this page's own URL contains the conflicting seats, redirecting back to the
+            // referer would just re-run this same check and loop forever.
+            return redirect()->route('bookings.create', ['event' => $event->id])
+                ->with(['error' => 'Sorry, one or more of your selected seats were just booked by someone else. Please choose different seats.']);
         }
 
         // Load seat information with minimal data
@@ -182,9 +176,8 @@ class BookingController extends Controller
 
     public function store(Request $request, Event $event)
     {
-        if ($event->reservation_ends_at && $event->reservation_ends_at->isPast()) {
-            return redirect()->route('bookings.index')
-                ->with(['message' => 'The reservation period for this event has ended.']);
+        if ($redirect = $this->denyIfBookingClosed($event, 'bookings.index')) {
+            return $redirect;
         }
 
         if ($redirect = $this->denyIfBookingNotOpen($event, 'bookings.index')) {
@@ -198,33 +191,25 @@ class BookingController extends Controller
             'seats.*.comment' => 'nullable|string|max:255',
         ]);
 
-        // Calculate tickets left manually to avoid heavy loading
-        $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
-        $bookedTickets = $event->bookings()->count();
-        $ticketsLeft = max(0, $maxTickets - $bookedTickets);
+        $ticketsLeft = $event->calculateTicketsLeft();
 
         // Check if enough tickets are available
         if ($ticketsLeft < count($data['seats'])) {
             return redirect()->route('bookings.index')
-                ->with(['message' => 'Not enough tickets available for this event.']);
+                ->with(['error' => 'Not enough tickets available for this event.']);
         }
 
         // Ensure user hasn't exceeded booking limit
-        if (! Auth::user()->is_admin) {
-            $existingBookings = Booking::where('user_id', Auth::id())
-                ->where('event_id', $event->id)
-                ->count();
-
-            if ($existingBookings + count($data['seats']) > 2) {
-                return redirect()->route('bookings.index')
-                    ->with(['message' => 'You can only book a maximum of 2 seats per event.']);
-            }
+        if ($this->exceedsBookingLimit($event, count($data['seats']))) {
+            return redirect()->route('bookings.index')
+                ->with(['error' => 'You can only book a maximum of '.self::MAX_SEATS_PER_EVENT.' seats per event.']);
         }
 
         // Use transaction to ensure atomicity
         $bookingCode = null;
+        $seatConflict = false;
 
-        DB::transaction(function () use ($event, $data, &$bookingCode) {
+        DB::transaction(function () use ($event, $data, &$bookingCode, &$seatConflict) {
             // Lock seats to prevent race conditions
             $seatIds = collect($data['seats'])->pluck('seat_id')->toArray();
             Seat::whereIn('id', $seatIds)->lockForUpdate()->get();
@@ -235,9 +220,9 @@ class BookingController extends Controller
                 ->first();
 
             if ($existingBookings) {
-                throw ValidationException::withMessages([
-                    'seats' => 'Some of the selected seats have already been booked.',
-                ]);
+                $seatConflict = true;
+
+                return;
             }
 
             // Generate unique booking code for ALL bookings through user interface
@@ -256,6 +241,14 @@ class BookingController extends Controller
             }
         });
 
+        // Someone else grabbed one of the seats between selection and submission. Redirect to
+        // the plain seat-selection URL (not back()/referer) so we don't loop on a URL whose
+        // own query string still references the now-taken seats.
+        if ($seatConflict) {
+            return redirect()->route('bookings.create', ['event' => $event->id])
+                ->with(['error' => 'Sorry, one or more of your selected seats were just booked by someone else. Please choose different seats.']);
+        }
+
         // Redirect to confirmation page with booking code for ALL users
         if ($bookingCode) {
             return redirect()->route('bookings.confirmed', [
@@ -265,7 +258,7 @@ class BookingController extends Controller
         }
 
         return redirect()->route('bookings.index')
-            ->with(['message' => 'Your booking has been confirmed!']);
+            ->with(['success' => 'Your booking has been confirmed!']);
     }
 
     public function show(Event $event, Booking $booking)
@@ -329,7 +322,7 @@ class BookingController extends Controller
     {
         if ($request->user()->cannot('update', $booking)) {
             return redirect()->route('bookings.index')
-                ->with(['message' => 'You are not allowed to update this booking!']);
+                ->with(['error' => 'You are not allowed to update this booking!']);
         }
 
         $data = $request->validate([
@@ -340,33 +333,81 @@ class BookingController extends Controller
         $booking->update($data);
 
         return redirect()->route('bookings.index')
-            ->with(['message' => 'Booking updated!']);
+            ->with(['success' => 'Booking updated!']);
     }
 
     public function destroy(Event $event, Booking $booking)
     {
         if (auth()->user()->cannot('delete', $booking)) {
             return redirect()->route('bookings.index')
-                ->with(['message' => 'You are not allowed to cancel this booking!']);
+                ->with(['error' => 'You are not allowed to cancel this booking!']);
         }
 
         $booking->delete();
 
         return redirect()->route('bookings.index')
-            ->with(['message' => 'Booking cancelled!']);
+            ->with(['success' => 'Booking cancelled!']);
     }
 
     /**
-     * Redirect to $redirectRoute if the event's booking period hasn't opened yet for non-admins.
+     * Redirect to $redirectRoute if the event's booking period hasn't opened yet. Admins get no
+     * special treatment here — use the admin panel to manage bookings early.
      */
-    private function denyIfBookingNotOpen(Event $event, string $redirectRoute)
+    private function denyIfBookingNotOpen(Event $event, string $redirectRoute, array $routeParams = [])
     {
-        if (! Auth::user()->is_admin && ! $event->isBookingOpen()) {
-            return redirect()->route($redirectRoute)
-                ->with(['message' => 'Booking for this Event is not yet open.']);
+        if (! $event->isBookingOpen()) {
+            return redirect()->route($redirectRoute, $routeParams)
+                ->with(['error' => 'Booking for this event is not yet open.']);
         }
 
         return null;
+    }
+
+    /**
+     * Redirect to $redirectRoute if the event has ended or its reservation deadline ("locked", see
+     * EventIndex.vue::getEventStatus) has passed. Admins get no special treatment here — use the
+     * admin panel to manage bookings after the deadline.
+     */
+    private function denyIfBookingClosed(Event $event, string $redirectRoute)
+    {
+        if ($event->hasEnded()) {
+            return redirect()->route($redirectRoute)
+                ->with(['error' => 'This event has already taken place.']);
+        }
+
+        if ($event->isReservationClosed()) {
+            return redirect()->route($redirectRoute)
+                ->with(['error' => 'The reservation period for this event has ended.']);
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether the current user has already booked the max seats for this event. Admins get no
+     * special treatment here — use the admin panel's manual booking to bypass the limit.
+     */
+    private function hasReachedBookingLimit(Event $event): bool
+    {
+        $existingBookings = Booking::where('user_id', Auth::id())
+            ->where('event_id', $event->id)
+            ->count();
+
+        return $existingBookings >= self::MAX_SEATS_PER_EVENT;
+    }
+
+    /**
+     * Whether booking $additionalSeats more seats would push the current user over the
+     * limit for this event. Admins get no special treatment here — use the admin panel's
+     * manual booking to bypass the limit.
+     */
+    private function exceedsBookingLimit(Event $event, int $additionalSeats): bool
+    {
+        $existingBookings = Booking::where('user_id', Auth::id())
+            ->where('event_id', $event->id)
+            ->count();
+
+        return $existingBookings + $additionalSeats > self::MAX_SEATS_PER_EVENT;
     }
 
     /**

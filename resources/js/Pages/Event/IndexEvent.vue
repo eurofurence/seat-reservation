@@ -5,7 +5,7 @@ import Layout from "@/Layouts/Layout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
-import { ArrowLeft, Volume2, Calendar, MapPin, Clock, Users, Search, AlertTriangle } from 'lucide-vue-next'
+import { ArrowLeft, Volume2, Calendar, MapPin, Clock, Users, Search } from 'lucide-vue-next'
 import dayjs from "dayjs"
 
 defineOptions({layout: Layout})
@@ -70,14 +70,6 @@ function goBack() {
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-      <!-- Flash Message -->
-      <Alert v-if="$page.props.flash.message" class="mb-6 lg:mb-8 border-red-200 bg-red-50">
-        <AlertTriangle class="h-4 w-4" />
-        <div class="text-red-800">
-          {{ $page.props.flash.message }}
-        </div>
-      </Alert>
-
       <!-- Page Description -->
       <Alert class="mb-6 lg:mb-8 border-blue-200 bg-blue-50">
         <Volume2 class="h-4 w-4" />

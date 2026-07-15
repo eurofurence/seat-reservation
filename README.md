@@ -40,9 +40,9 @@ The following rules are enforced in the current application behavior.
 - Per-account limit: non-admin users can book at most 2 seats per event (across all booking attempts, not per single request).
 - Event capacity limit: booking is blocked when the event has no tickets left (`max_tickets` reached).
 - Seat conflict protection: already-booked seats cannot be booked again, including concurrent requests (seat rows are locked during booking transaction).
-- Booking window start: non-admin users cannot open or submit bookings before `booking_starts_at` (if set).
+- Booking window start: non-admin users can browse the seat layout before `booking_starts_at`, but cannot proceed past seat selection or submit bookings until it has passed (if set).
 - Booking window end: new bookings are blocked after `reservation_ends_at`.
-- Admin bypass for booking start: admins can still create bookings before `booking_starts_at` through the user booking flow.
+- Booking window start applies to admins too: admins cannot create bookings through the user booking flow before `booking_starts_at` either; only manual admin bookings (via the admin panel) bypass this.
 - Booking codes (user booking flow): every successful booking flow generates a 3-character alphanumeric code (`A-Z`, `0-9`), reused across all seats in that same submission.
 - Booking code uniqueness: generated codes are checked against existing bookings and regenerated on collision.
 - Manual admin bookings: bookings created from admin manual booking use type `admin`, have no `user_id`, and do not get a booking code.
@@ -93,7 +93,6 @@ This starts a FrankenPHP container (serving the app on port 80, Vite HMR on 5173
 
 > **SELinux hosts (Fedora/RHEL):** the bind mount uses the `:z` flag in `docker-compose.yml` so Docker relabels the project directory for container access. Without it you'll see `Permission denied` errors from inside the container even though Unix file permissions look fine (a host/container SELinux category mismatch, visible via `ls -Zd .` vs `docker inspect <container> --format '{{.HostConfig.SecurityOpt}}'`). The flag is a no-op on non-SELinux hosts.
 
-> **No TTY / hangs on some terminals:** if `docker compose exec laravel.test <cmd>` hangs indefinitely, add `-T` to disable TTY allocation: `docker compose exec -T laravel.test <cmd>`. This is common in non-interactive or embedded terminal setups.
 
 ### Useful commands
 
@@ -109,6 +108,14 @@ php artisan route:list  # Inspect registered routes
 php artisan test                              # Run the full suite
 php artisan test --filter="TestClass"         # Run a specific test class
 ```
+
+### Running tests in Docker
+
+```bash
+docker compose exec laravel.test php artisan test
+docker compose exec laravel.test php artisan test --filter="TestClass"
+```
+
 
 Tests cover the public booking flow, booking authorization/security, and booking-code generation/lookup (`tests/Feature`), plus model and service unit tests (`tests/Unit`).
 

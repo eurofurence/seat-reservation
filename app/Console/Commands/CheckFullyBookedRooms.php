@@ -59,12 +59,7 @@ class CheckFullyBookedRooms extends Command
             $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
             if ($maxTickets === 0) {
                 // If no ticket limit is set, use seat availability
-                $totalSeats = $event->room->blocks()
-                    ->with('rows.seats')
-                    ->get()
-                    ->flatMap(fn ($block) => $block->rows->flatMap(fn ($row) => $row->seats))
-                    ->count();
-                $maxTickets = $totalSeats;
+                $maxTickets = $event->room->totalSeatsCount();
             }
 
             $bookedTickets = $event->bookings()->count();

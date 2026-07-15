@@ -32,7 +32,7 @@ const availableSeats = computed(() => {
 })
 
 const canProceed = computed(() => {
-    return selectedSeats.value.length > 0 && selectedSeats.value.length <= availableSeats.value
+    return props.event.is_booking_open && selectedSeats.value.length > 0 && selectedSeats.value.length <= availableSeats.value
 })
 
 function handleSeatsChanged(seats) {
@@ -90,6 +90,16 @@ function goBack() {
       </div>
     </div>
 
+    <!-- Booking Not Yet Open Banner -->
+    <div v-if="!event.is_booking_open" class="bg-amber-100 border-b border-amber-300">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-amber-800">
+        <AlertCircle class="h-5 w-5 flex-shrink-0" />
+        <p class="text-sm lg:text-base font-medium">
+          Booking is not open yet{{ event.booking_starts_at ? ` — opens ${dayjs(event.booking_starts_at).format('MMM DD, YYYY - HH:mm')}` : '' }}. You can browse the seating layout, but seats cannot be booked until then.
+        </p>
+      </div>
+    </div>
+
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
       <div class="lg:grid lg:grid-cols-12 lg:gap-8">
@@ -126,6 +136,11 @@ function goBack() {
                 <Clock class="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
                 <span class="font-medium mr-2">Date & Time:</span>
                 <span>{{ dayjs(event.starts_at).format('MMM DD, YYYY - HH:mm') }}</span>
+              </div>
+              <div v-if="!event.is_booking_open && event.booking_starts_at" class="flex items-center text-sm lg:text-base text-amber-600">
+                <AlertCircle class="h-4 w-4 mr-2 flex-shrink-0" />
+                <span class="font-medium mr-2">Booking Opens:</span>
+                <span>{{ dayjs(event.booking_starts_at).format('MMM DD, YYYY - HH:mm') }}</span>
               </div>
             </div>
           </Card>

@@ -241,11 +241,18 @@ const clearManualBooking = () => {
 }
 
 // Handle pickup toggle
-const togglePickup = async (booking) => {
+const togglePickup = async (booking, event) => {
+    const isRevert = !!booking.picked_up_at
+
+    if (isRevert && !confirm('This ticket is already marked as picked up. Are you sure you want to revert it to unpicked?')) {
+        event.target.checked = true // undo the native checkbox toggle, :checked isn't a v-model
+        return
+    }
+
     try {
         const response = await axios.post(route('admin.events.toggle-pickup', props.event.id), {
             booking_id: booking.id,
-            picked_up: !booking.picked_up_at
+            picked_up: !isRevert
         })
 
         if (response.data.success) {
@@ -741,7 +748,7 @@ onMounted(scrollToHighlightedBooking)
                                         <input
                                             type="checkbox"
                                             :checked="!!booking.picked_up_at"
-                                            @change="togglePickup(booking)"
+                                            @change="togglePickup(booking, $event)"
                                             class="cursor-pointer h-4 w-4"
                                         />
                                     </td>

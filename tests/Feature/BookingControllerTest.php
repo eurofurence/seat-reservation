@@ -150,7 +150,32 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('message', 'You can only book a maximum of 2 seats per event.');
+            ->assertSessionHas('error', 'You can only book a maximum of 2 seats per event.');
+
+        $this->assertDatabaseCount('bookings', 2); // No new booking created
+    }
+
+    /** @test */
+    public function admin_cannot_book_more_than_two_seats_per_event_through_user_interface()
+    {
+        Booking::factory()->create([
+            'user_id' => $this->admin->id,
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+        ]);
+        Booking::factory()->create([
+            'user_id' => $this->admin->id,
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[1]->id,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => [['seat_id' => $this->seats[2]->id, 'name' => 'John Doe', 'comment' => null]],
+            ]);
+
+        $response->assertRedirect()
+            ->assertSessionHas('error', 'You can only book a maximum of 2 seats per event.');
 
         $this->assertDatabaseCount('bookings', 2); // No new booking created
     }
@@ -173,7 +198,10 @@ class BookingControllerTest extends TestCase
                 'seats' => $seatData,
             ]);
 
-        $response->assertSessionHasErrors(['seats']);
+        $response->assertRedirect(route('bookings.create', $this->event))
+            ->assertSessionHas('error', 'Sorry, one or more of your selected seats were just booked by someone else. Please choose different seats.');
+
+        $this->assertDatabaseCount('bookings', 1); // No new booking created
     }
 
     /** @test */
@@ -193,19 +221,155 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('message', 'The reservation period for this event has ended.');
+            ->assertSessionHas('error', 'The reservation period for this event has ended.');
     }
 
     /** @test */
-    public function user_cannot_view_create_page_before_booking_starts_at()
+    public function user_cannot_view_create_page_for_event_that_has_ended()
+    {
+        $this->event->update([
+            'starts_at' => Carbon::now()->subHour(),
+            'reservation_ends_at' => Carbon::now()->addHour(), // deadline itself hasn't passed
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertRedirect(route('events.index'))
+            ->assertSessionHas('error', 'This event has already taken place.');
+    }
+
+    /** @test */
+    public function user_cannot_book_after_event_has_ended()
+    {
+        $this->event->update([
+            'starts_at' => Carbon::now()->subHour(),
+            'reservation_ends_at' => Carbon::now()->addHour(),
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => [['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]],
+            ]);
+
+        $response->assertRedirect(route('bookings.index'))
+            ->assertSessionHas('error', 'This event has already taken place.');
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    /** @test */
+    public function admin_cannot_book_after_reservation_deadline_through_user_interface()
+    {
+        $this->event->update(['reservation_ends_at' => Carbon::now()->subHour()]);
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => [['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]],
+            ]);
+
+        $response->assertRedirect()
+            ->assertSessionHas('error', 'The reservation period for this event has ended.');
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    /** @test */
+    public function admin_cannot_view_or_book_after_event_has_ended_through_user_interface()
+    {
+        $this->event->update(['starts_at' => Carbon::now()->subHour()]);
+
+        $this->actingAs($this->admin)
+            ->get(route('bookings.create', $this->event))
+            ->assertRedirect(route('events.index'))
+            ->assertSessionHas('error', 'This event has already taken place.');
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => [['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null]],
+            ]);
+
+        $this->assertDatabaseCount('bookings', 0);
+        $response->assertRedirect(route('bookings.index'))
+            ->assertSessionHas('error', 'This event has already taken place.');
+    }
+
+    /** @test */
+    public function user_can_view_create_page_before_booking_starts_at_but_it_is_marked_not_open()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
 
         $response = $this->actingAs($this->user)
             ->get(route('bookings.create', $this->event));
 
-        $response->assertRedirect(route('events.index'))
-            ->assertSessionHas('message', 'Booking for this Event is not yet open.');
+        $response->assertOk();
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertFalse($props['event']['is_booking_open']);
+    }
+
+    /** @test */
+    public function booked_seats_are_hidden_from_layout_before_booking_starts_at()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+            'type' => 'admin',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertOk();
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertEmpty($props['bookedSeats']);
+    }
+
+    /** @test */
+    public function booked_seats_are_shown_in_layout_once_booking_starts_at_has_passed()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->subMinute()]);
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+            'type' => 'admin',
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertOk();
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertEquals([$this->seats[0]->id], $props['bookedSeats']);
+    }
+
+    /** @test */
+    public function admin_does_not_see_booked_seats_in_layout_before_booking_starts_at_through_user_interface()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+            'type' => 'admin',
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertOk();
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertEmpty($props['bookedSeats']);
+    }
+
+    /** @test */
+    public function user_cannot_proceed_past_seat_selection_before_booking_starts_at()
+    {
+        $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', ['event' => $this->event, 'seats' => [$this->seats[0]->id], 'validate' => true]));
+
+        $response->assertRedirect(route('bookings.create', $this->event))
+            ->assertSessionHas('error', 'Booking for this event is not yet open.');
     }
 
     /** @test */
@@ -223,7 +387,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'Booking for this Event is not yet open.');
+            ->assertSessionHas('error', 'Booking for this event is not yet open.');
 
         $this->assertDatabaseCount('bookings', 0);
     }
@@ -266,14 +430,16 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_view_create_page_and_book_before_booking_starts_at()
+    public function admin_cannot_proceed_or_book_before_booking_starts_at_through_user_interface()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
 
+        // Browsing the layout is still allowed...
         $response = $this->actingAs($this->admin)
             ->get(route('bookings.create', $this->event));
         $response->assertOk();
 
+        // ...but submitting a booking is not, same as a regular user.
         $seatData = [
             ['seat_id' => $this->seats[0]->id, 'name' => 'John Doe', 'comment' => null],
         ];
@@ -283,8 +449,9 @@ class BookingControllerTest extends TestCase
                 'seats' => $seatData,
             ]);
 
-        $response->assertRedirect();
-        $this->assertDatabaseCount('bookings', 1);
+        $response->assertRedirect(route('bookings.index'))
+            ->assertSessionHas('error', 'Booking for this event is not yet open.');
+        $this->assertDatabaseCount('bookings', 0);
     }
 
     /** @test */
@@ -332,7 +499,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('message', 'Not enough tickets available for this event.');
+            ->assertSessionHas('error', 'Not enough tickets available for this event.');
     }
 
     /** @test */
@@ -444,7 +611,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'Booking updated!');
+            ->assertSessionHas('success', 'Booking updated!');
 
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
@@ -469,7 +636,7 @@ class BookingControllerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to update this booking!');
+            ->assertSessionHas('error', 'You are not allowed to update this booking!');
     }
 
     /** @test */
@@ -485,7 +652,7 @@ class BookingControllerTest extends TestCase
             ->delete(route('bookings.destroy', [$this->event, $booking]));
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'Booking cancelled!');
+            ->assertSessionHas('success', 'Booking cancelled!');
 
         $this->assertDatabaseMissing('bookings', ['id' => $booking->id]);
     }
@@ -504,7 +671,7 @@ class BookingControllerTest extends TestCase
             ->delete(route('bookings.destroy', [$this->event, $booking]));
 
         $response->assertRedirect(route('bookings.index'))
-            ->assertSessionHas('message', 'You are not allowed to cancel this booking!');
+            ->assertSessionHas('error', 'You are not allowed to cancel this booking!');
 
         $this->assertDatabaseHas('bookings', ['id' => $booking->id]);
     }

@@ -7,8 +7,10 @@ use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class EventAdminController extends Controller
@@ -49,7 +51,7 @@ class EventAdminController extends Controller
 
     private function validatedEventData(Request $request): array
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'room_id' => 'required|exists:rooms,id',
             'starts_at' => 'nullable|date',
@@ -57,6 +59,28 @@ class EventAdminController extends Controller
             'booking_starts_at' => 'nullable|date',
             'max_tickets' => 'nullable|integer|min:1',
         ]);
+
+        $startsAt = $validated['starts_at'] ?? null;
+        $reservationEndsAt = $validated['reservation_ends_at'] ?? null;
+        $bookingStartsAt = $validated['booking_starts_at'] ?? null;
+
+        $errors = [];
+
+        if ($startsAt && $reservationEndsAt && Carbon::parse($reservationEndsAt)->gt(Carbon::parse($startsAt))) {
+            $errors['reservation_ends_at'] = 'The reservation deadline must be before the event start date.';
+        }
+
+        if ($reservationEndsAt && $bookingStartsAt && Carbon::parse($bookingStartsAt)->gt(Carbon::parse($reservationEndsAt))) {
+            $errors['booking_starts_at'] = 'The booking start date must be before the reservation deadline.';
+        }
+
+        if ($startsAt && $bookingStartsAt && Carbon::parse($bookingStartsAt)->gt(Carbon::parse($startsAt))) {
+            $errors['booking_starts_at'] = 'The booking start date must be before the event start date.';
+        }
+
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
 
         return $request->only([
             'name',
@@ -372,7 +396,7 @@ class EventAdminController extends Controller
             $bookingCount = count($request->seat_ids);
             $seatText = $bookingCount === 1 ? 'seat' : 'seats';
 
-            return back()->with('success', "Successfully booked {$bookingCount} {$seatText} for {$request->name}");
+            return back()->with('success', "Successfully booked {$bookingCount} {$seatText} for {$request->guest_name}");
 
         } catch (\Exception $e) {
             DB::rollback();

@@ -20,12 +20,11 @@ class EventController extends Controller
             ->orderBy('starts_at')
             ->get();
 
-        // Manually add tickets_left without triggering the heavy relationship loading
+        // tickets_left isn't a database column, so compute and attach it per-instance
+        // here to include it in the response.
         $events->each(function ($event) {
-            $maxTickets = $event->max_tickets ?? $event->tickets ?? 0;
-            $bookedTickets = $event->bookings()->count();
-            $event->tickets_left = max(0, $maxTickets - $bookedTickets);
             $event->is_booking_open = $event->isBookingOpen();
+            $event->tickets_left = $event->calculateTicketsLeft();
         });
 
         return Inertia::render('Event/IndexEvent', [
