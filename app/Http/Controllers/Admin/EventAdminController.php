@@ -348,7 +348,7 @@ class EventAdminController extends Controller
             $masterBlocks = $room->blocks()
                 ->select('id', 'room_id', 'name', 'position_x', 'position_y')
                 ->with(['rows' => function ($query) {
-                    $query->select('id', 'block_id', 'order')
+                    $query->select('id', 'block_id', 'order', 'alignment')
                         ->orderBy('order')
                         ->with(['seats:id,row_id,number']);
                 }])
@@ -390,6 +390,37 @@ class EventAdminController extends Controller
                 'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $bookedSeatIds, $mpdf),
             ])->render();
 
+            /*
+            // TEST BUILD: master, order (booked labels), order (all names).
+            $previewBlock = $previewBlocks->first();
+            if ($previewBlock) {
+                // All-seat set so every seat shows its label on the second order card.
+                $allSeatIds = [];
+                foreach ($previewBlock->rows as $row) {
+                    foreach ($row->seats as $seat) {
+                        $allSeatIds[$seat->id] = true;
+                    }
+                }
+
+                $pages[] = view('pdf.order-card', [
+                    'info' => (object) [
+                        'event_name' => $event->name,
+                        'block_name' => 'Block '.$previewBlock->name,
+                    ],
+                    'preview' => $orderCard->render($previewBlock, $bookedSeatIds, $mpdf),
+                ])->render();
+
+                $pages[] = view('pdf.order-card', [
+                    'info' => (object) [
+                        'event_name' => $event->name,
+                        'block_name' => 'Block '.$previewBlock->name,
+                    ],
+                    // Fill only booked seats black, but label every seat.
+                    'preview' => $orderCard->render($previewBlock, $bookedSeatIds, $mpdf, $allSeatIds),
+                ])->render();
+            }
+            */
+
             $currentBlockId = null;
 
             foreach ($bookings as $booking) {
@@ -406,7 +437,7 @@ class EventAdminController extends Controller
                             'block_name' => 'Block '.$block->name,
                         ],
                         'preview' => $previewBlock
-                            ? $orderCard->render($previewBlock, $bookedSeatIds)
+                            ? $orderCard->render($previewBlock, $bookedSeatIds, $mpdf)
                             : null,
                     ])->render();
                 }

@@ -40,6 +40,7 @@ class MasterCardSvgGenerator
             $maxSeats = max((int) $rows->max(fn ($r) => $r->seats->count()), 1);
             $cells[] = [
                 'x' => $b->position_x, 'y' => $b->position_y, 'type' => 'seating', 'block' => $b, 'rows' => $rows,
+                'maxSeats' => $maxSeats,
                 'w' => $inPad * 2 + $maxSeats * $pitch,
                 'h' => $header + $inPad + max($rows->count(), 1) * $pitch,
             ];
@@ -68,25 +69,35 @@ class MasterCardSvgGenerator
 
         $svg = '';
         foreach ($cells as $c) {
-            $bx = $colX[$c['x']] + ($colW[$c['x']] - $c['w']) / 2;
-            $by = $rowY[$c['y']] + ($rowH[$c['y']] - $c['h']) / 2;
-            $cxMid = $bx + $c['w'] / 2;
+            $cw = $c['type'] === 'stage' ? $colW[$c['x']] : $c['w'];
+            $bx = $colX[$c['x']] + ($colW[$c['x']] - $cw) / 2;
+            $by = $rowY[$c['y']];
+            $cxMid = $bx + $cw / 2;
 
             if ($c['type'] === 'stage') {
-                $svg .= sprintf('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="10" ry="10" fill="#000000" stroke="#000000" stroke-width="2"/>', $bx, $by, $c['w'], $c['h']);
-                $svg .= $this->svg->centeredLabel($mpdf, $c['block']->name ?: 'Stage', 24, '#ffffff', $cxMid, $by + $c['h'] / 2 + 24 * 0.35, $c['w'] - 12);
+                $svg .= sprintf('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="10" ry="10" fill="#000000" stroke="#000000" stroke-width="2"/>', $bx, $by, $cw, $c['h']);
+                $sz = SvgUtilities::SIZE_STAGE_LABEL;
+                $svg .= $this->svg->centeredLabel($mpdf, $c['block']->name ?: 'Stage', $sz, '#ffffff', $cxMid, $by + $c['h'] / 2 + $sz * SvgUtilities::BASELINE_FACTOR, $cw - 12);
 
                 continue;
             }
 
             $svg .= sprintf('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="10" ry="10" fill="none" stroke="#000000" stroke-width="3"/>', $bx, $by, $c['w'], $c['h']);
-            $svg .= $this->svg->centeredLabel($mpdf, $c['block']->name, 20, '#000000', $cxMid, $by + 22, $c['w'] - 12);
+            $svg .= $this->svg->centeredLabel($mpdf, $c['block']->name, SvgUtilities::SIZE_BLOCK_LABEL, '#000000', $cxMid, $by + 22, $c['w'] - 12);
 
             $dot = $pitch * 0.7;
+            $gridWidth = $c['maxSeats'] * $pitch;
+            $gridLeft = $cxMid - $gridWidth / 2;
             $gridTop = $by + $header + $pitch / 2;
             foreach ($c['rows'] as $ri => $row) {
                 $seats = $row->seats->sortBy('number')->values();
-                $rowLeft = $cxMid - ($seats->count() * $pitch) / 2 + $pitch / 2;
+                $rowWidth = $seats->count() * $pitch;
+                $alignment = $row->alignment ?? 'center';
+                $rowLeft = match ($alignment) {
+                    'left' => $gridLeft + $pitch / 2,
+                    'right' => $gridLeft + $gridWidth - $rowWidth + $pitch / 2,
+                    default => $cxMid - $rowWidth / 2 + $pitch / 2,
+                };
                 foreach ($seats as $ci => $seat) {
                     $svg .= sprintf(
                         '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="2" ry="2" fill="%s" stroke="#000000" stroke-width="1"/>',
@@ -97,7 +108,7 @@ class MasterCardSvgGenerator
             }
         }
 
-        $scale = min(200 / $width, 90 / $height);
+        $scale = min(200 / $width, 110 / $height);
 
         return sprintf(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" width="%smm" height="%smm">%s</svg>',

@@ -59,7 +59,7 @@
             font-size: 40pt;
             font-weight: bold;
             color: #000;
-            margin-bottom: 4mm;
+            margin-bottom: 3mm;
             width: 80%;
             margin-left: auto;
             margin-right: auto;
@@ -74,7 +74,7 @@
             font-size: 60pt;
             font-weight: bold;
             color: #000;
-            margin-bottom: 8mm;
+            margin-bottom: 5mm;
             width: 80%;
             margin-left: auto;
             margin-right: auto;
@@ -99,10 +99,6 @@
             width: 72%;
             margin: 0 auto;
             text-align: center;
-        }
-
-        .block-preview svg {
-            max-height: 110mm;
         }
 
         .master-overview {
@@ -135,7 +131,7 @@
         @yield('styles')
     </style>
 </head>
-<body class="@yield('bodyClass')">
+<body>
     <div class="card-content">
         @yield('content')
     </div>

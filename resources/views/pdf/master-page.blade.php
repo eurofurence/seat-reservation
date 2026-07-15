@@ -1,7 +1,5 @@
 @extends('pdf.card-layout')
 
-@section('bodyClass', 'master-page')
-
 @section('styles')
     .event-name { font-size: 52pt; margin-top: 0; margin-bottom: 2mm; }
     .block-name { font-size: 26pt; margin-bottom: 6mm; }

@@ -1,5 +1,11 @@
 @extends('pdf.card-layout')
 
+@section('styles')
+    .text-content { padding-top: 24mm; }
+    .event-name { margin-bottom: 2mm; }
+    .block-name { font-size: 52pt; margin-bottom: 4mm; }
+@endsection
+
 @section('content')
     <div class="text-content">
         <div class="event-name">
