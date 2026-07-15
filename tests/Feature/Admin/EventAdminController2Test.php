@@ -275,7 +275,7 @@ class EventAdminController2Test extends TestCase
     }
 
     /** @test */
-    public function export_excludes_unpicked_bookings_by_default()
+    public function export_includes_unpicked_bookings_by_default()
     {
         $this->actingAs($this->admin);
         $event = Event::factory()->create(['room_id' => $this->room->id, 'name' => 'Test Event']);
@@ -292,30 +292,6 @@ class EventAdminController2Test extends TestCase
         ]);
 
         $response = $this->get(route('admin.events.export', $event->id));
-
-        $response->assertOk();
-        $lines = array_filter(explode("\n", trim($response->getContent())));
-        $this->assertCount(1, $lines, 'Only the header row should be present when no bookings are picked up.');
-    }
-
-    /** @test */
-    public function export_includes_unpicked_bookings_when_requested()
-    {
-        $this->actingAs($this->admin);
-        $event = Event::factory()->create(['room_id' => $this->room->id, 'name' => 'Test Event']);
-
-        $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
-        $row = Row::factory()->create(['block_id' => $block->id]);
-        $seat = Seat::factory()->create(['row_id' => $row->id]);
-
-        Booking::factory()->create([
-            'event_id' => $event->id,
-            'seat_id' => $seat->id,
-            'name' => 'Not Picked Up Guy',
-            'picked_up_at' => null,
-        ]);
-
-        $response = $this->get(route('admin.events.export', $event->id).'?include_unpicked=1');
 
         $response->assertOk();
         $content = $response->getContent();
@@ -350,7 +326,7 @@ class EventAdminController2Test extends TestCase
             'picked_up_at' => null,
         ]);
 
-        $response = $this->get(route('admin.events.export-all').'?include_unpicked=1');
+        $response = $this->get(route('admin.events.export-all'));
 
         $response->assertOk();
         $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
@@ -363,7 +339,7 @@ class EventAdminController2Test extends TestCase
     }
 
     /** @test */
-    public function export_all_excludes_unpicked_bookings_by_default()
+    public function export_all_includes_unpicked_bookings_by_default()
     {
         $this->actingAs($this->admin);
         $event = Event::factory()->create(['room_id' => $this->room->id, 'name' => 'Test Event']);
@@ -382,8 +358,9 @@ class EventAdminController2Test extends TestCase
         $response = $this->get(route('admin.events.export-all'));
 
         $response->assertOk();
-        $lines = array_filter(explode("\n", trim($response->getContent())));
-        $this->assertCount(1, $lines, 'Only the header row should be present when no bookings are picked up.');
+        $content = $response->getContent();
+        $this->assertStringContainsString('Not Picked Up Guy', $content);
+        $this->assertStringContainsString(',No,', $content);
     }
 
     /** @test */

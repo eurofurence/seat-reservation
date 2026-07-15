@@ -62,7 +62,6 @@ const viewEvent = (event) => {
 const exportAllBookings = async () => {
   try {
     const response = await axios.get(route('admin.events.export-all'), {
-      params: { include_unpicked: 1 },
       responseType: 'blob',
     })
 

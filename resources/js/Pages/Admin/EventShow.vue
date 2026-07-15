@@ -400,7 +400,6 @@ const includeUnpicked = ref(false)
 const exportBookings = async () => {
     try {
         const response = await axios.get(route('admin.events.export', props.event.id), {
-            params: includeUnpicked.value ? { include_unpicked: 1 } : {},
             responseType: 'blob',
         })
 
@@ -517,7 +516,7 @@ onMounted(scrollToHighlightedBooking)
                     </div>
                     <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
                         <input type="checkbox" v-model="includeUnpicked" class="h-3 w-3" />
-                        Include unpicked
+                        Include unpicked (seat cards)
                     </label>
                 </div>
             </div>
