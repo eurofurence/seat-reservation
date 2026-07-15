@@ -12,6 +12,10 @@ defineOptions({ layout: AdminLayout })
 
 const props = defineProps({
   room: Object,
+  bookingsCount: {
+    type: Number,
+    default: 0
+  },
   blocks: Array,
   stageBlocks: Array,
   title: String,
@@ -77,6 +81,20 @@ const expandedBlocks = ref(new Set())
 const expandedRows = ref(new Set())
 const showNewBlockDialog = ref(false)
 const newBlockName = ref('')
+
+// Confirmation dialog shown before saving when the room has bookings, since saving
+// rebuilds the seat layout and deletes all existing bookings for this room.
+//
+// TEMPORARY: this whole warn-and-confirm flow is a stopgap. Editing the layout currently
+// wipes all bookings for the room; remove this banner + dialog once layout edits preserve
+// existing bookings. See RoomLayoutController::edit/update.
+const showDeleteBookingsDialog = ref(false)
+const deleteBookingsConfirmText = ref('')
+const DELETE_BOOKINGS_PHRASE = 'remove bookings'
+const hasBookings = computed(() => props.bookingsCount > 0)
+const canConfirmDelete = computed(
+  () => deleteBookingsConfirmText.value.trim().toLowerCase() === DELETE_BOOKINGS_PHRASE
+)
 
 
 // Create empty grid with block assignments
@@ -229,6 +247,23 @@ const deleteSeatingBlock = (blockId) => {
 // Track form submission state
 const isSubmitting = ref(false)
 
+// Entry point for the Save button: if the room has bookings, require explicit
+// confirmation (typing the phrase) before proceeding, since saving deletes them.
+const requestSaveLayout = () => {
+  if (hasBookings.value) {
+    deleteBookingsConfirmText.value = ''
+    showDeleteBookingsDialog.value = true
+    return
+  }
+  saveLayout()
+}
+
+const confirmDeleteBookingsAndSave = () => {
+  if (!canConfirmDelete.value) return
+  showDeleteBookingsDialog.value = false
+  saveLayout()
+}
+
 // Save all changes
 const saveLayout = () => {
   isSubmitting.value = true
@@ -370,6 +405,23 @@ const removeSpecificRow = (block, rowNumber) => {
   <Head :title="title" />
 
   <div>
+    <!-- Warning banner: shown only when this room has bookings, since saving the layout
+         rebuilds the seats and deletes every booking for this room. -->
+    <div
+      v-if="hasBookings"
+      class="mb-6 flex items-start gap-3 rounded-md border border-red-300 bg-red-50 p-4 text-red-800"
+    >
+      <span class="text-xl leading-none">⚠️</span>
+      <div class="text-sm">
+        <p class="font-semibold">Saving will delete all bookings for this room.</p>
+        <p class="mt-1">
+          This room has {{ bookingsCount }} booking{{ bookingsCount === 1 ? '' : 's' }}.
+          Editing the room layout removes every existing booking associated with it. This
+          action cannot be undone.
+        </p>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
       <!-- Left Column: Stage & Block Management -->
@@ -521,7 +573,7 @@ const removeSpecificRow = (block, rowNumber) => {
                     >
                       <!-- Row Number -->
                       <span class="font-medium w-12">Row {{ row.rowNumber }}</span>
-                      
+
                       <!-- Seat Count Input -->
                       <Input
                         v-model.number="row.seatCount"
@@ -530,7 +582,7 @@ const removeSpecificRow = (block, rowNumber) => {
                         max="100"
                         class="text-xs h-7 w-16"
                       />
-                      
+
                       <!-- Alignment Select -->
                       <select
                         v-model="row.alignment"
@@ -540,10 +592,10 @@ const removeSpecificRow = (block, rowNumber) => {
                         <option value="center">Center</option>
                         <option value="right">Right</option>
                       </select>
-                      
+
                       <!-- Seat Count Display -->
                       <span class="text-gray-500 w-16">{{ row.seatCount }} seats</span>
-                      
+
                       <!-- Delete Button -->
                       <Button
                         size="sm"
@@ -761,7 +813,7 @@ const removeSpecificRow = (block, rowNumber) => {
         <!-- Single Save Button -->
         <div class="mt-6 flex justify-center">
           <Button
-            @click="saveLayout"
+            @click="requestSaveLayout"
             :disabled="isSubmitting"
             class="bg-green-600 hover:bg-green-700 text-white px-12 py-3"
             size="lg"
@@ -770,6 +822,45 @@ const removeSpecificRow = (block, rowNumber) => {
             <span v-else>Save Entire Layout</span>
           </Button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Bookings Confirmation Dialog -->
+  <div v-if="showDeleteBookingsDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+      <h3 class="text-lg font-semibold mb-2 text-red-700">Delete all bookings?</h3>
+
+      <p class="text-sm text-gray-700 mb-4">
+        This room has {{ bookingsCount }} booking{{ bookingsCount === 1 ? '' : 's' }}.
+        Saving the room layout will permanently delete every booking associated with this
+        room. This cannot be undone.
+      </p>
+
+      <div class="mb-4">
+        <Label class="text-sm">
+          Type <span class="font-mono font-semibold">remove bookings</span> to confirm
+        </Label>
+        <Input
+          v-model="deleteBookingsConfirmText"
+          type="text"
+          placeholder="remove bookings"
+          class="mt-1"
+          @keyup.enter="confirmDeleteBookingsAndSave"
+        />
+      </div>
+
+      <div class="flex justify-end space-x-3">
+        <Button variant="outline" @click="showDeleteBookingsDialog = false">
+          Cancel
+        </Button>
+        <Button
+          @click="confirmDeleteBookingsAndSave"
+          :disabled="!canConfirmDelete"
+          class="bg-red-600 hover:bg-red-700 text-white"
+        >
+          Delete bookings & save
+        </Button>
       </div>
     </div>
   </div>
