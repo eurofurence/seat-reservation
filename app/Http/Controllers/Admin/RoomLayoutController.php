@@ -48,6 +48,7 @@ class RoomLayoutController extends Controller
             'room' => $room->only(['id', 'name']),
             'blocks' => $blocks,
             'stageBlocks' => $stageBlocks,
+            'blockIdMap' => session('blockIdMap', []),
             'title' => 'Floor Plan Editor',
             'breadcrumbs' => [
                 ['title' => 'Rooms', 'url' => route('admin.rooms.index')],
@@ -67,7 +68,7 @@ class RoomLayoutController extends Controller
             'stageBlocks.*.position_x' => 'required|integer|min:-1',
             'stageBlocks.*.position_y' => 'required|integer|min:-1',
             'blocks' => 'required|array',
-            'blocks.*.id' => 'required|exists:blocks,id',
+            'blocks.*.id' => 'required',
             'blocks.*.name' => 'required|string|max:255',
             'blocks.*.position_x' => 'required|integer|min:-1',
             'blocks.*.position_y' => 'required|integer|min:-1',
@@ -79,7 +80,9 @@ class RoomLayoutController extends Controller
             'blocks.*.rowsData.*.alignment' => 'nullable|string|in:left,center,right',
         ]);
 
-        DB::transaction(function () use ($request, $room) {
+        $blockIdMap = [];
+
+        DB::transaction(function () use ($request, $room, &$blockIdMap) {
             // Update stage blocks
             $existingStageBlockIds = $room->stageBlocks()->pluck('id')->toArray();
             $submittedStageBlocks = $request->stageBlocks ?? [];
@@ -116,7 +119,21 @@ class RoomLayoutController extends Controller
 
             // Update blocks
             foreach ($request->blocks as $blockData) {
-                $block = $room->blocks()->where('id', $blockData['id'])->first();
+                $isTempId = ! is_numeric($blockData['id']);
+
+                if ($isTempId) {
+                    $block = $room->allBlocks()->create([
+                        'name' => $blockData['name'],
+                        'type' => 'seating',
+                        'position_x' => $blockData['position_x'],
+                        'position_y' => $blockData['position_y'],
+                        'rotation' => $blockData['rotation'],
+                        'order' => ($room->blocks()->max('order') ?? -1) + 1,
+                    ]);
+                    $blockIdMap[$blockData['id']] = $block->id;
+                } else {
+                    $block = $room->blocks()->where('id', $blockData['id'])->first();
+                }
 
                 if ($block) {
                     // Update block position, rotation, and name
@@ -160,7 +177,9 @@ class RoomLayoutController extends Controller
             }
         });
 
-        return back()->with('success', 'Room layout updated successfully!');
+        return back()
+            ->with('success', 'Room layout updated successfully!')
+            ->with('blockIdMap', $blockIdMap);
     }
 
     public function createBlock(Request $request, Room $room)

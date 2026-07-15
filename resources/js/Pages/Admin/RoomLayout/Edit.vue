@@ -1,12 +1,11 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 
 defineOptions({ layout: AdminLayout })
 
@@ -14,9 +13,12 @@ const props = defineProps({
   room: Object,
   blocks: Array,
   stageBlocks: Array,
+  blockIdMap: { type: Object, default: () => ({}) },
   title: String,
   breadcrumbs: Array
 })
+
+let tempBlockCounter = 0
 
 // Layout grid size (HTML table cells)
 const GRID_ROWS = 8
@@ -25,10 +27,6 @@ const GRID_COLS = 12
 // Helper functions that need to be available during initialization
 const getOriginalSeatingBlock = (blockId) => {
   return props.blocks.find(block => block.id === blockId)
-}
-
-const getOriginalStageBlock = (stageBlockId) => {
-  return props.stageBlocks.find(block => block.id === stageBlockId)
 }
 
 // Build complete form data from props with all editing capabilities
@@ -74,7 +72,6 @@ const form = useForm({
 const selectedBlock = ref(null)
 const selectedBlockType = ref(null) // 'stage' or 'seating'
 const expandedBlocks = ref(new Set())
-const expandedRows = ref(new Set())
 const showNewBlockDialog = ref(false)
 const newBlockName = ref('')
 
@@ -270,17 +267,32 @@ const saveLayout = () => {
   submitForm.put(route('admin.rooms.layout.update', props.room.id), {
     onSuccess: () => {
       isSubmitting.value = false
+      const map = props.blockIdMap || {}
+      form.blocks.forEach(block => {
+        if (map[block.id] != null) {
+          block.id = map[block.id]
+        }
+      })
     },
-    onError: () => {
+    onError: (errors) => {
       isSubmitting.value = false
+      console.error('Failed to save layout:', errors)
+      const messages = Object.values(errors)
+      alert(
+        'Layout could not be saved:\n\n' +
+        (messages.length ? messages.join('\n') : 'Please reload the page and try again.')
+      )
     }
   })
 }
 
 // Create new seating block
+const newBlockNameInput = ref(null)
+
 const openNewBlockDialog = () => {
   showNewBlockDialog.value = true
   newBlockName.value = ''
+  nextTick(() => newBlockNameInput.value?.focus())
 }
 
 const closeNewBlockDialog = () => {
@@ -288,47 +300,43 @@ const closeNewBlockDialog = () => {
   newBlockName.value = ''
 }
 
-const createNewBlock = () => {
-  if (!newBlockName.value.trim()) return
-
-  const createForm = useForm({
-    name: newBlockName.value
-  })
-
-  createForm.post(route('admin.rooms.blocks.create', props.room.id), {
-    onSuccess: () => {
-      // Add the new block to the form data instead of refreshing
-      const newBlock = {
-        id: Date.now(), // Temporary ID until page refresh
-        name: newBlockName.value,
-        position_x: -1,
-        position_y: -1,
-        rotation: 0,
-        rowCount: 10,
-        defaultSeatsPerRow: 25,
-        rows: Array.from({ length: 10 }, (_, i) => ({
-          rowNumber: i + 1,
-          seatCount: 25,
-          isCustom: false,
-          alignment: 'center'
-        }))
+const findFirstFreeCell = () => {
+  const grid = layoutGrid.value
+  for (let y = 0; y < GRID_ROWS; y++) {
+    for (let x = 0; x < GRID_COLS; x++) {
+      if (grid[y][x] === null) {
+        return { x, y }
       }
-      form.blocks.push(newBlock)
-      closeNewBlockDialog()
-    },
-    onError: (errors) => {
-      console.error('Failed to create block:', errors)
     }
-  })
+  }
+  return { x: -1, y: -1 }
 }
 
-// Row management for seating blocks
-const toggleRowExpanded = (rowIndex) => {
-  if (expandedRows.value.has(rowIndex)) {
-    expandedRows.value.delete(rowIndex)
-  } else {
-    expandedRows.value.add(rowIndex)
-  }
+const nextFreeCell = computed(() => findFirstFreeCell())
+
+const createNewBlock = () => {
+  const name = newBlockName.value.trim()
+  if (!name) return
+
+  const { x, y } = findFirstFreeCell()
+
+  form.blocks.push({
+    id: `temp-${++tempBlockCounter}`,
+    name,
+    position_x: x,
+    position_y: y,
+    rotation: 0,
+    rowCount: 10,
+    defaultSeatsPerRow: 25,
+    rows: Array.from({ length: 10 }, (_, i) => ({
+      rowNumber: i + 1,
+      seatCount: 25,
+      isCustom: false,
+      alignment: 'center'
+    }))
+  })
+
+  closeNewBlockDialog()
 }
 
 // Row management functions
@@ -389,7 +397,7 @@ const removeSpecificRow = (block, rowNumber) => {
               v-for="(stageBlock, index) in form.stageBlocks"
               :key="`stage-${stageBlock.id || index}`"
               class="border border-gray-200 rounded-lg p-3"
-              :class="{ 'ring-2 ring-red-500': selectedBlock?.id === stageBlock.id && selectedBlockType === 'stage' }"
+              :class="{ 'ring-2 ring-inset ring-red-500': selectedBlock?.id === stageBlock.id && selectedBlockType === 'stage' }"
             >
               <div @click="selectBlock(stageBlock, 'stage')" class="cursor-pointer">
                 <div class="flex items-center justify-between mb-2">
@@ -433,8 +441,8 @@ const removeSpecificRow = (block, rowNumber) => {
             <div
               v-for="block in form.blocks"
               :key="block.id"
-              class="border border-gray-200 rounded-lg"
-              :class="{ 'ring-2 ring-blue-500': selectedBlock?.id === block.id && selectedBlockType === 'seating' }"
+              class="border border-gray-200 rounded-lg overflow-hidden"
+              :class="{ 'ring-2 ring-inset ring-blue-500': selectedBlock?.id === block.id && selectedBlockType === 'seating' }"
             >
               <!-- Block Header -->
               <div
@@ -521,7 +529,7 @@ const removeSpecificRow = (block, rowNumber) => {
                     >
                       <!-- Row Number -->
                       <span class="font-medium w-12">Row {{ row.rowNumber }}</span>
-                      
+
                       <!-- Seat Count Input -->
                       <Input
                         v-model.number="row.seatCount"
@@ -530,7 +538,7 @@ const removeSpecificRow = (block, rowNumber) => {
                         max="100"
                         class="text-xs h-7 w-16"
                       />
-                      
+
                       <!-- Alignment Select -->
                       <select
                         v-model="row.alignment"
@@ -540,10 +548,10 @@ const removeSpecificRow = (block, rowNumber) => {
                         <option value="center">Center</option>
                         <option value="right">Right</option>
                       </select>
-                      
+
                       <!-- Seat Count Display -->
                       <span class="text-gray-500 w-16">{{ row.seatCount }} seats</span>
-                      
+
                       <!-- Delete Button -->
                       <Button
                         size="sm"
@@ -560,127 +568,6 @@ const removeSpecificRow = (block, rowNumber) => {
                 </div>
               </div>
             </div>
-          </div>
-        </Card>
-
-        <!-- Block Editor Card for Seating Blocks -->
-        <Card v-if="selectedBlock && selectedBlockType === 'seating'" class="p-4">
-          <h3 class="font-semibold mb-4 text-blue-600">Edit Block: {{ selectedBlock.name }}</h3>
-
-          <div class="space-y-4">
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <Label class="text-sm">Number of Rows</Label>
-                <Input
-                  v-model.number="blockEditor.rows"
-                  type="number"
-                  min="1"
-                  max="50"
-                  class="text-sm mt-1"
-                />
-              </div>
-
-              <div>
-                <Label class="text-sm">Default Seats/Row</Label>
-                <Input
-                  v-model.number="blockEditor.seatsPerRow"
-                  type="number"
-                  min="1"
-                  max="100"
-                  class="text-sm mt-1"
-                />
-              </div>
-            </div>
-
-            <!-- Row Customization -->
-            <div class="space-y-2">
-              <h4 class="font-medium text-sm">Row Configuration</h4>
-              <div class="max-h-60 overflow-y-auto space-y-2">
-                <div
-                  v-for="rowIndex in blockEditor.rows"
-                  :key="rowIndex"
-                  class="border border-gray-200 rounded"
-                >
-                  <button
-                    @click="toggleRowExpanded(rowIndex)"
-                    class="w-full px-3 py-2 text-left text-sm font-medium bg-gray-50 hover:bg-gray-100 flex justify-between items-center"
-                  >
-                    <span>Row {{ rowIndex }}</span>
-                    <span class="text-xs flex items-center gap-1">
-                      {{ getRowSeatCount(rowIndex) }} seats
-                      <span v-if="blockEditor.customRowSeats[rowIndex]" class="text-blue-600 font-bold" title="Custom seat count">●</span>
-                    </span>
-                  </button>
-
-                  <div v-if="isRowExpanded(rowIndex)" class="p-3 border-t">
-                    <div class="grid grid-cols-2 gap-4">
-                      <!-- Custom Seat Count -->
-                      <div>
-                        <Label class="text-xs">Custom Seat Count</Label>
-                        <div class="flex gap-2 mt-1">
-                          <Input
-                            v-model.number="blockEditor.customRowSeats[rowIndex]"
-                            type="number"
-                            min="1"
-                            max="100"
-                            :placeholder="`Default: ${blockEditor.seatsPerRow}`"
-                            class="text-sm flex-1"
-                          />
-                          <Button
-                            v-if="blockEditor.customRowSeats[rowIndex] !== undefined"
-                            variant="outline"
-                            size="sm"
-                            @click="clearCustomRowSeat(rowIndex)"
-                            class="text-xs px-2"
-                            title="Use default"
-                          >
-                            Reset
-                          </Button>
-                        </div>
-                        <div class="text-xs text-gray-500 mt-1">
-                          <span v-if="blockEditor.customRowSeats[rowIndex]">
-                            Using custom count: {{ blockEditor.customRowSeats[rowIndex] }}
-                          </span>
-                          <span v-else>
-                            Using default: {{ blockEditor.seatsPerRow }}
-                          </span>
-                        </div>
-                      </div>
-
-                      <!-- Seat Alignment -->
-                      <div>
-                        <Label class="text-xs">Seat Alignment</Label>
-                        <Select
-                          :value="blockEditor.rowAlignments[rowIndex] || 'center'"
-                          @update:value="(value) => updateRowAlignment(rowIndex, value)"
-                          class="mt-1 w-full"
-                        >
-                          <SelectTrigger class="text-sm">
-                            <SelectValue>{{ blockEditor.rowAlignments[rowIndex] }}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="left">Left</SelectItem>
-                            <SelectItem value="center">Center</SelectItem>
-                            <SelectItem value="right">Right</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <div class="text-xs text-gray-500 mt-1">
-                          Controls how seats are aligned within this row
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-              Total seats: {{ calculateTotalSeats() }}
-            </div>
-
-            <Button variant="outline" size="sm" @click="closeBlockEditor">
-              Close Editor
-            </Button>
           </div>
         </Card>
       </div>
@@ -782,6 +669,7 @@ const removeSpecificRow = (block, rowNumber) => {
       <div class="mb-4">
         <Label class="text-sm">Block Name</Label>
         <Input
+          ref="newBlockNameInput"
           v-model="newBlockName"
           type="text"
           placeholder="Enter block name..."
@@ -791,7 +679,12 @@ const removeSpecificRow = (block, rowNumber) => {
       </div>
 
       <div class="text-sm text-gray-600 mb-4">
-        The new block will be placed at position (1, 1) by default.
+        <span v-if="nextFreeCell.x !== -1">
+          The new block will be placed at the first free cell ({{ nextFreeCell.y }}, {{ nextFreeCell.x }}).
+        </span>
+        <span v-else class="text-orange-600">
+          The grid is full. The new block will be created but left unplaced. Free up a cell to place it.
+        </span>
       </div>
 
       <div class="flex justify-end space-x-3">
