@@ -22,11 +22,13 @@ interface Props {
   markerBlocks?: PropMarkerBlock[]
   selectedSeats?: number[]
   bookedSeats?: number[]
+  reservedSeats?: number[]
   adminMode?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   markerBlocks: () => [],
+  reservedSeats: () => [],
   adminMode: false,
 })
 
@@ -283,6 +285,7 @@ watch(() => props.selectedSeats, (newSeats) => {
                     :block="cell"
                     :booked-seats="bookedSeats || []"
                     :selected-seats="selectedSeatIds"
+                    :reserved-seats="reservedSeats"
                     :admin-mode="adminMode"
                     @seat-click="handleSeatClick"
                     @booked-seat-click="handleBookedSeatClick"
@@ -318,6 +321,7 @@ watch(() => props.selectedSeats, (newSeats) => {
               :block="block"
               :booked-seats="bookedSeats || []"
               :selected-seats="selectedSeatIds"
+              :reserved-seats="reservedSeats"
               :admin-mode="adminMode"
               @seat-click="handleSeatClick"
               @booked-seat-click="handleBookedSeatClick"

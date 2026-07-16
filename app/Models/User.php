@@ -41,9 +41,4 @@ class User extends Authenticatable
     {
         return $this->hasMany(Booking::class);
     }
-
-    public function canAccessPanel(Panel $panel): bool
-    {
-        return $this->is_admin === true;
-    }
 }

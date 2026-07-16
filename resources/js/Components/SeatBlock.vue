@@ -6,10 +6,13 @@ interface Props {
   block: LayoutBlock
   bookedSeats: number[]
   selectedSeats: number[]
+  reservedSeats?: number[]
   adminMode?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  reservedSeats: () => [],
+})
 
 const emit = defineEmits<{
   'seat-click': [seat: Seat]
@@ -25,9 +28,19 @@ const getSeatStatus = (seat: Seat) => {
       disabled: !props.adminMode
     }
   }
+  // Reserved by another guest in the same import batch - blue like a selection, but not
+  // truly booked yet and not clickable here (deselect it from that other guest instead).
+  if (props.reservedSeats.includes(seat.id)) {
+    return {
+      classes: 'bg-blue-500 border-blue-600 text-white cursor-not-allowed opacity-70',
+      disabled: true
+    }
+  }
+
   if (props.selectedSeats.includes(seat.id)) {
     return { classes: 'bg-blue-500 border-blue-600 text-white scale-110', disabled: false }
   }
+
   return { classes: 'bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600 hover:scale-110', disabled: false }
 }
 
@@ -36,6 +49,10 @@ const handleSeatClick = (seat: Seat) => {
     if (props.adminMode) emit('booked-seat-click', seat)
     return
   }
+  if (props.reservedSeats.includes(seat.id)) {
+    return
+  }
+
   emit('seat-click', seat)
 }
 
