@@ -7,6 +7,18 @@ use Mpdf\Mpdf;
 
 class MasterCardSvgGenerator
 {
+    private const PITCH = 15;       // seat spacing
+
+    private const HEADER = 30;      // space above a block's seat grid for its name
+
+    private const IN_PAD = 10;      // block border to seat grid
+
+    private const CELL_GAP = 18;    // gap between grid cells
+
+    private const PAD = 18;         // outer padding
+
+    private const STAGE_SIZE = 90;
+
     public function __construct(private SvgUtilities $svg) {}
 
     /**
@@ -14,22 +26,47 @@ class MasterCardSvgGenerator
      *
      * @param  Collection  $blocks  Seating blocks with rows.seats.
      * @param  Collection  $stageBlocks  Stage blocks.
-     * @param  array<int,bool>  $bookedSeatIds  Set of booked seat IDs (id => true).
+     * @param  array<int,bool>  $bookedSeatIds  Set of booked seat IDs.
      */
-    public function render($blocks, $stageBlocks, array $bookedSeatIds, Mpdf $mpdf): string
+    public function render(Collection $blocks, Collection $stageBlocks, array $bookedSeatIds, Mpdf $mpdf): string
     {
-        $pitch = 15;
-        $header = 30;    // space for the block name above its seat grid
-        $inPad = 10;     // block border -> seat grid padding
-        $cgap = 18;      // gap between grid cells
-        $pad = 18;       // outer padding
-        $stageSize = 90;
+        $cells = $this->cells($blocks, $stageBlocks);
+        if (empty($cells)) {
+            return '';
+        }
 
+        [$colW, $rowH] = $this->gridSizes($cells);
+        [$colX, $width] = $this->gridLinePositions($colW);
+        [$rowY, $height] = $this->gridLinePositions($rowH);
+
+        $svg = '';
+        foreach ($cells as $c) {
+            $cw = $c['type'] === 'stage' ? $colW[$c['x']] : $c['w'];
+            $bx = $colX[$c['x']] + ($colW[$c['x']] - $cw) / 2;
+            $by = $rowY[$c['y']];
+            $svg .= $c['type'] === 'stage'
+                ? $this->stageCell($c, $bx, $by, $cw, $mpdf)
+                : $this->seatingCell($c, $bx, $by, $bookedSeatIds, $mpdf);
+        }
+
+        $scale = min(200 / $width, 110 / $height);
+
+        return $this->svg->document($width, $height, $width * $scale, $height * $scale, $svg);
+    }
+
+    /**
+     * Placed blocks as grid cells.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function cells(Collection $blocks, Collection $stageBlocks): array
+    {
         $placed = fn ($b) => $b->position_x !== null && $b->position_y !== null && $b->position_x >= 0 && $b->position_y >= 0;
+
         $cells = [];
         foreach ($stageBlocks as $sb) {
             if ($placed($sb)) {
-                $cells[] = ['x' => $sb->position_x, 'y' => $sb->position_y, 'type' => 'stage', 'block' => $sb, 'w' => $stageSize, 'h' => $stageSize];
+                $cells[] = ['x' => $sb->position_x, 'y' => $sb->position_y, 'type' => 'stage', 'block' => $sb, 'w' => self::STAGE_SIZE, 'h' => self::STAGE_SIZE];
             }
         }
         foreach ($blocks as $b) {
@@ -41,78 +78,86 @@ class MasterCardSvgGenerator
             $cells[] = [
                 'x' => $b->position_x, 'y' => $b->position_y, 'type' => 'seating', 'block' => $b, 'rows' => $rows,
                 'maxSeats' => $maxSeats,
-                'w' => $inPad * 2 + $maxSeats * $pitch,
-                'h' => $header + $inPad + max($rows->count(), 1) * $pitch,
+                'w' => self::IN_PAD * 2 + $maxSeats * self::PITCH,
+                'h' => self::HEADER + self::IN_PAD + max($rows->count(), 1) * self::PITCH,
             ];
         }
-        if (empty($cells)) {
-            return '';
-        }
 
+        return $cells;
+    }
+
+    /**
+     * @param  array<int,array<string,mixed>>  $cells
+     * @return array{0: array<int,float>, 1: array<int,float>}
+     */
+    private function gridSizes(array $cells): array
+    {
         $colW = $rowH = [];
         foreach ($cells as $c) {
             $colW[$c['x']] = max($colW[$c['x']] ?? 0, $c['w']);
             $rowH[$c['y']] = max($rowH[$c['y']] ?? 0, $c['h']);
         }
-        $offsets = function (array $sizes) use ($cgap, $pad, $pitch) {
-            $pos = [];
-            $acc = $pad;
-            for ($i = min(array_keys($sizes)); $i <= max(array_keys($sizes)); $i++) {
-                $pos[$i] = $acc;
-                $acc += ($sizes[$i] ?? $pitch) + $cgap;
-            }
 
-            return [$pos, $acc - $cgap + $pad];
-        };
-        [$colX, $width] = $offsets($colW);
-        [$rowY, $height] = $offsets($rowH);
+        return [$colW, $rowH];
+    }
+
+    /**
+     * @param  array<int,float>  $sizes  Cell size per grid index
+     * @return array{0: array<int,float>, 1: float} [start pixel per index, total length]
+     */
+    private function gridLinePositions(array $sizes): array
+    {
+        $starts = [];
+        $cursor = self::PAD;
+        for ($i = min(array_keys($sizes)); $i <= max(array_keys($sizes)); $i++) {
+            $starts[$i] = $cursor;
+            $cursor += ($sizes[$i] ?? self::PITCH) + self::CELL_GAP;
+        }
+
+        return [$starts, $cursor - self::CELL_GAP + self::PAD];
+    }
+
+    private function stageCell(array $c, float $bx, float $by, float $cw, Mpdf $mpdf): string
+    {
+        $sz = SvgUtilities::SIZE_STAGE_LABEL;
+
+        return $this->svg->rect($bx, $by, $cw, $c['h'], '#000000', 2, 10)
+            .$this->svg->centeredLabelX($mpdf, $c['block']->name ?: 'Stage', $sz, '#ffffff', $bx + $cw / 2, $by + $c['h'] / 2 + $sz * SvgUtilities::BASELINE_FACTOR, $cw - 12);
+    }
+
+    private function seatingCell(array $c, float $bx, float $by, array $bookedSeatIds, Mpdf $mpdf): string
+    {
+        $cxMid = $bx + $c['w'] / 2;
+
+        return $this->svg->rect($bx, $by, $c['w'], $c['h'], 'none', 3, 10)
+            .$this->svg->centeredLabelX($mpdf, $c['block']->name, SvgUtilities::SIZE_BLOCK_LABEL, '#000000', $cxMid, $by + 22, $c['w'] - 12)
+            .$this->seatDots($c, $cxMid, $by, $bookedSeatIds);
+    }
+
+    private function seatDots(array $c, float $cxMid, float $by, array $bookedSeatIds): string
+    {
+        $dot = self::PITCH * 0.7;
+        $gridWidth = $c['maxSeats'] * self::PITCH;
+        $gridLeft = $cxMid - $gridWidth / 2;
+        $gridTop = $by + self::HEADER + self::PITCH / 2;
 
         $svg = '';
-        foreach ($cells as $c) {
-            $cw = $c['type'] === 'stage' ? $colW[$c['x']] : $c['w'];
-            $bx = $colX[$c['x']] + ($colW[$c['x']] - $cw) / 2;
-            $by = $rowY[$c['y']];
-            $cxMid = $bx + $cw / 2;
-
-            if ($c['type'] === 'stage') {
-                $svg .= sprintf('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="10" ry="10" fill="#000000" stroke="#000000" stroke-width="2"/>', $bx, $by, $cw, $c['h']);
-                $sz = SvgUtilities::SIZE_STAGE_LABEL;
-                $svg .= $this->svg->centeredLabel($mpdf, $c['block']->name ?: 'Stage', $sz, '#ffffff', $cxMid, $by + $c['h'] / 2 + $sz * SvgUtilities::BASELINE_FACTOR, $cw - 12);
-
-                continue;
-            }
-
-            $svg .= sprintf('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="10" ry="10" fill="none" stroke="#000000" stroke-width="3"/>', $bx, $by, $c['w'], $c['h']);
-            $svg .= $this->svg->centeredLabel($mpdf, $c['block']->name, SvgUtilities::SIZE_BLOCK_LABEL, '#000000', $cxMid, $by + 22, $c['w'] - 12);
-
-            $dot = $pitch * 0.7;
-            $gridWidth = $c['maxSeats'] * $pitch;
-            $gridLeft = $cxMid - $gridWidth / 2;
-            $gridTop = $by + $header + $pitch / 2;
-            foreach ($c['rows'] as $ri => $row) {
-                $seats = $row->seats->sortBy('number')->values();
-                $rowWidth = $seats->count() * $pitch;
-                $alignment = $row->alignment ?? 'center';
-                $rowLeft = match ($alignment) {
-                    'left' => $gridLeft + $pitch / 2,
-                    'right' => $gridLeft + $gridWidth - $rowWidth + $pitch / 2,
-                    default => $cxMid - $rowWidth / 2 + $pitch / 2,
-                };
-                foreach ($seats as $ci => $seat) {
-                    $svg .= sprintf(
-                        '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="2" ry="2" fill="%s" stroke="#000000" stroke-width="1"/>',
-                        $rowLeft + $ci * $pitch - $dot / 2, $gridTop + $ri * $pitch - $dot / 2, $dot, $dot,
-                        isset($bookedSeatIds[$seat->id]) ? '#000000' : '#ffffff'
-                    );
-                }
+        foreach ($c['rows'] as $ri => $row) {
+            $seats = $row->seats->sortBy('number')->values();
+            $rowWidth = $seats->count() * self::PITCH;
+            $rowLeft = match ($row->alignment ?? 'center') {
+                'left' => $gridLeft + self::PITCH / 2,
+                'right' => $gridLeft + $gridWidth - $rowWidth + self::PITCH / 2,
+                default => $cxMid - $rowWidth / 2 + self::PITCH / 2,
+            };
+            foreach ($seats as $ci => $seat) {
+                $svg .= $this->svg->rect(
+                    $rowLeft + $ci * self::PITCH - $dot / 2, $gridTop + $ri * self::PITCH - $dot / 2, $dot, $dot,
+                    isset($bookedSeatIds[$seat->id]) ? '#000000' : '#ffffff', 1, 2
+                );
             }
         }
 
-        $scale = min(200 / $width, 110 / $height);
-
-        return sprintf(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" width="%smm" height="%smm">%s</svg>',
-            $width, $height, round($width * $scale, 1), round($height * $scale, 1), $svg
-        );
+        return $svg;
     }
 }

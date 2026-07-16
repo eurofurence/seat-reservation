@@ -3,8 +3,6 @@
 <head>
     <meta charset="utf-8">
     <style>
-        /* Orbitron font is handled by mPDF configuration */
-
         body {
             font-family: 'zhurzh', 'DejaVu Sans', sans-serif;
             margin: 0;

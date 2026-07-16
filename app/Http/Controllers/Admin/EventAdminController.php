@@ -8,12 +8,13 @@ use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
 use App\Models\User;
-use Carbon\Carbon;
 use App\Services\Svg\MasterCardSvgGenerator;
 use App\Services\Svg\OrderCardSvgGenerator;
 use App\Services\Svg\SvgUtilities;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -309,6 +310,7 @@ class EventAdminController extends Controller
                 $bookingsQuery->whereNotNull('picked_up_at');
             }
 
+            // Wind seats by row order so placing the cards is easier and faster for the runners.
             $bookings = $bookingsQuery->get()->sortBy(function ($booking) {
                 $block = $booking->seat->row->block;
                 $rowOrder = $booking->seat->row->order;
@@ -341,8 +343,7 @@ class EventAdminController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            $bookedSeatIds = $bookings->pluck('seat.id')->all();
-            $bookedSeatIds = array_fill_keys($bookedSeatIds, true);
+            $bookedSeatIds = array_fill_keys($bookings->pluck('seat.id')->all(), true);
 
             $room = $event->room;
             $masterBlocks = $room->blocks()
@@ -390,37 +391,6 @@ class EventAdminController extends Controller
                 'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $bookedSeatIds, $mpdf),
             ])->render();
 
-            /*
-            // TEST BUILD: master, order (booked labels), order (all names).
-            $previewBlock = $previewBlocks->first();
-            if ($previewBlock) {
-                // All-seat set so every seat shows its label on the second order card.
-                $allSeatIds = [];
-                foreach ($previewBlock->rows as $row) {
-                    foreach ($row->seats as $seat) {
-                        $allSeatIds[$seat->id] = true;
-                    }
-                }
-
-                $pages[] = view('pdf.order-card', [
-                    'info' => (object) [
-                        'event_name' => $event->name,
-                        'block_name' => 'Block '.$previewBlock->name,
-                    ],
-                    'preview' => $orderCard->render($previewBlock, $bookedSeatIds, $mpdf),
-                ])->render();
-
-                $pages[] = view('pdf.order-card', [
-                    'info' => (object) [
-                        'event_name' => $event->name,
-                        'block_name' => 'Block '.$previewBlock->name,
-                    ],
-                    // Fill only booked seats black, but label every seat.
-                    'preview' => $orderCard->render($previewBlock, $bookedSeatIds, $mpdf, $allSeatIds),
-                ])->render();
-            }
-            */
-
             $currentBlockId = null;
 
             foreach ($bookings as $booking) {
@@ -458,7 +428,7 @@ class EventAdminController extends Controller
             }
 
             // Return PDF for browser preview
-            $filename = 'seating-cards-'.\Str::slug($event->name).'-'.date('Y-m-d').'.pdf';
+            $filename = 'seating-cards-'.Str::slug($event->name).'-'.date('Y-m-d').'.pdf';
 
             return response($mpdf->Output($filename, 'S'))
                 ->header('Content-Type', 'application/pdf')
