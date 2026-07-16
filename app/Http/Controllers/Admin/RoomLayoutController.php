@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class RoomLayoutController extends Controller
@@ -60,6 +61,7 @@ class RoomLayoutController extends Controller
             'bookingsCount' => $bookingsCount,
             'blocks' => $blocks,
             'stageBlocks' => $stageBlocks,
+            'blockIdMap' => session('blockIdMap', []),
             'title' => 'Floor Plan Editor',
             'breadcrumbs' => [
                 ['title' => 'Rooms', 'url' => route('admin.rooms.index')],
@@ -71,15 +73,26 @@ class RoomLayoutController extends Controller
 
     public function update(Request $request, Room $room)
     {
+        $roomBlockIds = $room->blocks()->pluck('id')->all();
 
         $request->validate([
             'stageBlocks' => 'sometimes|array',
-            'stageBlocks.*.id' => 'nullable|exists:blocks,id',
+            'stageBlocks.*.id' => ['nullable', Rule::in($room->stageBlocks()->pluck('id')->all())],
             'stageBlocks.*.name' => 'required|string|max:255',
             'stageBlocks.*.position_x' => 'required|integer|min:-1',
             'stageBlocks.*.position_y' => 'required|integer|min:-1',
             'blocks' => 'required|array',
-            'blocks.*.id' => 'required|exists:blocks,id',
+            'blocks.*.id' => [
+                'required',
+                function (string $attribute, $value, $fail) use ($roomBlockIds) {
+                    $isTempId = is_string($value) && str_starts_with($value, 'temp-');
+                    $isExistingRoomBlock = is_numeric($value) && in_array((int) $value, $roomBlockIds, true);
+
+                    if (! $isTempId && ! $isExistingRoomBlock) {
+                        $fail('The selected block id is invalid for this room.');
+                    }
+                },
+            ],
             'blocks.*.name' => 'required|string|max:255',
             'blocks.*.position_x' => 'required|integer|min:-1',
             'blocks.*.position_y' => 'required|integer|min:-1',
@@ -91,7 +104,9 @@ class RoomLayoutController extends Controller
             'blocks.*.rowsData.*.alignment' => 'nullable|string|in:left,center,right',
         ]);
 
-        DB::transaction(function () use ($request, $room) {
+        $blockIdMap = [];
+
+        DB::transaction(function () use ($request, $room, &$blockIdMap) {
             // Update stage blocks
             $existingStageBlockIds = $room->stageBlocks()->pluck('id')->toArray();
             $submittedStageBlocks = $request->stageBlocks ?? [];
@@ -126,9 +141,25 @@ class RoomLayoutController extends Controller
                 }
             }
 
+            $nextBlockOrder = ($room->blocks()->max('order') ?? -1) + 1;
+
             // Update blocks
             foreach ($request->blocks as $blockData) {
-                $block = $room->blocks()->where('id', $blockData['id'])->first();
+                $isTempId = is_string($blockData['id']) && str_starts_with($blockData['id'], 'temp-');
+
+                if ($isTempId) {
+                    $block = $room->allBlocks()->create([
+                        'name' => $blockData['name'],
+                        'type' => 'seating',
+                        'position_x' => $blockData['position_x'],
+                        'position_y' => $blockData['position_y'],
+                        'rotation' => $blockData['rotation'],
+                        'order' => $nextBlockOrder++,
+                    ]);
+                    $blockIdMap[$blockData['id']] = $block->id;
+                } else {
+                    $block = $room->blocks()->where('id', $blockData['id'])->first();
+                }
 
                 if ($block) {
                     // Update block position, rotation, and name
@@ -172,7 +203,9 @@ class RoomLayoutController extends Controller
             }
         });
 
-        return back()->with('success', 'Room layout updated successfully!');
+        return back()
+            ->with('success', 'Room layout updated successfully!')
+            ->with('blockIdMap', $blockIdMap);
     }
 
     public function createBlock(Request $request, Room $room)
