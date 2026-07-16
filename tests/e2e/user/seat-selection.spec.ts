@@ -58,3 +58,26 @@ test('submitting booking details with a blank name is blocked client-side', asyn
   await expect(page).toHaveURL(/\/bookings\/create/)
   await expect(page.locator('#name-0')).toBeVisible()
 })
+
+test('submitting a name longer than 24 characters is rejected server-side', async ({ page }) => {
+  await page.goto('/events')
+  await page.getByRole('link', { name: /E2E Test Event/i }).click()
+  await expect(page).toHaveURL(/\/bookings\/create/)
+
+  await page.locator('button[title="Block A - Row 2 - 1"]').click()
+  await page.getByRole('button', { name: 'Continue to Details' }).first().click()
+  await expect(page.locator('#name-0')).toBeVisible()
+
+  // 25 chars — one over the `seats.*.name` max:24 rule added in v0.0.36. The
+  // client-side check only guards against blank names, so this reaches the
+  // server and comes back as a validation error rather than a booking.
+  await page.locator('#name-0').fill('X'.repeat(25))
+  await page.getByRole('button', { name: 'Confirm Booking' }).click()
+
+  // Inline error from ValidateBooking.vue's form.errors[`seats.0.name`]
+  // (the same message also renders in the summary alert, hence .first()).
+  await expect(page.getByText(/24 characters/i).first()).toBeVisible()
+
+  // Still on the details step, no booking was created.
+  await expect(page).toHaveURL(/\/bookings\/create/)
+})

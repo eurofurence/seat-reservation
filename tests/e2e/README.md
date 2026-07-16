@@ -62,7 +62,7 @@ scoping to a single file/project while iterating on one spec (see above).
   real guest name, and reverting a picked-up ticket asks for confirmation
 - `user/booking-flow.spec.ts` - happy-path seat booking to confirmation
 - `user/seat-selection.spec.ts` - seat-picker edge cases (deselect, max-seats
-  cap, blank-name client-side validation)
+  cap, blank-name client-side validation, 24-char name limit server-side)
 - `user/booking-window.spec.ts` - browsing before the booking window opens
   (banner, hidden booked seats, disabled continue), and redirects for
   sold-out/ended/closed-reservation events
