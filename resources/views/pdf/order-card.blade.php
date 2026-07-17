@@ -2,8 +2,8 @@
 
 @section('styles')
     .text-content { padding-top: 24mm; }
-    .event-name { margin-bottom: 2mm; }
-    .block-name { font-size: 52pt; margin-bottom: 4mm; }
+    .event-name { margin-bottom: 2mm; margin-top: 22mm; }
+    .block-name { font-size: 52pt; margin-bottom: 2mm; }
 @endsection
 
 @section('content')

@@ -10,7 +10,7 @@ class SvgUtilities
 
     public const FONT_STYLE = '';
 
-    public const SIZE_SEAT_LABEL = 30; // order-card
+    public const SIZE_SEAT_LABEL = 48; // order-card
 
     public const SIZE_START_LABEL = 22; // order-card
 

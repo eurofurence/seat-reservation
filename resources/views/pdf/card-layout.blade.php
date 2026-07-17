@@ -57,7 +57,8 @@
             font-size: 40pt;
             font-weight: bold;
             color: #000;
-            margin-bottom: 3mm;
+            margin-top: 15mm;
+            margin-bottom: 4mm;
             width: 80%;
             margin-left: auto;
             margin-right: auto;

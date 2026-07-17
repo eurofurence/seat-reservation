@@ -77,7 +77,7 @@ class OrderCardSvgGenerator
         [$path, $turnArrows] = $this->windingPath();
         $arrows = $this->arrows($turnArrows, $mpdf);
 
-        $scale = min(195 / $width, 125 / $height);
+        $scale = min(195 / $width, 105 / $height);
 
         return $this->svg->document($width, $height, $width * $scale, $height * $scale, $path.$boxes.$arrows);
     }
