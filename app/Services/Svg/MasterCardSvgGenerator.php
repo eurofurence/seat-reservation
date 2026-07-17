@@ -167,8 +167,8 @@ class MasterCardSvgGenerator
                 $seatPos = $seatStart + $ci;
                 [$gc, $gr] = match ($c['rotation']) {
                     90 => [$rowCount - 1 - $ri, $seatPos],
-                    270 => [$ri, $seatPos],
-                    180 => [$seatPos, $rowCount - 1 - $ri],
+                    270 => [$ri, $c['gridRows'] - 1 - $seatPos],
+                    180 => [$gridCols - 1 - $seatPos, $rowCount - 1 - $ri],
                     default => [$seatPos, $ri],
                 };
                 $svg .= $this->svg->rect(

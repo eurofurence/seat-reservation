@@ -299,6 +299,7 @@ class EventAdminController extends Controller
             $event = Event::with('room')->findOrFail($id);
 
             $bookingsQuery = Booking::where('event_id', $id)
+                ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'picked_up_at')
                 ->with([
                     'user:id,name',
                     'seat:id,row_id,label,number',

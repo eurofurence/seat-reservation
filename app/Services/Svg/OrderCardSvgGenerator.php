@@ -147,35 +147,42 @@ class OrderCardSvgGenerator
         return $boxes;
     }
 
+    /** @return array<int,int> */
+    private function occupiedRows(): array
+    {
+        return array_values(array_filter(
+            range(0, $this->rowCount - 1),
+            fn ($ri) => $this->rows[$ri]->seats->count() > 0
+        ));
+    }
+
     /**
      * @return array{0: string, 1: array<int,array{0: float, 1: float, 2: string}>}
      */
     private function windingPath(): array
     {
-        $rowCount = $this->rowCount;
+        $occupied = $this->occupiedRows();
         $moves = [];        // ['L', x, y] or ['A', rx, ry, sweep, x, y]
         $turnArrows = [];
-        for ($ri = 0; $ri < $rowCount; $ri++) {
-            if ($this->rows[$ri]->seats->count() < 1) {
-                continue;
-            }
-            $ltr = $ri % 2 === 0;
+        foreach ($occupied as $k => $ri) {
+            $ltr = $k % 2 === 0;
             $y = $this->cy($ri);
             $startX = $ltr ? $this->cx($this->rowLeftCol($ri)) : $this->cx($this->rowRightCol($ri));
             $endX = $ltr ? $this->cx($this->rowRightCol($ri)) : $this->cx($this->rowLeftCol($ri));
+            $next = $occupied[$k + 1] ?? null;
 
             $turnX = $endX;
-            if ($ri < $rowCount - 1 && $this->rows[$ri + 1]->seats->count() > 0) {
-                $nextStartCol = $ltr ? $this->rowRightCol($ri + 1) : $this->rowLeftCol($ri + 1);
+            if ($next !== null) {
+                $nextStartCol = $ltr ? $this->rowRightCol($next) : $this->rowLeftCol($next);
                 $turnX = $ltr ? max($endX, $this->cx($nextStartCol)) : min($endX, $this->cx($nextStartCol));
             }
             $moves[] = ['L', $startX, $y];
             $moves[] = ['L', $turnX, $y];
 
-            if ($ri < $rowCount - 1) {
-                $nextY = $this->cy($ri + 1);
-                $nextLtr = ($ri + 1) % 2 === 0;
-                $nextEntryX = $nextLtr ? $this->cx($this->rowLeftCol($ri + 1)) : $this->cx($this->rowRightCol($ri + 1));
+            if ($next !== null) {
+                $nextY = $this->cy($next);
+                $nextLtr = ($k + 1) % 2 === 0;
+                $nextEntryX = $nextLtr ? $this->cx($this->rowLeftCol($next)) : $this->cx($this->rowRightCol($next));
                 $dir = $ltr ? 1 : -1;
                 $outX = $turnX + $dir * self::TURN;
 
@@ -186,13 +193,14 @@ class OrderCardSvgGenerator
             }
         }
 
-        $lastRi = $rowCount - 1;
-        if ($lastRi >= 0 && $this->rows[$lastRi]->seats->count() > 0) {
-            $endDir = $lastRi % 2 === 0 ? 1 : -1;
-            $rowEndX = $lastRi % 2 === 0 ? $this->cx($this->rowRightCol($lastRi)) : $this->cx($this->rowLeftCol($lastRi));
-            $endStubX = $rowEndX + $endDir * (self::BOX / 2 + 24);
+        if (! empty($occupied)) {
+            $lastK = count($occupied) - 1;
+            $lastRi = $occupied[$lastK];
+            $ltr = $lastK % 2 === 0;
+            $rowEndX = $ltr ? $this->cx($this->rowRightCol($lastRi)) : $this->cx($this->rowLeftCol($lastRi));
+            $endStubX = $rowEndX + ($ltr ? 1 : -1) * (self::BOX / 2 + 24);
             $moves[] = ['L', $endStubX, $this->cy($lastRi)];
-            $turnArrows[] = [$endStubX, $this->cy($lastRi), $lastRi % 2 === 0 ? 'right' : 'left'];
+            $turnArrows[] = [$endStubX, $this->cy($lastRi), $ltr ? 'right' : 'left'];
         }
 
         $path = empty($moves) ? '' : $this->svg->path($this->rotatedPathData($moves), 4);
@@ -245,15 +253,15 @@ class OrderCardSvgGenerator
     {
         $arrows = $this->startMarker($mpdf);
 
-        foreach ($this->rows as $ri => $row) {
-            $count = $row->seats->count();
+        foreach ($this->occupiedRows() as $k => $ri) {
+            $count = $this->rows[$ri]->seats->count();
             if ($count < 2) {
                 continue;
             }
             $g = (int) floor(($count - 1) / 2);
             $gapX = $this->cx($this->rowLeftCol($ri) + $g) + self::STRIDE / 2;
             [$mx, $my] = $this->place($gapX, $this->cy($ri));
-            $arrows .= $this->svg->arrowHead($mx, $my, $this->dir($ri % 2 === 0 ? 'right' : 'left'));
+            $arrows .= $this->svg->arrowHead($mx, $my, $this->dir($k % 2 === 0 ? 'right' : 'left'));
         }
         foreach ($turnArrows as [$tx, $ty, $tdir]) {
             [$px, $py] = $this->place($tx, $ty);
@@ -265,11 +273,12 @@ class OrderCardSvgGenerator
 
     private function startMarker(Mpdf $mpdf): string
     {
-        if ($this->rowCount === 0 || $this->rows[0]->seats->count() === 0) {
+        $first = $this->occupiedRows()[0] ?? null;
+        if ($first === null) {
             return '';
         }
 
-        [$bx, $byc] = $this->place($this->cx($this->rowOffset(0)), $this->cy(0));
+        [$bx, $byc] = $this->place($this->cx($this->rowOffset($first)), $this->cy($first));
         $entry = $this->dir('down');
         [$ox, $oy] = match ($entry) {
             'down' => [0, -1],
