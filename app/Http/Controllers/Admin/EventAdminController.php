@@ -347,7 +347,7 @@ class EventAdminController extends Controller
 
             $room = $event->room;
             $masterBlocks = $room->blocks()
-                ->select('id', 'room_id', 'name', 'position_x', 'position_y')
+                ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation')
                 ->with(['rows' => function ($query) {
                     $query->select('id', 'block_id', 'order', 'alignment')
                         ->orderBy('order')
