@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8">
     <style>
-        /* Orbitron font is handled by mPDF configuration */
+        /* Zhurzh font is handled by mPDF configuration */
 
         body {
-            font-family: 'orbitron', 'DejaVu Sans', sans-serif;
+            font-family: 'zhurzh', 'DejaVu Sans', sans-serif;
             margin: 0;
             padding: 0;
             width: 297mm;
@@ -33,16 +33,17 @@
         }
 
         .text-content {
-            padding-top: 35mm;
+            padding-top: 43mm;
             text-align: center;
         }
 
         .card-name {
-            font-family: 'orbitron', 'DejaVu Sans', sans-serif;
+            font-family: 'zhurzh', 'DejaVu Sans', sans-serif;
             font-size: 80pt;
             font-weight: bold;
             color: #000;
-            margin-bottom: 20mm;
+            margin-top: 15mm;
+            margin-bottom: 5mm;
             width: 75%;
             margin-left: auto;
             margin-right: auto;
@@ -53,7 +54,7 @@
         }
 
         .card-location {
-            font-family: 'orbitron', 'DejaVu Sans', sans-serif;
+            font-family: 'zhurzh', 'DejaVu Sans', sans-serif;
             font-size: 32pt;
             font-weight: normal;
             color: #000;
@@ -64,7 +65,7 @@
         }
 
         .not-picked-up {
-            font-family: 'orbitron', 'DejaVu Sans', sans-serif;
+            font-family: 'zhurzh', 'DejaVu Sans', sans-serif;
             font-size: 28pt;
             font-weight: bold;
             color: #ffffff;
