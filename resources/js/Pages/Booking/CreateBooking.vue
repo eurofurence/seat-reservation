@@ -16,6 +16,7 @@ const props = defineProps({
     room: Object,
     blocks: Array,
     stageBlocks: Array,
+    markerBlocks: { type: Array, default: () => [] },
     bookedSeats: Array,
     selectedSeats: Array,
     maxSeatsPerUser: Number,
@@ -196,6 +197,7 @@ function goBack() {
                   :room="room"
                   :blocks="blocks"
                   :stage-blocks="stageBlocks"
+                  :marker-blocks="markerBlocks"
                   :selected-seats="selectedSeats"
                   :booked-seats="bookedSeats"
                   @seats-changed="handleSeatsChanged"

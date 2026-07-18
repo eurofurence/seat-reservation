@@ -20,6 +20,8 @@ class SvgUtilities
 
     public const BASELINE_FACTOR = 0.35;
 
+    public const ARROW_TIP_REACH = 14;
+
     private const STROKE = '#000000';
 
     public function centeredLabelX(Mpdf $mpdf, string $text, float $preferredSize, string $color, float $centerX, float $baselineY, float $maxWidth): string
@@ -58,13 +60,14 @@ class SvgUtilities
         );
     }
 
-    public function rect(float $x, float $y, float $w, float $h, string $fill, float $strokeWidth, float $rx = 0): string
+    public function rect(float $x, float $y, float $w, float $h, string $fill, float $strokeWidth, float $rx = 0, ?string $dashArray = null): string
     {
         $corners = $rx > 0 ? sprintf(' rx="%.1f" ry="%.1f"', $rx, $rx) : '';
+        $dash = $dashArray !== null ? sprintf(' stroke-dasharray="%s"', $dashArray) : '';
 
         return sprintf(
-            '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f"%s fill="%s" stroke="%s" stroke-width="%.1f"/>',
-            $x, $y, $w, $h, $corners, $fill, self::STROKE, $strokeWidth
+            '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f"%s fill="%s" stroke="%s" stroke-width="%.1f"%s/>',
+            $x, $y, $w, $h, $corners, $fill, self::STROKE, $strokeWidth, $dash
         );
     }
 
@@ -83,17 +86,31 @@ class SvgUtilities
 
     public function arrowHead(float $x, float $y, string $direction): string
     {
-        $s = 14;
+        $s = self::ARROW_TIP_REACH;
+        $base = $s * 0.6;
         [$tip, $a, $b] = match ($direction) {
-            'right' => [[$x + $s, $y], [$x - $s * 0.6, $y - $s], [$x - $s * 0.6, $y + $s]],
-            'left' => [[$x - $s, $y], [$x + $s * 0.6, $y - $s], [$x + $s * 0.6, $y + $s]],
-            'down' => [[$x, $y + $s], [$x - $s, $y - $s * 0.6], [$x + $s, $y - $s * 0.6]],
-            'up' => [[$x, $y - $s], [$x - $s, $y + $s * 0.6], [$x + $s, $y + $s * 0.6]],
+            'right' => [[$x + $s, $y], [$x - $base, $y - $s], [$x - $base, $y + $s]],
+            'left' => [[$x - $s, $y], [$x + $base, $y - $s], [$x + $base, $y + $s]],
+            'down' => [[$x, $y + $s], [$x - $s, $y - $base], [$x + $s, $y - $base]],
+            'up' => [[$x, $y - $s], [$x - $s, $y + $base], [$x + $s, $y + $base]],
         };
 
         return sprintf(
             '<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="#000000" stroke="#ffffff" stroke-width="1.5"/>',
             $tip[0], $tip[1], $a[0], $a[1], $b[0], $b[1]
         );
+    }
+
+    public function centeredArrowHead(float $x, float $y, string $direction): string
+    {
+        $tipOverhang = (self::ARROW_TIP_REACH - self::ARROW_TIP_REACH * 0.6) / 2;
+        $x += match ($direction) {
+            'right' => -$tipOverhang, 'left' => $tipOverhang, default => 0
+        };
+        $y += match ($direction) {
+            'down' => -$tipOverhang, 'up' => $tipOverhang, default => 0
+        };
+
+        return $this->arrowHead($x, $y, $direction);
     }
 }

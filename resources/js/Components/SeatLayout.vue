@@ -2,12 +2,19 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import Panzoom from '@panzoom/panzoom'
 import SeatBlock from './SeatBlock.vue'
+import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from 'lucide-vue-next'
+
+const arrow = (rotation) => ({ 0: ArrowUp, 90: ArrowRight, 180: ArrowDown, 270: ArrowLeft }[rotation] || ArrowUp)
 
 const props = defineProps({
   event: Object,
   room: Object,
   blocks: Array,
   stageBlocks: Array,
+  markerBlocks: {
+    type: Array,
+    default: () => []
+  },
   selectedSeats: Array,
   bookedSeats: Array,
   adminMode: {
@@ -18,93 +25,112 @@ const props = defineProps({
 
 const emit = defineEmits(['seats-changed', 'booked-seat-click'])
 
-// Seat selection state
 const selectedSeatIds = ref([...props.selectedSeats])
 
-// Panzoom refs
 const panzoomContainer = ref(null)
 const panzoomInstance = ref(null)
 
-// Calculate dynamic grid dimensions based on content
 const gridDimensions = computed(() => {
-  let maxX = 0
-  let maxY = 0
+  const b = blockBounds.value
+  let { minX, maxX, minY, maxY } = b
 
-  // Check stage blocks positions (0-based positioning)
-  props.stageBlocks?.forEach(stageBlock => {
-    if (stageBlock.position_x >= 0 && stageBlock.position_y >= 0) {
-      maxX = Math.max(maxX, stageBlock.position_x + 1)
-      maxY = Math.max(maxY, stageBlock.position_y + 1)
-    }
+  props.markerBlocks?.forEach(m => {
+    if (m.type !== 'entrance') return
+    if (m.position_x >= 0) { minX = Math.min(minX, m.position_x); maxX = Math.max(maxX, m.position_x) }
+    if (m.position_y >= 0) { minY = Math.min(minY, m.position_y); maxY = Math.max(maxY, m.position_y) }
   })
 
-  // Check block positions (0-based positioning)
-  props.blocks?.forEach(block => {
-    if (block.position_x >= 0 && block.position_y >= 0) {
-      maxX = Math.max(maxX, block.position_x + 1)
-      maxY = Math.max(maxY, block.position_y + 1)
-    }
-  })
-
-  // Minimum grid size
-  return {
-    cols: Math.max(maxX, 1),
-    rows: Math.max(maxY, 1)
+  if (!b.hasCols || !b.hasRows) {
+    return { cols: 1, rows: 1, offsetX: 0, offsetY: 0 }
   }
+  return { cols: maxX - minX + 1, rows: maxY - minY + 1, offsetX: minX, offsetY: minY }
 })
 
-// Create layout grid with blocks and stage positioned
 const layoutGrid = computed(() => {
-  const { rows, cols } = gridDimensions.value
+  const { rows, cols, offsetX, offsetY } = gridDimensions.value
   const grid = Array(rows).fill(null).map(() => Array(cols).fill(null))
 
-  // Place stage blocks (0-based positioning)
+  const inGrid = (col, row) => col >= 0 && col < cols && row >= 0 && row < rows
+
   props.stageBlocks?.forEach(stageBlock => {
-    const x = stageBlock.position_x
-    const y = stageBlock.position_y
-    if (x >= 0 && x < cols && y >= 0 && y < rows) {
-      grid[y][x] = { type: 'stage', name: stageBlock.name }
+    const col = stageBlock.position_x - offsetX
+    const row = stageBlock.position_y - offsetY
+    if (stageBlock.position_x >= 0 && stageBlock.position_y >= 0 && inGrid(col, row)) {
+      grid[row][col] = { type: 'stage', name: stageBlock.name }
     }
   })
 
-  // Place blocks that have valid positions (0-based positioning)
   props.blocks?.forEach(block => {
-    const x = block.position_x
-    const y = block.position_y
-    if (x >= 0 && x < cols && y >= 0 && y < rows) {
-      grid[y][x] = { type: 'block', ...block }
+    const col = block.position_x - offsetX
+    const row = block.position_y - offsetY
+    if (block.position_x >= 0 && block.position_y >= 0 && inGrid(col, row)) {
+      grid[row][col] = { type: 'block', ...block }
+    }
+  })
+
+  const bounds = blockBounds.value
+
+  props.markerBlocks?.forEach(marker => {
+    const { position_x: x, position_y: y, name } = marker
+
+    if (marker.type === 'comment') {
+      const col = x - offsetX
+      const row = y - offsetY
+      if (x >= 0 && y >= 0 && inGrid(col, row)) {
+        grid[row][col] = { type: 'comment', name }
+      }
+      return
+    }
+
+    const rotation = marker.rotation || 0
+
+    if (x === -1 && y >= 0 && bounds.hasCols && inGrid(0, y - offsetY)) {
+      placeEntrance('row', y - offsetY, bounds.minX - offsetX, bounds.maxX - bounds.minX + 1, name, rotation)
+    } else if (y === -1 && x >= 0 && bounds.hasRows && inGrid(x - offsetX, 0)) {
+      placeEntrance('column', x - offsetX, bounds.minY - offsetY, bounds.maxY - bounds.minY + 1, name, rotation)
     }
   })
 
   return grid
+
+  function placeEntrance(orientation, line, start, span, name, rotation) {
+    const cell = (offset) => orientation === 'row' ? [line, start + offset] : [start + offset, line]
+    const spanKey = orientation === 'row' ? 'colSpan' : 'rowSpan'
+
+    for (let i = 0; i < span; i++) {
+      const [r, c] = cell(i)
+      grid[r][c] = i === 0
+        ? { type: 'entrance', name, rotation, orientation, [spanKey]: span }
+        : { type: 'covered' }
+    }
+  }
 })
 
-// Get blocks that are positioned off-grid (for separate display)
-const unplacedBlocks = computed(() => {
-  const { rows, cols } = gridDimensions.value
-  return props.blocks?.filter(block =>
-    block.position_x < 0 || block.position_x >= cols ||
-    block.position_y < 0 || block.position_y >= rows ||
-    block.position_x == null || block.position_y == null
-  ) || []
+const blockBounds = computed(() => {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+
+  const consider = (x, y) => {
+    if (x >= 0) { minX = Math.min(minX, x); maxX = Math.max(maxX, x) }
+    if (y >= 0) { minY = Math.min(minY, y); maxY = Math.max(maxY, y) }
+  }
+
+  props.blocks?.forEach(b => consider(b.position_x, b.position_y))
+  props.stageBlocks?.forEach(b => consider(b.position_x, b.position_y))
+  props.markerBlocks?.forEach(m => {
+    if (m.type === 'comment') consider(m.position_x, m.position_y)
+  })
+
+  return {
+    minX, maxX, minY, maxY,
+    hasCols: maxX >= minX,
+    hasRows: maxY >= minY
+  }
 })
 
-// Get seat status styling
-const getSeatStatus = (seat) => {
-  const seatId = seat.id
+const unplacedBlocks = computed(() =>
+  props.blocks?.filter(block => block.position_x < 0 || block.position_y < 0) || []
+)
 
-  if (props.bookedSeats.includes(seatId)) {
-    return { class: 'seat-booked', disabled: true }
-  }
-
-  if (selectedSeatIds.value.includes(seatId)) {
-    return { class: 'seat-selected', disabled: false }
-  }
-
-  return { class: 'seat-available', disabled: false }
-}
-
-// Handle seat click
 const handleSeatClick = (seat) => {
   const seatId = seat.id
 
@@ -120,7 +146,6 @@ const handleSeatClick = (seat) => {
   emit('seats-changed', [...selectedSeatIds.value])
 }
 
-// Handle booked seat click (admin only)
 const handleBookedSeatClick = (seat) => {
   emit('booked-seat-click', seat)
 }
@@ -186,30 +211,28 @@ watch(() => props.selectedSeats, (newSeats) => {
         <table class="seat-layout-table p-32 bg-white">
           <tbody>
             <tr v-for="(row, rowIndex) in layoutGrid" :key="rowIndex">
+              <template v-for="(cell, colIndex) in row" :key="colIndex">
               <td
-                v-for="(cell, colIndex) in row"
-                :key="colIndex"
+                v-if="!cell || cell.type !== 'covered'"
+                :colspan="cell?.colSpan || 1"
+                :rowspan="cell?.rowSpan || 1"
                 :class="[
                   'layout-cell',
-                  { 'stage-layout-cell': cell && cell.type === 'stage' }
+                  {
+                    'stage-layout-cell': cell && cell.type === 'stage',
+                    'entrance-layout-cell': cell && cell.type === 'entrance',
+                    'entrance-layout-row': cell && cell.type === 'entrance' && cell.orientation === 'row',
+                    'entrance-layout-column': cell && cell.type === 'entrance' && cell.orientation === 'column'
+                  }
                 ]"
               >
-                <!-- Empty Cell -->
                 <div v-if="cell === null" class="empty-cell"></div>
 
-                <!-- Stage Cell -->
-                <div
-                  v-else-if="cell.type === 'stage'"
-                  class="stage-text"
-                >
+                <div v-else-if="cell.type === 'stage'" class="stage-text">
                   {{ cell.name || 'STAGE' }}
                 </div>
 
-                <!-- Block Cell -->
-                <div
-                  v-else-if="cell.type === 'block'"
-                  class="block-cell"
-                >
+                <div v-else-if="cell.type === 'block'" class="block-cell">
                   <SeatBlock
                     :block="cell"
                     :booked-seats="bookedSeats"
@@ -219,7 +242,22 @@ watch(() => props.selectedSeats, (newSeats) => {
                     @booked-seat-click="handleBookedSeatClick"
                   />
                 </div>
+
+                <div
+                  v-else-if="cell.type === 'entrance'"
+                  class="entrance-text"
+                  :class="cell.orientation === 'column' ? 'entrance-column' : 'entrance-row'"
+                >
+                  <component :is="arrow(cell.rotation)" class="entrance-arrow" />
+                  <span class="entrance-label" :class="{ 'entrance-label-flip': cell.rotation === 270 }">{{ cell.name || 'ENTRANCE' }}</span>
+                  <component :is="arrow(cell.rotation)" class="entrance-arrow" />
+                </div>
+
+                <div v-else-if="cell.type === 'comment'" class="comment-text">
+                  {{ cell.name }}
+                </div>
               </td>
+              </template>
             </tr>
           </tbody>
         </table>
@@ -272,7 +310,6 @@ watch(() => props.selectedSeats, (newSeats) => {
   border-radius: 8px;
 }
 
-/* Layout Container */
 .layout-container {
   overflow: hidden; /* Panzoom handles overflow */
   margin-bottom: 20px;
@@ -308,7 +345,6 @@ watch(() => props.selectedSeats, (newSeats) => {
   height: auto;
 }
 
-/* Stage Layout Cell - apply styling directly to the table cell */
 .stage-layout-cell {
   background: linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
               linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
@@ -328,39 +364,19 @@ watch(() => props.selectedSeats, (newSeats) => {
   min-width: 200px;
 }
 
-/* Stage Text */
-.stage-text {
-  color: #6b7280;
-  font-weight: bold;
-  font-size: 14px;
-  letter-spacing: 0.1em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  min-height: 60px;
-  min-width: 200px;
+.entrance-layout-cell {
+  position: relative;
+  padding: 8px;
 }
 
-/* Empty Cell */
-.empty-cell {
-  width: 100%;
-  height: 100%;
-  background: transparent;
+.entrance-layout-row {
+  height: 76px;
 }
 
-/* Block Cell */
-.block-cell {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+.entrance-layout-column {
+  min-width: 76px;
 }
 
-/* Unplaced Blocks */
 .unplaced-blocks {
   margin-top: 20px;
   padding: 16px;
@@ -382,7 +398,6 @@ watch(() => props.selectedSeats, (newSeats) => {
   gap: 16px;
 }
 
-/* Legend */
 .seat-legend {
   display: flex;
   justify-content: center;
@@ -407,6 +422,89 @@ watch(() => props.selectedSeats, (newSeats) => {
   margin: 0;
 }
 
-/* Remove responsive styles - layout should never distort */
-/* The layout maintains its exact proportions and becomes scrollable if needed */
+.empty-cell {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.stage-text {
+  color: #6b7280;
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 60px;
+  min-width: 200px;
+}
+
+.block-cell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.entrance-text {
+  position: absolute;
+  inset: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #fef3c7;
+  border: 2px dashed #f59e0b;
+  border-radius: 6px;
+  color: #92400e;
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.entrance-arrow {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.entrance-column {
+  flex-direction: column;
+}
+
+.entrance-column .entrance-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.entrance-column .entrance-label-flip {
+  transform: rotate(180deg);
+}
+
+.comment-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 60px;
+  padding: 6px;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  user-select: none;
+}
 </style>

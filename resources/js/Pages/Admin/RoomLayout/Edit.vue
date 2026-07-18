@@ -7,8 +7,11 @@ import { Card } from '@/Components/ui/card'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { useToast } from '@/Components/ui/toast'
+import { Trash2, RotateCw, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, TriangleAlert } from 'lucide-vue-next'
 
 defineOptions({ layout: AdminLayout })
+
+const DEFAULT_SEAT_COUNT = 25
 
 const { error: errorToast } = useToast()
 
@@ -20,6 +23,7 @@ const props = defineProps({
   },
   blocks: Array,
   stageBlocks: Array,
+  markerBlocks: { type: Array, default: () => [] },
   blockIdMap: { type: Object, default: () => ({}) },
   title: String,
   breadcrumbs: Array
@@ -27,16 +31,17 @@ const props = defineProps({
 
 let tempBlockCounter = 0
 
-// Layout grid size (HTML table cells)
 const GRID_ROWS = 8
 const GRID_COLS = 12
 
-// Helper functions that need to be available during initialization
+// Shared skeleton for a placed cell in the layout grid; type-specific colors/rings are added per branch.
+const CELL_BASE = 'w-full h-full border rounded cursor-pointer flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow'
+
 const getOriginalSeatingBlock = (blockId) => {
   return props.blocks.find(block => block.id === blockId)
 }
 
-// Build complete form data from props with all editing capabilities
+// Build complete form data
 const form = useForm({
   stageBlocks: props.stageBlocks.map(block => ({
     id: block.id,
@@ -44,10 +49,18 @@ const form = useForm({
     position_x: block.position_x != null ? block.position_x : -1,
     position_y: block.position_y != null ? block.position_y : -1
   })),
+  markerBlocks: props.markerBlocks.map(block => ({
+    id: block.id,
+    type: block.type,
+    name: block.name,
+    position_x: block.position_x != null ? block.position_x : -1,
+    position_y: block.position_y != null ? block.position_y : -1,
+    orientation: block.type === 'entrance' && block.position_y === -1 ? 'column' : 'row',
+    rotation: block.rotation || 0
+  })),
   blocks: props.blocks.map(block => {
     const originalBlock = getOriginalSeatingBlock(block.id)
 
-    // Build row data for each block
     const rows = []
     const rowCount = originalBlock?.rows?.length || 10
 
@@ -77,7 +90,7 @@ const form = useForm({
 
 // UI State
 const selectedBlock = ref(null)
-const selectedBlockType = ref(null) // 'stage' or 'seating'
+const selectedBlockType = ref(null) // 'stage' or 'seating' or 'comment' or 'entrance'
 const expandedBlocks = ref(new Set())
 const showNewBlockDialog = ref(false)
 const newBlockName = ref('')
@@ -97,11 +110,20 @@ const canConfirmDelete = computed(
 )
 
 
-// Create empty grid with block assignments
+const markerOrientation = (marker) => (marker.position_y === -1 ? 'column' : 'row')
+
+const markerCells = (marker) => {
+  const { position_x: x, position_y: y } = marker
+  if (marker.type === 'comment') return [[y, x]]
+  if (markerOrientation(marker) === 'column') {
+    return Array.from({ length: GRID_ROWS }, (_, r) => [r, x])
+  }
+  return Array.from({ length: GRID_COLS }, (_, c) => [y, c])
+}
+
 const layoutGrid = computed(() => {
   const grid = Array(GRID_ROWS).fill(null).map(() => Array(GRID_COLS).fill(null))
 
-  // Place stage blocks
   form.stageBlocks.forEach(stageBlock => {
     const x = stageBlock.position_x
     const y = stageBlock.position_y
@@ -110,7 +132,6 @@ const layoutGrid = computed(() => {
     }
   })
 
-  // Place seating blocks
   form.blocks.forEach(block => {
     const x = block.position_x
     const y = block.position_y
@@ -119,36 +140,34 @@ const layoutGrid = computed(() => {
     }
   })
 
+  form.markerBlocks.forEach((marker, index) => {
+    const cell = { ...marker, markerIndex: index, orientation: markerOrientation(marker) }
+    for (const [y, x] of markerCells(marker)) {
+      if (grid[y]?.[x] === null) grid[y][x] = cell
+    }
+  })
+
   return grid
 })
 
-// Helper function to check if block is placed
-const getBlockPlacementStatus = (block) => {
-  return block.position_x >= 0 && block.position_x < GRID_COLS &&
-         block.position_y >= 0 && block.position_y < GRID_ROWS &&
-         block.position_x != null && block.position_y != null
-}
+// Placed blocks always sit inside the fixed grid; -1 on either axis means unplaced.
+const getBlockPlacementStatus = (block) => block.position_x >= 0 && block.position_y >= 0
 
-
-
-// Get total seats from the block's row data
 const getTotalSeats = (block) => {
   if (!block.rows || block.rows.length === 0) return 0
   return block.rows.reduce((total, row) => total + (row.seatCount || 0), 0)
 }
 
-// Get orientation arrow
 const getOrientationArrow = (rotation) => {
   const arrows = {
-    0: '↑',    // Up (toward top)
-    90: '→',   // Right
-    180: '↓',  // Down
-    270: '←'   // Left
+    0: ArrowUp,
+    90: ArrowRight,
+    180: ArrowDown,
+    270: ArrowLeft
   }
-  return arrows[rotation] || '↑'
+  return arrows[rotation] || ArrowUp
 }
 
-// Block management functions
 const toggleBlockExpanded = (blockId) => {
   if (expandedBlocks.value.has(blockId)) {
     expandedBlocks.value.delete(blockId)
@@ -166,67 +185,104 @@ const selectBlock = (block, type) => {
   selectedBlockType.value = type
 }
 
-
-// Grid cell click handlers
 const handleCellClick = (rowIndex, colIndex) => {
-  // Check if cell is empty
-  if (layoutGrid.value[rowIndex][colIndex] === null) {
-    // If we have a selected block, move it here
-    if (selectedBlock.value && selectedBlockType.value) {
-      if (selectedBlockType.value === 'stage') {
-        updateStageBlockPosition(selectedBlock.value.id, colIndex, rowIndex)
-      } else {
-        updateSeatingBlockPosition(selectedBlock.value.id, colIndex, rowIndex)
-      }
-    }
+  const block = selectedBlock.value
+  const type = selectedBlockType.value
+  if (!block || !type) return
+
+  if (type === 'marker' && block.type === 'entrance') {
+    return placeMarker(block.markerIndex, rowIndex, colIndex)
   }
+  if (layoutGrid.value[rowIndex][colIndex] !== null) return
+
+  if (type === 'stage') setPosition(form.stageBlocks, block.id, colIndex, rowIndex)
+  else if (type === 'marker') placeMarker(block.markerIndex, rowIndex, colIndex)
+  else setPosition(form.blocks, block.id, colIndex, rowIndex)
 }
 
-// Position management
-const updateSeatingBlockPosition = (blockId, x, y) => {
-  const blockIndex = form.blocks.findIndex(block => block.id === blockId)
-  if (blockIndex !== -1) {
-    form.blocks[blockIndex].position_x = x
-    form.blocks[blockIndex].position_y = y
-  }
+const setPosition = (list, id, x, y) => {
+  const target = list.find(b => b.id === id)
+  if (target) Object.assign(target, { position_x: x, position_y: y })
 }
 
-const updateStageBlockPosition = (stageBlockId, x, y) => {
-  const stageBlockIndex = form.stageBlocks.findIndex(block => block.id === stageBlockId)
-  if (stageBlockIndex !== -1) {
-    form.stageBlocks[stageBlockIndex].position_x = x
-    form.stageBlocks[stageBlockIndex].position_y = y
-  }
+const placeMarker = (markerIndex, rowIndex, colIndex) => {
+  const marker = form.markerBlocks[markerIndex]
+  if (!marker) return
+  if (marker.type === 'comment') Object.assign(marker, { position_x: colIndex, position_y: rowIndex })
+  else if (marker.orientation === 'column') Object.assign(marker, { position_x: colIndex, position_y: -1 })
+  else Object.assign(marker, { position_x: -1, position_y: rowIndex })
 }
 
-// Rotate seating block
 const rotateBlock = (blockId) => {
-  const blockIndex = form.blocks.findIndex(block => block.id === blockId)
-  if (blockIndex !== -1) {
-    const currentRotation = form.blocks[blockIndex].rotation
-    form.blocks[blockIndex].rotation = (currentRotation + 90) % 360
-  }
+  const block = form.blocks.find(b => b.id === blockId)
+  if (block) block.rotation = (block.rotation + 90) % 360
 }
 
-// Add new stage block
 const addStageBlock = () => {
-  const nextSort = form.stageBlocks.length
   form.stageBlocks.push({
-    id: null, // Will be created on save
-    name: `Stage ${nextSort + 1}`,
+    id: null,
+    name: `Stage ${form.stageBlocks.length + 1}`,
     position_x: -1,
     position_y: -1
   })
 }
 
-// Remove stage block
 const removeStageBlock = (index) => {
   if (confirm('Are you sure you want to remove this stage block?')) {
     form.stageBlocks.splice(index, 1)
   }
 }
 
-// Delete seating block
+const ENTRANCE_DIRECTIONS = {
+  row: [180, 0],
+  column: [90, 270]
+}
+
+const addMarker = (type) => {
+  const base = { id: null, type, position_x: -1, position_y: -1 }
+  if (type === 'comment') {
+    form.markerBlocks.push({ ...base, name: 'Note' })
+    return
+  }
+  const count = form.markerBlocks.filter(m => m.type === 'entrance').length
+  form.markerBlocks.push({
+    ...base,
+    name: count === 0 ? 'Entrance' : `Entrance ${count + 1}`,
+    orientation: 'row',
+    rotation: ENTRANCE_DIRECTIONS.row[0]
+  })
+}
+
+const setEntranceOrientation = (marker, orientation) => {
+  Object.assign(marker, {
+    orientation,
+    rotation: ENTRANCE_DIRECTIONS[orientation][0],
+    position_x: -1,
+    position_y: -1
+  })
+}
+
+const rotateEntrance = (marker) => {
+  const directions = ENTRANCE_DIRECTIONS[marker.orientation]
+  const current = directions.indexOf(marker.rotation)
+  marker.rotation = directions[(current + 1) % directions.length]
+}
+
+const removeMarkerBlock = (index) => {
+  if (confirm('Are you sure you want to remove this marker?')) {
+    if (selectedBlockType.value === 'marker' && selectedBlock.value?.markerIndex === index) {
+      selectedBlock.value = null
+      selectedBlockType.value = null
+    }
+    form.markerBlocks.splice(index, 1)
+  }
+}
+
+const getMarkerPlacementStatus = (marker) => {
+  if (marker.type === 'comment') return getBlockPlacementStatus(marker)
+  return marker.orientation === 'column' ? marker.position_x >= 0 : marker.position_y >= 0
+}
+
 const deleteSeatingBlock = (blockId) => {
   if (confirm('Are you sure you want to delete this block? This will permanently remove all rows and seats in this block.')) {
     const deleteForm = useForm({})
@@ -234,7 +290,6 @@ const deleteSeatingBlock = (blockId) => {
     deleteForm.delete(route('admin.rooms.blocks.delete', { room: props.room.id, block: blockId }), {
       preserveScroll: true,
       onSuccess: () => {
-        // Remove the block from the form data after successful deletion
         const index = form.blocks.findIndex(b => b.id === blockId)
         if (index !== -1) {
           form.blocks.splice(index, 1)
@@ -244,11 +299,8 @@ const deleteSeatingBlock = (blockId) => {
   }
 }
 
-// Track form submission state
 const isSubmitting = ref(false)
 
-// Entry point for the Save button: if the room has bookings, require explicit
-// confirmation (typing the phrase) before proceeding, since saving deletes them.
 const requestSaveLayout = () => {
   if (hasBookings.value) {
     deleteBookingsConfirmText.value = ''
@@ -264,16 +316,23 @@ const confirmDeleteBookingsAndSave = () => {
   saveLayout()
 }
 
-// Save all changes
 const saveLayout = () => {
   isSubmitting.value = true
-  // Build form data with row data for blocks that have rows configured
+  // Build form data
   const formData = {
     stageBlocks: form.stageBlocks.map(stageBlock => ({
       id: stageBlock.id,
       name: stageBlock.name,
       position_x: stageBlock.position_x,
       position_y: stageBlock.position_y
+    })),
+    markerBlocks: form.markerBlocks.map(marker => ({
+      id: marker.id,
+      type: marker.type,
+      name: marker.name,
+      position_x: marker.position_x,
+      position_y: marker.position_y,
+      rotation: marker.rotation ?? 0
     })),
     blocks: form.blocks.map(block => {
       const formattedBlock = {
@@ -297,8 +356,6 @@ const saveLayout = () => {
       return formattedBlock
     })
   }
-
-  console.log('Submitting form data:', formData)
 
   // Create a new form instance with the data and submit
   const submitForm = useForm(formData)
@@ -364,10 +421,10 @@ const createNewBlock = () => {
     position_y: y,
     rotation: 0,
     rowCount: 10,
-    defaultSeatsPerRow: 25,
+    defaultSeatsPerRow: DEFAULT_SEAT_COUNT,
     rows: Array.from({ length: 10 }, (_, i) => ({
       rowNumber: i + 1,
-      seatCount: 25,
+      seatCount: DEFAULT_SEAT_COUNT,
       isCustom: false,
       alignment: 'center'
     }))
@@ -376,12 +433,11 @@ const createNewBlock = () => {
   closeNewBlockDialog()
 }
 
-// Row management functions
 const addRow = (block) => {
   const newRowNumber = block.rows.length + 1
   block.rows.push({
     rowNumber: newRowNumber,
-    seatCount: 25, // Default seat count
+    seatCount: DEFAULT_SEAT_COUNT,
     isCustom: false,
     alignment: 'center'
   })
@@ -395,20 +451,16 @@ const removeRow = (block) => {
 
 const removeSpecificRow = (block, rowNumber) => {
   if (block.rows.length > 1) {
-    // Remove the specific row
     const index = block.rows.findIndex(row => row.rowNumber === rowNumber)
     if (index !== -1) {
       block.rows.splice(index, 1)
 
-      // Renumber all remaining rows to maintain sequential order
       block.rows.forEach((row, idx) => {
         row.rowNumber = idx + 1
       })
     }
   }
 }
-
-
 </script>
 
 <template>
@@ -421,7 +473,7 @@ const removeSpecificRow = (block, rowNumber) => {
       v-if="hasBookings"
       class="mb-6 flex items-start gap-3 rounded-md border border-red-300 bg-red-50 p-4 text-red-800"
     >
-      <span class="text-xl leading-none">⚠️</span>
+      <TriangleAlert class="w-5 h-5 flex-shrink-0 mt-0.5" />
       <div class="text-sm">
         <p class="font-semibold">Saving will delete all bookings for this room.</p>
         <p class="mt-1">
@@ -437,10 +489,9 @@ const removeSpecificRow = (block, rowNumber) => {
       <!-- Left Column: Stage & Block Management -->
       <div class="lg:col-span-2 space-y-4">
 
-        <!-- Stage Blocks Management -->
-        <Card class="p-4">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="font-semibold">🎭 Stage Blocks</h3>
+        <Card class="p-4 gap-0">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="font-semibold">Stage Blocks</h3>
             <Button size="sm" variant="outline" class="text-xs" @click="addStageBlock">
               + Add Stage
             </Button>
@@ -454,7 +505,7 @@ const removeSpecificRow = (block, rowNumber) => {
               :class="{ 'ring-2 ring-inset ring-red-500': selectedBlock?.id === stageBlock.id && selectedBlockType === 'stage' }"
             >
               <div @click="selectBlock(stageBlock, 'stage')" class="cursor-pointer">
-                <div class="flex items-center justify-between mb-2">
+                <div class="flex items-end justify-between mb-2">
                   <div class="flex-1">
                     <Label class="text-xs">Stage Name</Label>
                     <Input
@@ -468,8 +519,9 @@ const removeSpecificRow = (block, rowNumber) => {
                     variant="destructive"
                     @click.stop="removeStageBlock(index)"
                     class="text-xs px-2 py-1 ml-2"
+                    title="Remove stage"
                   >
-                    🗑
+                    <Trash2 class="w-4 h-4" />
                   </Button>
                 </div>
 
@@ -482,9 +534,96 @@ const removeSpecificRow = (block, rowNumber) => {
           </div>
         </Card>
 
+        <!-- Marker Blocks Management -->
+        <Card class="p-4 gap-0">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="font-semibold">Markers</h3>
+            <div class="flex gap-1">
+              <Button size="sm" variant="outline" class="text-xs" @click="addMarker('entrance')">
+                + Entrance
+              </Button>
+              <Button size="sm" variant="outline" class="text-xs" @click="addMarker('comment')">
+                + Comment
+              </Button>
+            </div>
+          </div>
+
+          <div class="space-y-2 max-h-96 overflow-y-auto">
+            <div
+              v-for="(marker, index) in form.markerBlocks"
+              :key="`marker-${marker.id || 'new'}-${index}`"
+              class="border border-gray-200 rounded-lg p-3"
+              :class="{ 'ring-2 ring-inset ring-amber-500': selectedBlockType === 'marker' && selectedBlock?.markerIndex === index }"
+              @click="selectBlock({ ...marker, markerIndex: index }, 'marker')"
+            >
+              <div class="flex items-end justify-between mb-2">
+                <div class="flex-1">
+                  <Label class="text-xs">
+                    {{ marker.type === 'entrance' ? 'Entrance label' : 'Comment text' }}
+                  </Label>
+                  <Input
+                    v-model="marker.name"
+                    class="text-sm mt-1"
+                    @click.stop
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  @click.stop="removeMarkerBlock(index)"
+                  class="text-xs px-2 py-1 ml-2"
+                  title="Remove marker"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div v-if="marker.type === 'entrance'" class="space-y-2 mb-2">
+                <div class="flex items-center gap-2">
+                  <Label class="text-xs w-16">Spans</Label>
+                  <select
+                    :value="marker.orientation"
+                    @click.stop
+                    @change="setEntranceOrientation(marker, $event.target.value)"
+                    class="text-xs h-7 border border-gray-300 rounded px-2 flex-1"
+                  >
+                    <option value="row">Full row (horizontal)</option>
+                    <option value="column">Full column (vertical)</option>
+                  </select>
+                </div>
+                <div class="flex items-center gap-2">
+                  <Label class="text-xs w-16">Direction</Label>
+                  <component :is="getOrientationArrow(marker.rotation)" class="w-5 h-5" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    @click.stop="rotateEntrance(marker)"
+                    class="text-xs px-2 py-1"
+                    title="Rotate direction"
+                  >
+                    <RotateCw class="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div class="text-xs text-gray-500">
+                <span v-if="getMarkerPlacementStatus(marker)" class="text-green-600">
+                  <template v-if="marker.type === 'comment'">• Placed ({{ marker.position_y }}, {{ marker.position_x }})</template>
+                  <template v-else-if="marker.orientation === 'column'">• Column {{ marker.position_x }}</template>
+                  <template v-else>• Row {{ marker.position_y }}</template>
+                </span>
+                <span v-else class="text-orange-600">• Not placed</span>
+              </div>
+            </div>
+            <p v-if="form.markerBlocks.length === 0" class="text-xs text-gray-400">
+              No markers yet. Add an entrance row/column or a comment note.
+            </p>
+          </div>
+        </Card>
+
         <!-- Seating Blocks Management -->
-        <Card class="p-4">
-          <div class="flex justify-between items-center mb-4">
+        <Card class="p-4 gap-0">
+          <div class="flex justify-between items-center mb-2">
             <h3 class="font-semibold">Seating Blocks</h3>
             <Button size="sm" variant="outline" class="text-xs" @click="openNewBlockDialog">
               + Add Block
@@ -526,98 +665,90 @@ const removeSpecificRow = (block, rowNumber) => {
                   </div>
                 </div>
                 <div class="flex items-center space-x-2">
-                  <span class="text-lg">{{ getOrientationArrow(block.rotation) }}</span>
+                  <component :is="getOrientationArrow(block.rotation)" class="w-5 h-5" />
                   <Button
                     size="sm"
                     variant="outline"
                     @click.stop="rotateBlock(block.id)"
                     class="text-xs px-2 py-1"
+                    title="Rotate block"
                   >
-                    ↻
+                    <RotateCw class="w-4 h-4" />
                   </Button>
                   <Button
                     size="sm"
                     variant="destructive"
                     @click.stop="deleteSeatingBlock(block.id)"
                     class="text-xs px-2 py-1"
+                    title="Delete block"
                   >
-                    🗑
+                    <Trash2 class="w-4 h-4" />
                   </Button>
                 </div>
               </div>
 
-              <!-- Block Details (Expandable) -->
               <div v-if="isBlockExpanded(block.id)" class="border-t bg-gray-50 p-3">
-
-                <!-- Row Configuration -->
-                <div>
-                  <div class="flex justify-between items-center mb-2">
-                    <Label class="text-xs">Row Configuration ({{ block.rows.length }} rows)</Label>
-                    <div class="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        @click="addRow(block)"
-                        class="text-xs px-2 py-1"
-                        title="Add row"
-                      >
-                        + Row
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        @click="removeRow(block)"
-                        :disabled="block.rows.length <= 1"
-                        class="text-xs px-2 py-1"
-                        title="Remove last row"
-                      >
-                        - Row
-                      </Button>
-                    </div>
-                  </div>
-                  <div class="space-y-1 max-h-60 overflow-y-auto">
-                    <div
-                      v-for="row in block.rows"
-                      :key="row.rowNumber"
-                      class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded text-xs"
+                <div class="flex justify-between items-center mb-2">
+                  <Label class="text-xs">Row Configuration ({{ block.rows.length }} rows)</Label>
+                  <div class="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      @click="addRow(block)"
+                      class="text-xs px-2 py-1"
+                      title="Add row"
                     >
-                      <!-- Row Number -->
-                      <span class="font-medium w-12">Row {{ row.rowNumber }}</span>
+                      + Row
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      @click="removeRow(block)"
+                      :disabled="block.rows.length <= 1"
+                      class="text-xs px-2 py-1"
+                      title="Remove last row"
+                    >
+                      - Row
+                    </Button>
+                  </div>
+                </div>
+                <div class="space-y-1 max-h-60 overflow-y-auto">
+                  <div
+                    v-for="row in block.rows"
+                    :key="row.rowNumber"
+                    class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded text-xs"
+                  >
+                    <span class="font-medium w-12">Row {{ row.rowNumber }}</span>
 
-                      <!-- Seat Count Input -->
-                      <Input
-                        v-model.number="row.seatCount"
-                        type="number"
-                        min="1"
-                        max="100"
-                        class="text-xs h-7 w-16"
-                      />
+                    <Input
+                      v-model.number="row.seatCount"
+                      type="number"
+                      min="1"
+                      max="100"
+                      class="text-xs h-7 w-16"
+                    />
 
-                      <!-- Alignment Select -->
-                      <select
-                        v-model="row.alignment"
-                        class="text-xs h-7 border border-gray-300 rounded px-2 flex-1"
-                      >
-                        <option value="left">Left</option>
-                        <option value="center">Center</option>
-                        <option value="right">Right</option>
-                      </select>
+                    <select
+                      v-model="row.alignment"
+                      class="text-xs h-7 border border-gray-300 rounded px-2 flex-1"
+                    >
+                      <option value="left">Left</option>
+                      <option value="center">Center</option>
+                      <option value="right">Right</option>
+                    </select>
 
-                      <!-- Seat Count Display -->
-                      <span class="text-gray-500 w-16">{{ row.seatCount }} seats</span>
+                    <span class="text-gray-500 w-16">{{ row.seatCount }} seats</span>
 
-                      <!-- Delete Button -->
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        @click="removeSpecificRow(block, row.rowNumber)"
-                        :disabled="block.rows.length <= 1"
-                        class="text-xs px-1 py-0 h-6 w-6 text-red-600 hover:bg-red-50 flex-shrink-0"
-                        title="Delete this row"
-                      >
-                        ×
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      @click="removeSpecificRow(block, row.rowNumber)"
+                      :disabled="block.rows.length <= 1"
+                      class="text-xs px-1 py-0 h-6 w-6 text-red-600 hover:bg-red-50 flex-shrink-0"
+                      title="Delete this row"
+                    >
+                      ×
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -628,13 +759,13 @@ const removeSpecificRow = (block, rowNumber) => {
 
       <!-- Main Layout Table -->
       <div class="lg:col-span-3">
-        <Card class="p-6">
+        <Card class="p-6 gap-0">
           <div class="mb-4">
             <h3 class="font-semibold text-center text-lg mb-2">
               Room Layout Grid
             </h3>
             <div class="text-center text-sm text-gray-600 mb-4">
-              Click empty cells to place selected blocks • Multiple stages supported
+              Click empty cells to place selected blocks
             </div>
           </div>
 
@@ -650,42 +781,52 @@ const removeSpecificRow = (block, rowNumber) => {
                     :class="{
                       'bg-gray-50': cell === null,
                       'bg-red-100': cell?.type === 'stage',
-                      'bg-blue-50': cell?.type === 'seating'
+                      'bg-blue-50': cell?.type === 'seating',
+                      'bg-amber-50': cell?.type === 'entrance',
+                      'bg-yellow-50': cell?.type === 'comment'
                     }"
                     @click="handleCellClick(rowIndex, colIndex)"
                   >
-                    <!-- Empty Cell -->
                     <div v-if="cell === null" class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
                       {{ rowIndex }},{{ colIndex }}
                     </div>
 
-                    <!-- Stage Cell -->
                     <div
                       v-else-if="cell.type === 'stage'"
-                      class="w-full h-full bg-red-600 text-white border border-red-700 rounded cursor-pointer flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow"
+                      :class="[CELL_BASE, 'bg-red-600 text-white border-red-700', { 'ring-2 ring-red-300': selectedBlock?.id === cell.id && selectedBlockType === 'stage' }]"
                       @click.stop="selectBlock(cell, 'stage')"
-                      :class="{ 'ring-2 ring-red-300': selectedBlock?.id === cell.id && selectedBlockType === 'stage' }"
                     >
-                      <div class="font-bold text-sm">🎭</div>
                       <div class="font-medium text-xs">{{ cell.name }}</div>
                     </div>
 
-                    <!-- Seating Block Cell -->
                     <div
                       v-else-if="cell.type === 'seating'"
+                      :class="[CELL_BASE, 'bg-white border-gray-400', { 'ring-2 ring-blue-500 bg-blue-50': selectedBlock?.id === cell.id && selectedBlockType === 'seating' }]"
                       @click.stop="selectBlock(cell, 'seating')"
-                      class="w-full h-full bg-white border border-gray-400 rounded cursor-pointer flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow"
-                      :class="{ 'ring-2 ring-blue-500 bg-blue-50': selectedBlock?.id === cell.id && selectedBlockType === 'seating' }"
                     >
-                      <!-- Block Title -->
                       <div class="font-medium text-xs mb-1 px-1">{{ cell.name }}</div>
 
-                      <!-- Orientation Arrow -->
-                      <div class="text-lg mb-1">{{ getOrientationArrow(cell.rotation) }}</div>
+                      <component :is="getOrientationArrow(cell.rotation)" class="w-5 h-5 mb-1" />
 
-                      <!-- Seat Count -->
                       <div class="text-xs text-gray-600">{{ getTotalSeats(cell) }} seats</div>
                       <div class="text-xs text-gray-500">{{ cell.rows?.length || 0 }} rows</div>
+                    </div>
+
+                    <div
+                      v-else-if="cell.type === 'entrance'"
+                      :class="[CELL_BASE, 'bg-amber-500 text-white border-amber-600', { 'ring-2 ring-amber-300': selectedBlockType === 'marker' && selectedBlock?.markerIndex === cell.markerIndex }]"
+                      @click.stop="selectBlock({ ...cell }, 'marker')"
+                    >
+                      <component :is="getOrientationArrow(cell.rotation)" class="w-4 h-4" />
+                      <div class="font-medium text-xs px-1">{{ cell.name }}</div>
+                    </div>
+
+                    <div
+                      v-else-if="cell.type === 'comment'"
+                      :class="[CELL_BASE, 'bg-yellow-100 text-yellow-900 border-yellow-400 p-1', { 'ring-2 ring-amber-400': selectedBlockType === 'marker' && selectedBlock?.markerIndex === cell.markerIndex }]"
+                      @click.stop="selectBlock({ ...cell }, 'marker')"
+                    >
+                      <div class="text-xs whitespace-normal break-words">{{ cell.name }}</div>
                     </div>
                   </td>
                 </tr>
@@ -694,12 +835,22 @@ const removeSpecificRow = (block, rowNumber) => {
           </div>
 
           <!-- Grid Legend -->
-          <div class="mt-4 text-xs text-gray-500 text-center">
-            Grid coordinates: Row,Column • 🎭 Red = Stages • Blue = Seating Blocks • Click empty cells to place selected blocks
+          <div class="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-gray-500">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-3 h-3 rounded-sm bg-red-600"></span>Stages
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-3 h-3 rounded-sm bg-blue-50 border border-gray-400"></span>Seating
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-3 h-3 rounded-sm bg-amber-500"></span>Entrances
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-3 h-3 rounded-sm bg-yellow-100 border border-yellow-400"></span>Comments
+            </span>
           </div>
         </Card>
 
-        <!-- Single Save Button -->
         <div class="mt-6 flex justify-center">
           <Button
             @click="requestSaveLayout"
@@ -715,7 +866,6 @@ const removeSpecificRow = (block, rowNumber) => {
     </div>
   </div>
 
-  <!-- Delete Bookings Confirmation Dialog -->
   <div v-if="showDeleteBookingsDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
       <h3 class="text-lg font-semibold mb-2 text-red-700">Delete all bookings?</h3>
@@ -754,7 +904,6 @@ const removeSpecificRow = (block, rowNumber) => {
     </div>
   </div>
 
-  <!-- New Block Dialog -->
   <div v-if="showNewBlockDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
       <h3 class="text-lg font-semibold mb-4">Create New Seating Block</h3>
@@ -797,7 +946,6 @@ const removeSpecificRow = (block, rowNumber) => {
 </template>
 
 <style scoped>
-/* Layout Table Styling */
 .layout-table {
   min-width: 800px;
 }
@@ -813,7 +961,6 @@ const removeSpecificRow = (block, rowNumber) => {
   background-color: #f0f9ff !important;
 }
 
-/* Block in cell styling */
 .layout-cell .bg-white {
   transition: all 0.2s ease;
 }
@@ -823,13 +970,11 @@ const removeSpecificRow = (block, rowNumber) => {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Orientation arrow styling */
 .text-lg {
   line-height: 1;
   font-weight: bold;
 }
 
-/* Responsive adjustments */
 @media (max-width: 1024px) {
   .layout-table {
     min-width: 600px;

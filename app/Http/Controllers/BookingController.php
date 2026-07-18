@@ -103,6 +103,10 @@ class BookingController extends Controller
             ->orderBy('order')
             ->get();
 
+        $markerBlocks = $event->room->markerBlocks()
+            ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'order')
+            ->get();
+
         return Inertia::render('Booking/CreateBooking', [
             'event' => array_merge($event->only(['id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at']), [
                 'tickets_left' => $ticketsLeft,
@@ -111,6 +115,7 @@ class BookingController extends Controller
             'room' => $event->room->only(['id', 'name', 'stage_x', 'stage_y']),
             'blocks' => $blocks,
             'stageBlocks' => $stageBlocks,
+            'markerBlocks' => $markerBlocks,
             'bookedSeats' => $bookedSeats,
             'selectedSeats' => $request->get('seats', []), // Pass selected seats from URL
             'maxSeatsPerUser' => min(self::MAX_SEATS_PER_EVENT, $ticketsLeft),
@@ -297,6 +302,10 @@ class BookingController extends Controller
             ->orderBy('order')
             ->get();
 
+        $markerBlocks = $event->room->markerBlocks()
+            ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'order')
+            ->get();
+
         // Get user's booked seat IDs for highlighting
         $userBookedSeats = Booking::where('event_id', $event->id)
             ->where('user_id', auth()->id())
@@ -313,6 +322,7 @@ class BookingController extends Controller
             'event' => $event,
             'booking' => $booking,
             'blocks' => $blocks,
+            'markerBlocks' => $markerBlocks,
             'bookedSeats' => $bookedSeats,
             'userBookedSeats' => $userBookedSeats,
         ]);

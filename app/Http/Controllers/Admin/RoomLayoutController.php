@@ -32,6 +32,8 @@ class RoomLayoutController extends Controller
         // Load stage blocks
         $stageBlocks = $room->stageBlocks()->get();
 
+        $markerBlocks = $room->markerBlocks()->get();
+
         // If no stage blocks exist but old stage_x/stage_y exist, migrate them
         if ($stageBlocks->isEmpty() && ($room->stage_x !== null || $room->stage_y !== null)) {
             $stageBlocks = collect([
@@ -61,6 +63,7 @@ class RoomLayoutController extends Controller
             'bookingsCount' => $bookingsCount,
             'blocks' => $blocks,
             'stageBlocks' => $stageBlocks,
+            'markerBlocks' => $markerBlocks,
             'blockIdMap' => session('blockIdMap', []),
             'title' => 'Floor Plan Editor',
             'breadcrumbs' => [
@@ -81,6 +84,13 @@ class RoomLayoutController extends Controller
             'stageBlocks.*.name' => 'required|string|max:255',
             'stageBlocks.*.position_x' => 'required|integer|min:-1',
             'stageBlocks.*.position_y' => 'required|integer|min:-1',
+            'markerBlocks' => 'sometimes|array',
+            'markerBlocks.*.id' => ['nullable', Rule::in($room->markerBlocks()->pluck('id')->all())],
+            'markerBlocks.*.type' => 'required|string|in:entrance,comment',
+            'markerBlocks.*.name' => 'required|string|max:255',
+            'markerBlocks.*.position_x' => 'required|integer|min:-1',
+            'markerBlocks.*.position_y' => 'required|integer|min:-1',
+            'markerBlocks.*.rotation' => 'nullable|integer|in:0,90,180,270',
             'blocks' => 'required|array',
             'blocks.*.id' => [
                 'required',
@@ -138,6 +148,33 @@ class RoomLayoutController extends Controller
                         'rotation' => 0,
                         'order' => $index,
                     ]);
+                }
+            }
+
+            // Update marker blocks
+            $existingMarkerBlockIds = $room->markerBlocks()->pluck('id')->toArray();
+            $submittedMarkerBlocks = $request->markerBlocks ?? [];
+            $submittedMarkerBlockIds = collect($submittedMarkerBlocks)->pluck('id')->filter()->toArray();
+
+            $markerBlocksToDelete = array_diff($existingMarkerBlockIds, $submittedMarkerBlockIds);
+            if (! empty($markerBlocksToDelete)) {
+                $room->markerBlocks()->whereIn('id', $markerBlocksToDelete)->delete();
+            }
+
+            foreach ($submittedMarkerBlocks as $index => $markerBlockData) {
+                $attributes = [
+                    'name' => $markerBlockData['name'],
+                    'type' => $markerBlockData['type'],
+                    'position_x' => $markerBlockData['position_x'],
+                    'position_y' => $markerBlockData['position_y'],
+                    'rotation' => $markerBlockData['rotation'] ?? 0,
+                    'order' => $index,
+                ];
+
+                if ($markerBlockData['id']) {
+                    $room->markerBlocks()->where('id', $markerBlockData['id'])->update($attributes);
+                } else {
+                    $room->allBlocks()->create($attributes);
                 }
             }
 

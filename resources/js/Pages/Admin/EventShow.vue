@@ -27,6 +27,7 @@ const props = defineProps({
     room: Object,
     blocks: Array,
     stageBlocks: Array,
+    markerBlocks: { type: Array, default: () => [] },
     bookings: Array,
     bookedSeats: Array,
     seatBookingMap: Object,
@@ -500,7 +501,7 @@ onMounted(scrollToHighlightedBooking)
                     </div>
                     <div class="flex items-center">
                         <Users class="h-4 w-4 mr-1"/>
-                        {{ bookings.total || bookings.length }} bookings
+                        {{ bookings.total ?? bookings.length }} bookings
                     </div>
                 </div>
                 <div class="flex flex-col items-end gap-1">
@@ -586,6 +587,7 @@ onMounted(scrollToHighlightedBooking)
                             :room="room"
                             :blocks="blocks"
                             :stage-blocks="stageBlocks"
+                            :marker-blocks="markerBlocks"
                             :booked-seats="bookedSeats"
                             :selected-seats="selectedSeats"
                             @seats-changed="handleSeatsChanged"

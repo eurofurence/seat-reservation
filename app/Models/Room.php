@@ -32,6 +32,11 @@ class Room extends Model
         return $this->hasMany(Block::class)->stage()->orderBy('order');
     }
 
+    public function markerBlocks(): HasMany
+    {
+        return $this->hasMany(Block::class)->marker()->orderBy('order');
+    }
+
     public function allBlocks(): HasMany
     {
         return $this->hasMany(Block::class)->orderBy('order');

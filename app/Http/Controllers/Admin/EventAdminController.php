@@ -120,6 +120,10 @@ class EventAdminController extends Controller
             ->orderBy('order')
             ->get();
 
+        $markerBlocks = $room->markerBlocks()
+            ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'order')
+            ->get();
+
         // Only load essential block data for the seat layout
         $blocks = $room->blocks()
             ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
@@ -200,6 +204,7 @@ class EventAdminController extends Controller
             'room' => $room,
             'blocks' => $blocks,
             'stageBlocks' => $stageBlocks,
+            'markerBlocks' => $markerBlocks,
             'bookings' => $bookings,
             'bookedSeats' => $bookedSeats,
             'seatBookingMap' => $seatBookingMap,
@@ -358,6 +363,9 @@ class EventAdminController extends Controller
             $masterStageBlocks = $room->stageBlocks()
                 ->select('id', 'room_id', 'name', 'position_x', 'position_y')
                 ->get();
+            $masterMarkerBlocks = $room->markerBlocks()
+                ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation')
+                ->get();
 
             // mPDF configuration with custom Zhurzh font
             $mpdf = new \Mpdf\Mpdf([
@@ -389,7 +397,7 @@ class EventAdminController extends Controller
             $pages[] = view('pdf.master-page', [
                 'event_name' => $event->name,
                 'room_name' => $room->name,
-                'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $bookedSeatIds, $mpdf),
+                'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $masterMarkerBlocks, $bookedSeatIds, $mpdf),
             ])->render();
 
             $currentBlockId = null;
