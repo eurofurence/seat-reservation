@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
@@ -8,25 +8,32 @@ import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { useToast } from '@/Components/ui/toast'
 import { Trash2, RotateCw, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, TriangleAlert } from 'lucide-vue-next'
+import type {
+  BlockId, Orientation, MarkerType,
+  PropBlock, PropStageBlock, PropMarkerBlock,
+  FormBlock, FormStageBlock, FormMarkerBlock, FormRow
+} from '@/types/layout'
 
 defineOptions({ layout: AdminLayout })
 
 const DEFAULT_SEAT_COUNT = 25
+const DEFAULT_ROW_COUNT = 10
 
 const { error: errorToast } = useToast()
 
-const props = defineProps({
-  room: Object,
-  bookingsCount: {
-    type: Number,
-    default: 0
-  },
-  blocks: Array,
-  stageBlocks: Array,
-  markerBlocks: { type: Array, default: () => [] },
-  blockIdMap: { type: Object, default: () => ({}) },
-  title: String,
-  breadcrumbs: Array
+const props = withDefaults(defineProps<{
+  room: { id: number, name: string }
+  bookingsCount?: number
+  blocks: PropBlock[]
+  stageBlocks: PropStageBlock[]
+  markerBlocks?: PropMarkerBlock[]
+  blockIdMap?: Record<string, number>
+  title: string
+  breadcrumbs?: Array<{ title: string, url: string | null }>
+}>(), {
+  bookingsCount: 0,
+  markerBlocks: () => [],
+  blockIdMap: () => ({})
 })
 
 let tempBlockCounter = 0
@@ -34,64 +41,65 @@ let tempBlockCounter = 0
 const GRID_ROWS = 8
 const GRID_COLS = 12
 
-// Shared skeleton for a placed cell in the layout grid; type-specific colors/rings are added per branch.
+const UNPLACED = { position_x: -1, position_y: -1 }
+
+const inGrid = (x: number, y: number) => x >= 0 && x < GRID_COLS && y >= 0 && y < GRID_ROWS
+
+const isPlaced = (block: { position_x: number, position_y: number }) => block.position_x >= 0 && block.position_y >= 0
+
 const CELL_BASE = 'w-full h-full border rounded cursor-pointer flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow'
 
-const getOriginalSeatingBlock = (blockId) => {
-  return props.blocks.find(block => block.id === blockId)
-}
+const pos = (value: number | null | undefined) => (value != null ? value : -1)
 
-// Build complete form data
-const form = useForm({
-  stageBlocks: props.stageBlocks.map(block => ({
-    id: block.id,
-    name: block.name,
-    position_x: block.position_x != null ? block.position_x : -1,
-    position_y: block.position_y != null ? block.position_y : -1
-  })),
-  markerBlocks: props.markerBlocks.map(block => ({
-    id: block.id,
-    type: block.type,
-    name: block.name,
-    position_x: block.position_x != null ? block.position_x : -1,
-    position_y: block.position_y != null ? block.position_y : -1,
-    orientation: block.type === 'entrance' && block.position_y === -1 ? 'column' : 'row',
-    rotation: block.rotation || 0
-  })),
-  blocks: props.blocks.map(block => {
-    const originalBlock = getOriginalSeatingBlock(block.id)
-
-    const rows = []
-    const rowCount = originalBlock?.rows?.length || 10
-
-    for (let i = 1; i <= rowCount; i++) {
-      const existingRow = originalBlock?.rows?.find((r, idx) => idx + 1 === i)
-      rows.push({
-        rowNumber: i,
-        seatCount: existingRow?.seats_count || 25,
-        isCustom: existingRow?.custom_seat_count !== null && existingRow?.custom_seat_count !== undefined,
-        alignment: existingRow?.alignment || 'center'
-      })
-    }
-
-    return {
-      id: block.id,
-      name: block.name,
-      position_x: block.position_x != null ? block.position_x : -1,
-      position_y: block.position_y != null ? block.position_y : -1,
-      rotation: block.rotation || 0,
-      rowCount: rowCount,
-      defaultSeatsPerRow: 25,
-      rows: rows,
-      originalData: originalBlock
-    }
-  })
+const stageFromProp = (block: PropStageBlock): FormStageBlock => ({
+  id: block.id,
+  name: block.name,
+  position_x: pos(block.position_x),
+  position_y: pos(block.position_y)
 })
 
-// UI State
-const selectedBlock = ref(null)
-const selectedBlockType = ref(null) // 'stage' or 'seating' or 'comment' or 'entrance'
-const expandedBlocks = ref(new Set())
+const markerFromProp = (block: PropMarkerBlock): FormMarkerBlock => ({
+  id: block.id,
+  type: block.type,
+  name: block.name,
+  position_x: pos(block.position_x),
+  position_y: pos(block.position_y),
+  orientation: block.type === 'entrance' && block.position_y === -1 ? 'column' : 'row',
+  rotation: block.rotation || 0
+})
+
+const rowsFromBlock = (block: PropBlock | null): FormRow[] => {
+  const rowCount = block?.rows?.length || DEFAULT_ROW_COUNT
+  return Array.from({ length: rowCount }, (_, i) => {
+    const existingRow = block?.rows?.[i]
+    return {
+      rowNumber: i + 1,
+      seatCount: existingRow?.seats_count || DEFAULT_SEAT_COUNT,
+      isCustom: existingRow?.custom_seat_count != null,
+      alignment: existingRow?.alignment || 'center'
+    }
+  })
+}
+
+const blockFromProp = (block: PropBlock): FormBlock => ({
+  id: block.id,
+  name: block.name,
+  position_x: pos(block.position_x),
+  position_y: pos(block.position_y),
+  rotation: block.rotation || 0,
+  rows: rowsFromBlock(block)
+})
+
+const form = useForm({
+  stageBlocks: props.stageBlocks.map(stageFromProp),
+  markerBlocks: props.markerBlocks.map(markerFromProp),
+  blocks: props.blocks.map(blockFromProp)
+})
+
+type SelectedType = 'stage' | 'seating' | 'marker'
+const selectedBlock = ref<any>(null)
+const selectedBlockType = ref<SelectedType | null>(null)
+const expandedBlocks = ref<Set<BlockId>>(new Set())
 const showNewBlockDialog = ref(false)
 const newBlockName = ref('')
 
@@ -110,9 +118,9 @@ const canConfirmDelete = computed(
 )
 
 
-const markerOrientation = (marker) => (marker.position_y === -1 ? 'column' : 'row')
+const markerOrientation = (marker: FormMarkerBlock): Orientation => (marker.position_y === -1 ? 'column' : 'row')
 
-const markerCells = (marker) => {
+const markerCells = (marker: FormMarkerBlock): Array<[number, number]> => {
   const { position_x: x, position_y: y } = marker
   if (marker.type === 'comment') return [[y, x]]
   if (markerOrientation(marker) === 'column') {
@@ -125,19 +133,13 @@ const layoutGrid = computed(() => {
   const grid = Array(GRID_ROWS).fill(null).map(() => Array(GRID_COLS).fill(null))
 
   form.stageBlocks.forEach(stageBlock => {
-    const x = stageBlock.position_x
-    const y = stageBlock.position_y
-    if (x >= 0 && x < GRID_COLS && y >= 0 && y < GRID_ROWS) {
-      grid[y][x] = { type: 'stage', ...stageBlock }
-    }
+    const { position_x: x, position_y: y } = stageBlock
+    if (inGrid(x, y)) grid[y][x] = { type: 'stage', ...stageBlock }
   })
 
   form.blocks.forEach(block => {
-    const x = block.position_x
-    const y = block.position_y
-    if (x >= 0 && x < GRID_COLS && y >= 0 && y < GRID_ROWS) {
-      grid[y][x] = { type: 'seating', ...block }
-    }
+    const { position_x: x, position_y: y } = block
+    if (inGrid(x, y)) grid[y][x] = { type: 'seating', ...block }
   })
 
   form.markerBlocks.forEach((marker, index) => {
@@ -150,25 +152,22 @@ const layoutGrid = computed(() => {
   return grid
 })
 
-// Placed blocks always sit inside the fixed grid; -1 on either axis means unplaced.
-const getBlockPlacementStatus = (block) => block.position_x >= 0 && block.position_y >= 0
-
-const getTotalSeats = (block) => {
+const getTotalSeats = (block: FormBlock) => {
   if (!block.rows || block.rows.length === 0) return 0
   return block.rows.reduce((total, row) => total + (row.seatCount || 0), 0)
 }
 
-const getOrientationArrow = (rotation) => {
-  const arrows = {
+const getOrientationArrow = (rotation: number | undefined) => {
+  const arrows: Record<number, typeof ArrowUp> = {
     0: ArrowUp,
     90: ArrowRight,
     180: ArrowDown,
     270: ArrowLeft
   }
-  return arrows[rotation] || ArrowUp
+  return (rotation != null && arrows[rotation]) || ArrowUp
 }
 
-const toggleBlockExpanded = (blockId) => {
+const toggleBlockExpanded = (blockId: BlockId) => {
   if (expandedBlocks.value.has(blockId)) {
     expandedBlocks.value.delete(blockId)
   } else {
@@ -176,16 +175,16 @@ const toggleBlockExpanded = (blockId) => {
   }
 }
 
-const isBlockExpanded = (blockId) => {
+const isBlockExpanded = (blockId: BlockId) => {
   return expandedBlocks.value.has(blockId)
 }
 
-const selectBlock = (block, type) => {
+const selectBlock = (block: any, type: SelectedType) => {
   selectedBlock.value = block
   selectedBlockType.value = type
 }
 
-const handleCellClick = (rowIndex, colIndex) => {
+const handleCellClick = (rowIndex: number, colIndex: number) => {
   const block = selectedBlock.value
   const type = selectedBlockType.value
   if (!block || !type) return
@@ -200,12 +199,12 @@ const handleCellClick = (rowIndex, colIndex) => {
   else setPosition(form.blocks, block.id, colIndex, rowIndex)
 }
 
-const setPosition = (list, id, x, y) => {
+const setPosition = (list: Array<{ id: BlockId | null, position_x: number, position_y: number }>, id: BlockId, x: number, y: number) => {
   const target = list.find(b => b.id === id)
   if (target) Object.assign(target, { position_x: x, position_y: y })
 }
 
-const placeMarker = (markerIndex, rowIndex, colIndex) => {
+const placeMarker = (markerIndex: number, rowIndex: number, colIndex: number) => {
   const marker = form.markerBlocks[markerIndex]
   if (!marker) return
   if (marker.type === 'comment') Object.assign(marker, { position_x: colIndex, position_y: rowIndex })
@@ -213,7 +212,7 @@ const placeMarker = (markerIndex, rowIndex, colIndex) => {
   else Object.assign(marker, { position_x: -1, position_y: rowIndex })
 }
 
-const rotateBlock = (blockId) => {
+const rotateBlock = (blockId: BlockId) => {
   const block = form.blocks.find(b => b.id === blockId)
   if (block) block.rotation = (block.rotation + 90) % 360
 }
@@ -222,24 +221,23 @@ const addStageBlock = () => {
   form.stageBlocks.push({
     id: null,
     name: `Stage ${form.stageBlocks.length + 1}`,
-    position_x: -1,
-    position_y: -1
+    ...UNPLACED
   })
 }
 
-const removeStageBlock = (index) => {
+const removeStageBlock = (index: number) => {
   if (confirm('Are you sure you want to remove this stage block?')) {
     form.stageBlocks.splice(index, 1)
   }
 }
 
-const ENTRANCE_DIRECTIONS = {
+const ENTRANCE_DIRECTIONS: Record<Orientation, number[]> = {
   row: [180, 0],
   column: [90, 270]
 }
 
-const addMarker = (type) => {
-  const base = { id: null, type, position_x: -1, position_y: -1 }
+const addMarker = (type: MarkerType) => {
+  const base = { id: null, type, ...UNPLACED }
   if (type === 'comment') {
     form.markerBlocks.push({ ...base, name: 'Note' })
     return
@@ -253,22 +251,21 @@ const addMarker = (type) => {
   })
 }
 
-const setEntranceOrientation = (marker, orientation) => {
+const setEntranceOrientation = (marker: FormMarkerBlock, orientation: Orientation) => {
   Object.assign(marker, {
     orientation,
     rotation: ENTRANCE_DIRECTIONS[orientation][0],
-    position_x: -1,
-    position_y: -1
+    ...UNPLACED
   })
 }
 
-const rotateEntrance = (marker) => {
-  const directions = ENTRANCE_DIRECTIONS[marker.orientation]
-  const current = directions.indexOf(marker.rotation)
+const rotateEntrance = (marker: FormMarkerBlock) => {
+  const directions = ENTRANCE_DIRECTIONS[marker.orientation ?? 'row']
+  const current = directions.indexOf(marker.rotation ?? directions[0])
   marker.rotation = directions[(current + 1) % directions.length]
 }
 
-const removeMarkerBlock = (index) => {
+const removeMarkerBlock = (index: number) => {
   if (confirm('Are you sure you want to remove this marker?')) {
     if (selectedBlockType.value === 'marker' && selectedBlock.value?.markerIndex === index) {
       selectedBlock.value = null
@@ -278,12 +275,12 @@ const removeMarkerBlock = (index) => {
   }
 }
 
-const getMarkerPlacementStatus = (marker) => {
-  if (marker.type === 'comment') return getBlockPlacementStatus(marker)
+const getMarkerPlacementStatus = (marker: FormMarkerBlock) => {
+  if (marker.type === 'comment') return isPlaced(marker)
   return marker.orientation === 'column' ? marker.position_x >= 0 : marker.position_y >= 0
 }
 
-const deleteSeatingBlock = (blockId) => {
+const deleteSeatingBlock = (blockId: BlockId) => {
   if (confirm('Are you sure you want to delete this block? This will permanently remove all rows and seats in this block.')) {
     const deleteForm = useForm({})
 
@@ -316,72 +313,80 @@ const confirmDeleteBookingsAndSave = () => {
   saveLayout()
 }
 
-const saveLayout = () => {
-  isSubmitting.value = true
-  // Build form data
-  const formData = {
-    stageBlocks: form.stageBlocks.map(stageBlock => ({
-      id: stageBlock.id,
-      name: stageBlock.name,
-      position_x: stageBlock.position_x,
-      position_y: stageBlock.position_y
-    })),
-    markerBlocks: form.markerBlocks.map(marker => ({
-      id: marker.id,
-      type: marker.type,
-      name: marker.name,
-      position_x: marker.position_x,
-      position_y: marker.position_y,
-      rotation: marker.rotation ?? 0
-    })),
-    blocks: form.blocks.map(block => {
-      const formattedBlock = {
-        id: block.id,
-        name: block.name,
-        position_x: block.position_x,
-        position_y: block.position_y,
-        rotation: block.rotation
-      }
+const toStagePayload = (s: FormStageBlock) => ({
+  id: s.id,
+  name: s.name,
+  position_x: s.position_x,
+  position_y: s.position_y
+})
 
-      // Include row data if block has rows configured
-      if (block.rows && block.rows.length > 0) {
-        formattedBlock.rowsData = block.rows.map(row => ({
-          rowNumber: row.rowNumber,
-          seatCount: row.seatCount,
-          isCustom: row.isCustom,
-          alignment: row.alignment
-        }))
-      }
+const toMarkerPayload = (m: FormMarkerBlock) => ({
+  id: m.id,
+  type: m.type,
+  name: m.name,
+  position_x: m.position_x,
+  position_y: m.position_y,
+  rotation: m.rotation ?? 0
+})
 
-      return formattedBlock
-    })
-  }
+const toRowPayload = (r: FormRow) => ({
+  rowNumber: r.rowNumber,
+  seatCount: r.seatCount,
+  isCustom: r.isCustom,
+  alignment: r.alignment
+})
 
-  // Create a new form instance with the data and submit
-  const submitForm = useForm(formData)
-  submitForm.put(route('admin.rooms.layout.update', props.room.id), {
-    onSuccess: () => {
-      isSubmitting.value = false
-      const map = props.blockIdMap || {}
-      form.blocks.forEach(block => {
-        if (map[block.id] != null) {
-          block.id = map[block.id]
-        }
-      })
-    },
-    onError: (errors) => {
-      isSubmitting.value = false
-      const messages = Object.values(errors)
-      errorToast(
-        'Layout could not be saved',
-        messages.length ? messages.join('\n') : 'Please reload the page or try again.'
-      )
-    }
+interface BlockPayload {
+  id: BlockId
+  name: string
+  position_x: number
+  position_y: number
+  rotation: number
+  rowsData: ReturnType<typeof toRowPayload>[] // always >= 1 row; seeded on load, guarded on removal
+}
+
+const toBlockPayload = (b: FormBlock): BlockPayload => ({
+  id: b.id,
+  name: b.name,
+  position_x: b.position_x,
+  position_y: b.position_y,
+  rotation: b.rotation,
+  rowsData: b.rows.map(toRowPayload)
+})
+
+// Use server provided ids for new blocks
+const applyBlockIdMap = () => {
+  const map = props.blockIdMap || {}
+  form.blocks.forEach(block => {
+    if (map[block.id] != null) block.id = map[block.id]
   })
 }
 
-// Create new seating block
-const newBlockNameInput = ref(null)
+const showSaveError = (errors: Record<string, string>) => {
+  const messages = Object.values(errors)
+  errorToast(
+    'Layout could not be saved',
+    messages.length ? messages.join('\n') : 'Please reload the page or try again.'
+  )
+}
+
+const saveLayout = () => {
+  isSubmitting.value = true
+
+  const submitForm = useForm({
+    stageBlocks: form.stageBlocks.map(toStagePayload),
+    markerBlocks: form.markerBlocks.map(toMarkerPayload),
+    blocks: form.blocks.map(toBlockPayload)
+  })
+
+  submitForm.put(route('admin.rooms.layout.update', props.room.id), {
+    onFinish: () => { isSubmitting.value = false },
+    onSuccess: applyBlockIdMap,
+    onError: showSaveError
+  })
+}
+
+const newBlockNameInput = ref<HTMLInputElement | null>(null)
 
 const openNewBlockDialog = () => {
   showNewBlockDialog.value = true
@@ -420,20 +425,13 @@ const createNewBlock = () => {
     position_x: x,
     position_y: y,
     rotation: 0,
-    rowCount: 10,
-    defaultSeatsPerRow: DEFAULT_SEAT_COUNT,
-    rows: Array.from({ length: 10 }, (_, i) => ({
-      rowNumber: i + 1,
-      seatCount: DEFAULT_SEAT_COUNT,
-      isCustom: false,
-      alignment: 'center'
-    }))
+    rows: rowsFromBlock(null)
   })
 
   closeNewBlockDialog()
 }
 
-const addRow = (block) => {
+const addRow = (block: FormBlock) => {
   const newRowNumber = block.rows.length + 1
   block.rows.push({
     rowNumber: newRowNumber,
@@ -443,13 +441,13 @@ const addRow = (block) => {
   })
 }
 
-const removeRow = (block) => {
+const removeRow = (block: FormBlock) => {
   if (block.rows.length > 1) {
     block.rows.pop()
   }
 }
 
-const removeSpecificRow = (block, rowNumber) => {
+const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
   if (block.rows.length > 1) {
     const index = block.rows.findIndex(row => row.rowNumber === rowNumber)
     if (index !== -1) {
@@ -526,7 +524,7 @@ const removeSpecificRow = (block, rowNumber) => {
                 </div>
 
                 <div class="text-xs text-gray-500 mt-2">
-                  <span v-if="getBlockPlacementStatus(stageBlock)" class="text-green-600">• Placed ({{ stageBlock.position_y }}, {{ stageBlock.position_x }})</span>
+                  <span v-if="isPlaced(stageBlock)" class="text-green-600">• Placed ({{ stageBlock.position_y }}, {{ stageBlock.position_x }})</span>
                   <span v-else class="text-orange-600">• Not placed</span>
                 </div>
               </div>
@@ -584,7 +582,7 @@ const removeSpecificRow = (block, rowNumber) => {
                   <select
                     :value="marker.orientation"
                     @click.stop
-                    @change="setEntranceOrientation(marker, $event.target.value)"
+                    @change="setEntranceOrientation(marker, ($event.target as HTMLSelectElement).value as Orientation)"
                     class="text-xs h-7 border border-gray-300 rounded px-2 flex-1"
                   >
                     <option value="row">Full row (horizontal)</option>
@@ -659,7 +657,7 @@ const removeSpecificRow = (block, rowNumber) => {
                     />
                     <div class="text-xs text-gray-500 mt-1">
                       {{ getTotalSeats(block) }} seats • {{ block.rows.length }} rows
-                      <span v-if="getBlockPlacementStatus(block)" class="text-green-600">• Placed ({{ block.position_y }}, {{ block.position_x }})</span>
+                      <span v-if="isPlaced(block)" class="text-green-600">• Placed ({{ block.position_y }}, {{ block.position_x }})</span>
                       <span v-else class="text-orange-600">• Not placed</span>
                     </div>
                   </div>

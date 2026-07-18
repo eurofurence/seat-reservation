@@ -1,34 +1,38 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import Panzoom from '@panzoom/panzoom'
 import SeatBlock from './SeatBlock.vue'
 import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from 'lucide-vue-next'
+import type { LayoutBlock, PropStageBlock, PropMarkerBlock } from '@/types/layout'
 
-const arrow = (rotation) => ({ 0: ArrowUp, 90: ArrowRight, 180: ArrowDown, 270: ArrowLeft }[rotation] || ArrowUp)
+const arrow = (rotation: number | undefined) =>
+  ({ 0: ArrowUp, 90: ArrowRight, 180: ArrowDown, 270: ArrowLeft }[rotation ?? 0] || ArrowUp)
 
-const props = defineProps({
-  event: Object,
-  room: Object,
-  blocks: Array,
-  stageBlocks: Array,
-  markerBlocks: {
-    type: Array,
-    default: () => []
-  },
-  selectedSeats: Array,
-  bookedSeats: Array,
-  adminMode: {
-    type: Boolean,
-    default: false
-  }
+interface Props {
+  event?: object
+  room?: object
+  blocks?: LayoutBlock[]
+  stageBlocks?: PropStageBlock[]
+  markerBlocks?: PropMarkerBlock[]
+  selectedSeats?: number[]
+  bookedSeats?: number[]
+  adminMode?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  markerBlocks: () => [],
+  adminMode: false,
 })
 
-const emit = defineEmits(['seats-changed', 'booked-seat-click'])
+const emit = defineEmits<{
+  'seats-changed': [seats: number[]]
+  'booked-seat-click': [seat: { id: number }]
+}>()
 
-const selectedSeatIds = ref([...props.selectedSeats])
+const selectedSeatIds = ref<number[]>([...(props.selectedSeats ?? [])])
 
-const panzoomContainer = ref(null)
-const panzoomInstance = ref(null)
+const panzoomContainer = ref<HTMLElement | null>(null)
+const panzoomInstance = ref<ReturnType<typeof Panzoom> | null>(null)
 
 const gridDimensions = computed(() => {
   const b = blockBounds.value
@@ -50,7 +54,7 @@ const layoutGrid = computed(() => {
   const { rows, cols, offsetX, offsetY } = gridDimensions.value
   const grid = Array(rows).fill(null).map(() => Array(cols).fill(null))
 
-  const inGrid = (col, row) => col >= 0 && col < cols && row >= 0 && row < rows
+  const inGrid = (col: number, row: number) => col >= 0 && col < cols && row >= 0 && row < rows
 
   props.stageBlocks?.forEach(stageBlock => {
     const col = stageBlock.position_x - offsetX
@@ -93,8 +97,8 @@ const layoutGrid = computed(() => {
 
   return grid
 
-  function placeEntrance(orientation, line, start, span, name, rotation) {
-    const cell = (offset) => orientation === 'row' ? [line, start + offset] : [start + offset, line]
+  function placeEntrance(orientation: string, line: number, start: number, span: number, name: string, rotation: number) {
+    const cell = (offset: number) => orientation === 'row' ? [line, start + offset] : [start + offset, line]
     const spanKey = orientation === 'row' ? 'colSpan' : 'rowSpan'
 
     for (let i = 0; i < span; i++) {
@@ -109,7 +113,7 @@ const layoutGrid = computed(() => {
 const blockBounds = computed(() => {
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
 
-  const consider = (x, y) => {
+  const consider = (x: number, y: number) => {
     if (x >= 0) { minX = Math.min(minX, x); maxX = Math.max(maxX, x) }
     if (y >= 0) { minY = Math.min(minY, y); maxY = Math.max(maxY, y) }
   }
@@ -131,10 +135,10 @@ const unplacedBlocks = computed(() =>
   props.blocks?.filter(block => block.position_x < 0 || block.position_y < 0) || []
 )
 
-const handleSeatClick = (seat) => {
+const handleSeatClick = (seat: { id: number }) => {
   const seatId = seat.id
 
-  if (props.bookedSeats.includes(seatId)) return
+  if (props.bookedSeats?.includes(seatId)) return
 
   const index = selectedSeatIds.value.indexOf(seatId)
   if (index > -1) {
@@ -146,37 +150,33 @@ const handleSeatClick = (seat) => {
   emit('seats-changed', [...selectedSeatIds.value])
 }
 
-const handleBookedSeatClick = (seat) => {
+const handleBookedSeatClick = (seat: { id: number }) => {
   emit('booked-seat-click', seat)
 }
 
 
-// Initialize Panzoom
 onMounted(() => {
-  // Use nextTick to ensure DOM is fully rendered
   nextTick(() => {
     if (panzoomContainer.value) {
-      const panzoomContent = panzoomContainer.value.querySelector('.panzoom-content')
+      const panzoomContent = panzoomContainer.value.querySelector<HTMLElement>('.panzoom-content')
       if (panzoomContent) {
         try {
           panzoomInstance.value = Panzoom(panzoomContent, {
             maxScale: 3,
             minScale: 0.2,
-            startScale: 0.2, // Default zoom-out scale
+            startScale: 0.2,
             contain: 'outside',
             cursor: 'grab',
             panOnlyWhenZoomed: false,
-            excludeClass: 'seat', // Don't pan when clicking seats
-            handleStartEvent: (event) => {
-              // Allow seat clicks to work normally
-              if (event.target.classList.contains('seat')) {
+            excludeClass: 'seat',
+            handleStartEvent: (event: Event) => {
+              if ((event.target as Element).classList.contains('seat')) {
                 return false
               }
               return true
             }
           })
 
-          // Add mouse wheel zoom to container
           panzoomContainer.value.addEventListener('wheel', (event) => {
             if (panzoomInstance.value) {
               panzoomInstance.value.zoomWithWheel(event)
@@ -190,16 +190,14 @@ onMounted(() => {
   })
 })
 
-// Cleanup Panzoom
 onUnmounted(() => {
   if (panzoomInstance.value) {
     panzoomInstance.value.destroy()
   }
 })
 
-// Watch for external seat selection changes
 watch(() => props.selectedSeats, (newSeats) => {
-  selectedSeatIds.value = [...newSeats]
+  selectedSeatIds.value = [...(newSeats ?? [])]
 }, { immediate: true })
 </script>
 
@@ -235,7 +233,7 @@ watch(() => props.selectedSeats, (newSeats) => {
                 <div v-else-if="cell.type === 'block'" class="block-cell">
                   <SeatBlock
                     :block="cell"
-                    :booked-seats="bookedSeats"
+                    :booked-seats="bookedSeats || []"
                     :selected-seats="selectedSeatIds"
                     :admin-mode="adminMode"
                     @seat-click="handleSeatClick"
@@ -270,7 +268,7 @@ watch(() => props.selectedSeats, (newSeats) => {
               v-for="block in unplacedBlocks"
               :key="`unplaced-${block.id}`"
               :block="block"
-              :booked-seats="bookedSeats"
+              :booked-seats="bookedSeats || []"
               :selected-seats="selectedSeatIds"
               :admin-mode="adminMode"
               @seat-click="handleSeatClick"

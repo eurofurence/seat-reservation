@@ -117,66 +117,27 @@ class RoomLayoutController extends Controller
         $blockIdMap = [];
 
         DB::transaction(function () use ($request, $room, &$blockIdMap) {
-            // Update stage blocks
-            $existingStageBlockIds = $room->stageBlocks()->pluck('id')->toArray();
-            $submittedStageBlocks = $request->stageBlocks ?? [];
-            $submittedStageBlockIds = collect($submittedStageBlocks)->pluck('id')->filter()->toArray();
-
-            // Delete stage blocks that are no longer in the submission
-            $stageBlocksToDelete = array_diff($existingStageBlockIds, $submittedStageBlockIds);
-            if (! empty($stageBlocksToDelete)) {
-                $room->stageBlocks()->whereIn('id', $stageBlocksToDelete)->delete();
-            }
-
-            // Update or create stage blocks
-            foreach ($submittedStageBlocks as $index => $stageBlockData) {
-                if ($stageBlockData['id']) {
-                    // Update existing stage block
-                    $room->stageBlocks()->where('id', $stageBlockData['id'])->update([
-                        'name' => $stageBlockData['name'],
-                        'position_x' => $stageBlockData['position_x'],
-                        'position_y' => $stageBlockData['position_y'],
-                        'order' => $index,
-                    ]);
-                } else {
-                    // Create new stage block
-                    $room->allBlocks()->create([
-                        'name' => $stageBlockData['name'],
-                        'type' => 'stage',
-                        'position_x' => $stageBlockData['position_x'],
-                        'position_y' => $stageBlockData['position_y'],
-                        'rotation' => 0,
-                        'order' => $index,
-                    ]);
-                }
-            }
-
-            // Update marker blocks
-            $existingMarkerBlockIds = $room->markerBlocks()->pluck('id')->toArray();
-            $submittedMarkerBlocks = $request->markerBlocks ?? [];
-            $submittedMarkerBlockIds = collect($submittedMarkerBlocks)->pluck('id')->filter()->toArray();
-
-            $markerBlocksToDelete = array_diff($existingMarkerBlockIds, $submittedMarkerBlockIds);
-            if (! empty($markerBlocksToDelete)) {
-                $room->markerBlocks()->whereIn('id', $markerBlocksToDelete)->delete();
-            }
-
-            foreach ($submittedMarkerBlocks as $index => $markerBlockData) {
-                $attributes = [
-                    'name' => $markerBlockData['name'],
-                    'type' => $markerBlockData['type'],
-                    'position_x' => $markerBlockData['position_x'],
-                    'position_y' => $markerBlockData['position_y'],
-                    'rotation' => $markerBlockData['rotation'] ?? 0,
+            $this->reconcileBlocks($room, $room->stageBlocks(), $request->stageBlocks ?? [], function ($data, $index) {
+                return [
+                    'name' => $data['name'],
+                    'type' => 'stage',
+                    'position_x' => $data['position_x'],
+                    'position_y' => $data['position_y'],
+                    'rotation' => 0,
                     'order' => $index,
                 ];
+            });
 
-                if ($markerBlockData['id']) {
-                    $room->markerBlocks()->where('id', $markerBlockData['id'])->update($attributes);
-                } else {
-                    $room->allBlocks()->create($attributes);
-                }
-            }
+            $this->reconcileBlocks($room, $room->markerBlocks(), $request->markerBlocks ?? [], function ($data, $index) {
+                return [
+                    'name' => $data['name'],
+                    'type' => $data['type'],
+                    'position_x' => $data['position_x'],
+                    'position_y' => $data['position_y'],
+                    'rotation' => $data['rotation'] ?? 0,
+                    'order' => $index,
+                ];
+            });
 
             $nextBlockOrder = ($room->blocks()->max('order') ?? -1) + 1;
 
@@ -278,6 +239,32 @@ class RoomLayoutController extends Controller
         $block->delete();
 
         return back()->with('success', 'Block deleted successfully!');
+    }
+
+    /**
+     * Delete blocks in $scope absent from $submitted, then update-or-create the rest.
+     *
+     * @param  \Illuminate\Database\Eloquent\Relations\HasMany  $scope
+     * @param  array<int,array<string,mixed>>  $submitted
+     */
+    private function reconcileBlocks(Room $room, $scope, array $submitted, callable $attributes): void
+    {
+        $submittedIds = collect($submitted)->pluck('id')->filter()->all();
+        $toDelete = array_diff($scope->clone()->pluck('id')->all(), $submittedIds);
+
+        if (! empty($toDelete)) {
+            $scope->clone()->whereIn('id', $toDelete)->delete();
+        }
+
+        foreach ($submitted as $index => $data) {
+            $values = $attributes($data, $index);
+
+            if ($data['id']) {
+                $scope->clone()->where('id', $data['id'])->update($values);
+            } else {
+                $room->allBlocks()->create($values);
+            }
+        }
     }
 
     private function numberToLetter(int $number): string
