@@ -182,18 +182,15 @@ class EventAdminController extends Controller
         // Handle booking highlight - find the page containing the specific booking
         $currentPage = $request->get('page', 1);
         if ($bookingId = $request->get('booking_id')) {
-            // Since we're ordering by latest(), count how many bookings come before this one
             $bookingPosition = $bookingsQuery->clone()
-                ->whereRaw('(bookings.created_at > (SELECT created_at FROM bookings WHERE id = ?) OR (bookings.created_at = (SELECT created_at FROM bookings WHERE id = ?) AND bookings.id > ?))', [$bookingId, $bookingId, $bookingId])
+                ->where('id', '>', $bookingId)
                 ->count();
 
-            // Position is 1-based, so add 1. Calculate which page the booking should be on
-            $targetPage = floor($bookingPosition / 10) + 1;
-            $currentPage = $targetPage;
+            $currentPage = intdiv($bookingPosition, 10) + 1;
         }
 
         // Load bookings with pagination
-        $bookings = $bookingsQuery->latest()->paginate(10, ['*'], 'page', $currentPage)->withQueryString();
+        $bookings = $bookingsQuery->orderByDesc('id')->paginate(10, ['*'], 'page', $currentPage)->withQueryString();
 
         return Inertia::render('Admin/EventShow', [
             'event' => $event,

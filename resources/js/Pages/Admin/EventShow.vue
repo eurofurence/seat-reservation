@@ -1,6 +1,6 @@
 <script setup>
 import {Head, router, useForm} from '@inertiajs/vue3'
-import {ref, computed, nextTick, onMounted, watch, watchEffect} from 'vue'
+import {ref, computed, nextTick, watch} from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import SeatLayout from '@/Components/SeatLayout.vue'
 import { Card } from '@/Components/ui/card'
@@ -136,8 +136,8 @@ const handleBookedSeatClick = (seat) => {
 
         router.get(route('admin.events.show', props.event.id), params, {
             preserveState: true,
-            preserveScroll: false, // Allow scroll to new page
-            only: ['bookings', 'search', 'booking_id']
+            preserveScroll: true,
+            only: ['bookings', 'booking_id']
         })
     }
 }
@@ -428,23 +428,6 @@ const getSeatInfo = (booking) => {
     return `${booking.seat.row.block.name} - ${booking.seat.row.name} - Seat ${booking.seat.label}`
 }
 
-// Scroll to highlighted booking when page loads
-const scrollToHighlightedBooking = () => {
-    if (props.booking_id) {
-        nextTick(() => {
-            const bookingElement = document.getElementById(`booking-${props.booking_id}`)
-            if (bookingElement) {
-                setTimeout(() => {
-                    bookingElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                }, 100) // Small delay to ensure DOM is fully rendered
-            }
-        })
-    }
-}
-
-// Watch for booking_id changes to scroll to highlighted booking
-watch(() => props.booking_id, scrollToHighlightedBooking)
-
 // Watch for selected_seats prop changes (when navigating back from validation)
 watch(() => props.selected_seats, (newSelectedSeats) => {
     if (newSelectedSeats) {
@@ -455,8 +438,14 @@ watch(() => props.selected_seats, (newSelectedSeats) => {
     }
 }, { immediate: true })
 
-// Scroll to highlighted booking on component mount
-onMounted(scrollToHighlightedBooking)
+const navigateToPage = (linkUrl) => {
+    const pageParam = new URL(linkUrl).searchParams.get('page')
+    const params = {}
+    if (props.search) params.search = props.search
+    if (selectedSeats.value.length > 0) params.selected_seats = selectedSeats.value.join(',')
+    if (pageParam) params.page = pageParam
+    router.get(route('admin.events.show', props.event.id), params, { preserveState: true, preserveScroll: true, only: ['bookings'] })
+}
 </script>
 
 <template>
@@ -790,8 +779,7 @@ onMounted(scrollToHighlightedBooking)
                                             v-if="link.url"
                                             :variant="link.active ? 'secondary' : 'outline'"
                                             size="sm"
-                                            @click="router.visit(link.url, { preserveState: true, preserveScroll: true, only: ['bookings'] })"
-                                            :disabled="!link.url"
+                                            @click="navigateToPage(link.url)"
                                             v-html="link.label"
                                             :class="[
                                                 'text-xs px-2',
