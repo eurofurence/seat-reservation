@@ -22,13 +22,8 @@ class AdminController extends Controller
         ];
 
         // Get recent bookings with event and seat information
-        $recentBookings = Booking::with([
-            'event:id,name,starts_at',
-            'user:id,name',
-            'seat:id,row_id,label',
-            'seat.row:id,block_id,name',
-            'seat.row.block:id,name',
-        ])
+        $recentBookings = Booking::withSeatDetails()
+            ->with(['event:id,name,starts_at', 'user:id,name'])
             ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'booking_code', 'type', 'picked_up_at', 'created_at')
             ->latest()
             ->take(10)

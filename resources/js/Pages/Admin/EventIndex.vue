@@ -9,7 +9,7 @@ import { Plus, Edit, Trash2, Calendar, Clock, MapPin, Users, Download, Upload } 
 import dayjs, { fmt } from '@/lib/datetime'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog'
 import EventForm from '@/Components/EventForm.vue'
-import GlobalImportDialog from '@/Components/Admin/GlobalImportDialog.vue'
+import ImportDialog from '@/Components/Admin/ImportDialog.vue'
 import { useCsvDownload } from '@/composables/useCsvDownload'
 
 defineOptions({ layout: AdminLayout })
@@ -233,6 +233,6 @@ const getEventStatus = (event) => {
     </Card>
 
     <!-- Global (All Events) Import Bookings Modal -->
-    <GlobalImportDialog v-model:open="globalImportOpen" />
+    <ImportDialog v-model:open="globalImportOpen" />
   </div>
 </template>

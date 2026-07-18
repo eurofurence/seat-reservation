@@ -7,16 +7,20 @@ interface Props {
   bookedSeats: number[]
   selectedSeats: number[]
   reservedSeats?: number[]
+  previewSeats?: number[]
   adminMode?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   reservedSeats: () => [],
+  previewSeats: () => [],
 })
 
 const emit = defineEmits<{
   'seat-click': [seat: Seat]
   'booked-seat-click': [seat: Seat]
+  'seat-hover': [seat: Seat]
+  'seat-leave': []
 }>()
 
 const getSeatStatus = (seat: Seat) => {
@@ -41,6 +45,17 @@ const getSeatStatus = (seat: Seat) => {
     return { classes: 'bg-blue-500 border-blue-600 text-white scale-110', disabled: false }
   }
 
+  // Previewed on hover: one of the seats that would be auto-filled if this hovered seat
+  // were clicked right now (see useImportProposal's fillForward) - lets the admin see the
+  // whole group before committing to a single click. Lighter blue than an actual selection
+  // (blue-500) so it reads as "about to be selected", not already selected.
+  if (props.previewSeats.includes(seat.id)) {
+    return {
+      classes: 'bg-blue-300 border-blue-400 text-white scale-110 ring-2 ring-blue-200',
+      disabled: false
+    }
+  }
+
   return { classes: 'bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600 hover:scale-110', disabled: false }
 }
 
@@ -54,6 +69,16 @@ const handleSeatClick = (seat: Seat) => {
   }
 
   emit('seat-click', seat)
+}
+
+// Preview which seats would be auto-filled if the hovered seat were clicked (admin import
+// review only - the actual set is computed by the parent via useImportProposal's previewSeatIds).
+const handleSeatHover = (seat: Seat) => {
+  emit('seat-hover', seat)
+}
+
+const handleSeatLeave = () => {
+  emit('seat-leave')
 }
 
 const getRowOrder = (rows: Row[], rotation: number) => {
@@ -153,7 +178,13 @@ const getBlockNameClasses = computed(() => {
               :disabled="getSeatStatus(seat).disabled"
               :title="`${block.name} - ${row.name} - ${seat.label || seat.name}`"
               @click="handleSeatClick(seat)"
-            >{{ seat.label || seat.name }}</button>
+              @mouseenter="handleSeatHover(seat)"
+              @mouseleave="handleSeatLeave"
+              @focus="handleSeatHover(seat)"
+              @blur="handleSeatLeave"
+            >
+              {{ seat.label || seat.name }}
+            </button>
           </div>
         </template>
 
@@ -166,7 +197,13 @@ const getBlockNameClasses = computed(() => {
               :disabled="getSeatStatus(seat).disabled"
               :title="`${block.name} - ${row.name} - ${seat.label || seat.name}`"
               @click="handleSeatClick(seat)"
-            >{{ seat.label || seat.name }}</button>
+              @mouseenter="handleSeatHover(seat)"
+              @mouseleave="handleSeatLeave"
+              @focus="handleSeatHover(seat)"
+              @blur="handleSeatLeave"
+            >
+              {{ seat.label || seat.name }}
+            </button>
           </div>
           <div :class="getLayoutClasses.separator">
             <span :class="getLayoutClasses.separatorLine"></span>
@@ -189,7 +226,13 @@ const getBlockNameClasses = computed(() => {
               :disabled="getSeatStatus(seat).disabled"
               :title="`${block.name} - ${row.name} - ${seat.label || seat.name}`"
               @click="handleSeatClick(seat)"
-            >{{ seat.label || seat.name }}</button>
+              @mouseenter="handleSeatHover(seat)"
+              @mouseleave="handleSeatLeave"
+              @focus="handleSeatHover(seat)"
+              @blur="handleSeatLeave"
+            >
+              {{ seat.label || seat.name }}
+            </button>
           </div>
         </template>
       </div>

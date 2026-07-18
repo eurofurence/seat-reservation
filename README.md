@@ -26,7 +26,10 @@ Each **Event** belongs to a **Room** and accepts **Bookings**, where a booking l
 - Dashboard with event/booking overview stats
 - Full CRUD for rooms and events
 - Interactive floor-plan editor: drag-and-drop blocks, rotate (0/90/180/270), edit rows/seat counts
-- Booking management: manual/bulk booking, mark as picked up, edit or delete a booking
+- Booking management: manual booking, mark as picked up, edit or delete a booking
+- Bulk booking import via CSV: book many seats/guests at once, with exact seat picks or
+  automatic contiguous-seat assignment, reviewed and adjustable on a seat map before anything
+  is booked — see [BOOKING_IMPORT_GUIDE.md](BOOKING_IMPORT_GUIDE.md)
 - Booking-code lookup for quick guest check-in
 - CSV export of bookings
 - Seating-card PDF generation, with an option to include or exclude unpicked-up bookings
@@ -37,7 +40,7 @@ Each **Event** belongs to a **Room** and accepts **Bookings**, where a booking l
 The following rules are enforced in the current application behavior.
 
 - Authentication required: booking routes require login; guests are redirected to the login route.
-- Per-account limit: non-admin users can book at most 2 seats per event (across all booking attempts, not per single request).
+- Per-account limit: users can book at most 2 seats per event through the user booking flow (across all booking attempts, not per single request); this applies to admins too — only manual admin bookings (via the admin panel) bypass it.
 - Event capacity limit: booking is blocked when the event has no tickets left (`max_tickets` reached).
 - Seat conflict protection: already-booked seats cannot be booked again, including concurrent requests (seat rows are locked during booking transaction).
 - Booking window start: non-admin users can browse the seat layout before `booking_starts_at`, but cannot proceed past seat selection or submit bookings until it has passed (if set).
@@ -46,6 +49,7 @@ The following rules are enforced in the current application behavior.
 - Booking codes (user booking flow): every successful booking flow generates a 3-character alphanumeric code (`A-Z`, `0-9`), reused across all seats in that same submission.
 - Booking code uniqueness: generated codes are checked against existing bookings and regenerated on collision.
 - Manual admin bookings: bookings created from admin manual booking use type `admin`, have no `user_id`, and do not get a booking code.
+- Bulk booking import: same `admin`/no-code/no-`user_id` shape as manual admin bookings, does not enforce the event's `max_tickets` cap (only real seat availability), and never books fewer seats than a guest's CSV-requested quantity — see [BOOKING_IMPORT_GUIDE.md](BOOKING_IMPORT_GUIDE.md).
 - Booking ownership/permissions: regular users can view, update, or cancel only their own bookings; admins can manage any booking.
 - Update/cancel restrictions: regular users cannot update or cancel once reservation has ended or ticket pickup has been marked.
 

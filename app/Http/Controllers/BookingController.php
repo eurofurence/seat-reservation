@@ -282,6 +282,7 @@ class BookingController extends Controller
             'event' => $event,
             'booking' => $booking,
             'blocks' => $layout->blocks($event->room),
+            'stageBlocks' => $layout->stageBlocks($event->room),
             'markerBlocks' => $markerBlocks,
             'bookedSeats' => $bookedSeats,
             'userBookedSeats' => $userBookedSeats,

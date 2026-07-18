@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover
 import {Download, Upload, Calendar, Clock, MapPin, Users, Plus, UserPlus, X, Pencil, Trash2, Info} from 'lucide-vue-next'
 import dayjs, { fmt } from '@/lib/datetime'
 import SeatStatistics from '@/Components/Admin/SeatStatistics.vue'
-import ImportBookingsDialog from '@/Components/Admin/ImportBookingsDialog.vue'
+import ImportDialog from '@/Components/Admin/ImportDialog.vue'
 import EditBookingDialog from '@/Components/Admin/EditBookingDialog.vue'
 import DeleteBookingDialog from '@/Components/Admin/DeleteBookingDialog.vue'
 import { useCsvDownload } from '@/composables/useCsvDownload'
@@ -350,7 +350,7 @@ const printSeatCards = () => {
     window.open(url.toString(), '_blank')
 }
 
-// Bulk booking import (dialog UI lives in ImportBookingsDialog)
+// Bulk booking import (dialog UI lives in ImportDialog)
 const importOpen = ref(false)
 
 const getSeatInfo = (booking) => {
@@ -428,13 +428,13 @@ const navigateToPage = (linkUrl) => {
                             <Download class="mr-2 h-4 w-4"/>
                             Export Bookings
                         </Button>
-                        <Button @click="printSeatCards" variant="outline">
-                            <Download class="mr-2 h-4 w-4"/>
-                            Print Seat Cards
-                        </Button>
                         <Button @click="importOpen = true" variant="outline">
                             <Upload class="mr-2 h-4 w-4"/>
                             Import Bookings
+                        </Button>
+                        <Button @click="printSeatCards" variant="outline">
+                            <Download class="mr-2 h-4 w-4"/>
+                            Print Seat Cards
                         </Button>
                     </div>
                     <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
@@ -700,7 +700,7 @@ const navigateToPage = (linkUrl) => {
             :seat-info="deletingBooking ? getSeatInfo(deletingBooking) : ''"
         />
 
-        <ImportBookingsDialog
+        <ImportDialog
             v-model:open="importOpen"
             :event-id="event.id"
         />

@@ -15,9 +15,9 @@ class SeatingCardsController extends Controller
 {
     public function __invoke($id)
     {
-        try {
-            $event = Event::with('room')->findOrFail($id);
+        $event = Event::with('room')->findOrFail($id);
 
+        try {
             $bookingsQuery = Booking::where('event_id', $id)
                 ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'picked_up_at')
                 ->with([
@@ -159,10 +159,9 @@ class SeatingCardsController extends Controller
                 ->header('Content-Disposition', 'inline; filename="'.$filename.'"');
 
         } catch (\Exception $e) {
-            \Log::error('Seating cards generation failed: '.$e->getMessage());
+            \Log::error('Seating cards generation failed: '.$e->getMessage(), ['event_id' => $event->id, 'exception' => $e]);
 
-            return back()->with('error', 'Failed to generate seating cards: '.$e->getMessage());
+            return back()->with('error', 'Failed to generate seating cards. Please try again or contact support.');
         }
     }
 }
-

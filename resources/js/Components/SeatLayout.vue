@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import Panzoom from '@panzoom/panzoom'
 import SeatBlock from './SeatBlock.vue'
 import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from 'lucide-vue-next'
-import type { LayoutBlock, PropStageBlock, PropMarkerBlock, Orientation } from '@/types/layout'
+import type { LayoutBlock, PropStageBlock, PropMarkerBlock, Orientation, Seat } from '@/types/layout'
 
 interface GridCellNamed { type: 'stage' | 'comment'; name: string; colSpan?: number; rowSpan?: number }
 interface GridCellBlock extends LayoutBlock { type: 'block'; colSpan?: number; rowSpan?: number }
@@ -23,18 +23,22 @@ interface Props {
   selectedSeats?: number[]
   bookedSeats?: number[]
   reservedSeats?: number[]
+  previewSeats?: number[]
   adminMode?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   markerBlocks: () => [],
   reservedSeats: () => [],
+  previewSeats: () => [],
   adminMode: false,
 })
 
 const emit = defineEmits<{
   'seats-changed': [seats: number[]]
-  'booked-seat-click': [seat: { id: number }]
+  'booked-seat-click': [seat: Seat]
+  'seat-hover': [seat: Seat]
+  'seat-leave': []
 }>()
 
 const selectedSeatIds = ref<number[]>([...(props.selectedSeats ?? [])])
@@ -185,7 +189,7 @@ const unplacedBlocks = computed(() =>
   props.blocks?.filter(block => block.position_x < 0 || block.position_y < 0) || []
 )
 
-const handleSeatClick = (seat: { id: number }) => {
+const handleSeatClick = (seat: Seat) => {
   const seatId = seat.id
 
   if (props.bookedSeats?.includes(seatId)) return
@@ -200,8 +204,17 @@ const handleSeatClick = (seat: { id: number }) => {
   emit('seats-changed', [...selectedSeatIds.value])
 }
 
-const handleBookedSeatClick = (seat: { id: number }) => {
+const handleBookedSeatClick = (seat: Seat) => {
   emit('booked-seat-click', seat)
+}
+
+// Forward seat hover/leave (admin import preview only - see useImportProposal)
+const handleSeatHover = (seat: Seat) => {
+  emit('seat-hover', seat)
+}
+
+const handleSeatLeave = () => {
+  emit('seat-leave')
 }
 
 
@@ -286,9 +299,12 @@ watch(() => props.selectedSeats, (newSeats) => {
                     :booked-seats="bookedSeats || []"
                     :selected-seats="selectedSeatIds"
                     :reserved-seats="reservedSeats"
+                    :preview-seats="previewSeats"
                     :admin-mode="adminMode"
                     @seat-click="handleSeatClick"
                     @booked-seat-click="handleBookedSeatClick"
+                    @seat-hover="handleSeatHover"
+                    @seat-leave="handleSeatLeave"
                   />
                 </div>
 
@@ -322,9 +338,12 @@ watch(() => props.selectedSeats, (newSeats) => {
               :booked-seats="bookedSeats || []"
               :selected-seats="selectedSeatIds"
               :reserved-seats="reservedSeats"
+              :preview-seats="previewSeats"
               :admin-mode="adminMode"
               @seat-click="handleSeatClick"
               @booked-seat-click="handleBookedSeatClick"
+              @seat-hover="handleSeatHover"
+              @seat-leave="handleSeatLeave"
               class="border-orange-400 bg-orange-50"
             />
           </div>
