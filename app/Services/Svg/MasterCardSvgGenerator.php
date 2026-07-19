@@ -63,14 +63,17 @@ class MasterCardSvgGenerator
 
         $entranceSvg = $this->entranceMarkers($markerBlocks, $occupied, $colX, $rowY, $colW, $rowH, $mpdf);
 
+        $spanPx = fn (int $start, int $span, array $starts, array $sizes): float => $starts[$start + $span - 1] + $sizes[$start + $span - 1] - $starts[$start];
+
         $svg = '';
         foreach ($cells as $c) {
-            $cw = in_array($c['type'], ['stage', 'comment'], true) ? $colW[$c['x']] : $c['w'];
-            $bx = $colX[$c['x']] + ($colW[$c['x']] - $cw) / 2;
+            $bx = $colX[$c['x']];
             $by = $rowY[$c['y']];
+            $cw = $spanPx($c['x'], $c['colSpan'], $colX, $colW);
+            $ch = $spanPx($c['y'], $c['rowSpan'], $rowY, $rowH);
             $svg .= match ($c['type']) {
-                'stage' => $this->stageCell($c, $bx, $by, $cw, $rowH[$c['y']], $mpdf),
-                'comment' => $this->commentCell($c, $bx, $by, $cw, $rowH[$c['y']], $mpdf),
+                'stage' => $this->stageCell($c, $bx, $by, $cw, $ch, $mpdf),
+                'comment' => $this->commentCell($c, $bx, $by, $cw, $ch, $mpdf),
                 default => $this->seatingCell($c, $bx, $by, $bookedSeatIds, $mpdf),
             };
         }
@@ -92,12 +95,12 @@ class MasterCardSvgGenerator
         $cells = [];
         foreach ($stageBlocks as $sb) {
             if ($placed($sb)) {
-                $cells[] = ['x' => $sb->position_x, 'y' => $sb->position_y, 'type' => 'stage', 'block' => $sb, 'w' => self::STAGE_SIZE, 'h' => self::STAGE_SIZE];
+                $cells[] = ['x' => $sb->position_x, 'y' => $sb->position_y, 'type' => 'stage', 'block' => $sb, 'w' => self::STAGE_SIZE, 'h' => self::STAGE_SIZE, 'colSpan' => 1, 'rowSpan' => 1];
             }
         }
         foreach ($markerBlocks as $mb) {
             if ($mb->type === 'comment' && $placed($mb)) {
-                $cells[] = ['x' => $mb->position_x, 'y' => $mb->position_y, 'type' => 'comment', 'block' => $mb, 'w' => self::STAGE_SIZE, 'h' => self::STAGE_SIZE];
+                $cells[] = ['x' => $mb->position_x, 'y' => $mb->position_y, 'type' => 'comment', 'block' => $mb, 'w' => self::STAGE_SIZE, 'h' => self::STAGE_SIZE, 'colSpan' => 1, 'rowSpan' => 1];
             }
         }
         foreach ($blocks as $b) {
@@ -118,10 +121,64 @@ class MasterCardSvgGenerator
                 'gridCols' => $gridCols, 'gridRows' => $gridRows,
                 'w' => self::IN_PAD * 2 + $gridCols * self::PITCH,
                 'h' => self::HEADER + self::IN_PAD + $gridRows * self::PITCH,
+                'colSpan' => 1, 'rowSpan' => 1,
             ];
         }
 
+        $this->mergeAdjacentCells($cells, 'stage');
+        $this->mergeAdjacentCells($cells, 'comment');
+
         return $cells;
+    }
+
+    /**
+     * @param  array<int,array<string,mixed>>  $cells
+     */
+    private function mergeAdjacentCells(array &$cells, string $type): void
+    {
+        $grid = [];
+        foreach ($cells as $i => $c) {
+            if ($c['type'] === $type) {
+                $grid[$c['y']][$c['x']] = $i;
+            }
+        }
+        ksort($grid);
+
+        $covered = [];
+        $match = fn (int $y, int $x, string $name) => isset($grid[$y][$x]) && ! isset($covered[$grid[$y][$x]]) && $cells[$grid[$y][$x]]['block']->name === $name;
+
+        foreach ($grid as $y => $row) {
+            ksort($row);
+            foreach ($row as $x => $i) {
+                if (isset($covered[$i])) {
+                    continue;
+                }
+
+                $name = $cells[$i]['block']->name;
+                $colSpan = 1;
+                while ($match($y, $x + $colSpan, $name)) {
+                    $colSpan++;
+                }
+
+                $rowSpan = 1;
+                while (! in_array(false, array_map(fn ($dc) => $match($y + $rowSpan, $x + $dc, $name), range(0, $colSpan - 1)))) {
+                    $rowSpan++;
+                }
+
+                $cells[$i]['colSpan'] = $colSpan;
+                $cells[$i]['rowSpan'] = $rowSpan;
+
+                for ($dr = 0; $dr < $rowSpan; $dr++) {
+                    for ($dc = 0; $dc < $colSpan; $dc++) {
+                        if ($dr || $dc) {
+                            $covered[$grid[$y + $dr][$x + $dc]] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        $cells = array_values(array_filter($cells, fn ($i) => ! isset($covered[$i]), ARRAY_FILTER_USE_KEY));
     }
 
     /**
@@ -132,8 +189,12 @@ class MasterCardSvgGenerator
     {
         $colW = $rowH = [];
         foreach ($cells as $c) {
-            $colW[$c['x']] = max($colW[$c['x']] ?? 0, $c['w']);
-            $rowH[$c['y']] = max($rowH[$c['y']] ?? 0, $c['h']);
+            for ($dx = 0; $dx < $c['colSpan']; $dx++) {
+                $colW[$c['x'] + $dx] = max($colW[$c['x'] + $dx] ?? 0, $c['w'] / $c['colSpan']);
+            }
+            for ($dy = 0; $dy < $c['rowSpan']; $dy++) {
+                $rowH[$c['y'] + $dy] = max($rowH[$c['y'] + $dy] ?? 0, $c['h'] / $c['rowSpan']);
+            }
         }
 
         return [$colW, $rowH];
@@ -147,13 +208,16 @@ class MasterCardSvgGenerator
      */
     private function occupiedRange(array $cells): array
     {
-        $xs = array_column($cells, 'x');
-        $ys = array_column($cells, 'y');
+        $minX = $minY = PHP_INT_MAX;
+        $maxX = $maxY = PHP_INT_MIN;
+        foreach ($cells as $c) {
+            $minX = min($minX, $c['x']);
+            $minY = min($minY, $c['y']);
+            $maxX = max($maxX, $c['x'] + $c['colSpan'] - 1);
+            $maxY = max($maxY, $c['y'] + $c['rowSpan'] - 1);
+        }
 
-        return [
-            'minX' => min($xs), 'maxX' => max($xs),
-            'minY' => min($ys), 'maxY' => max($ys),
-        ];
+        return ['minX' => $minX, 'maxX' => $maxX, 'minY' => $minY, 'maxY' => $maxY];
     }
 
     /**

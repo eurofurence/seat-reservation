@@ -3,7 +3,13 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import Panzoom from '@panzoom/panzoom'
 import SeatBlock from './SeatBlock.vue'
 import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from 'lucide-vue-next'
-import type { LayoutBlock, PropStageBlock, PropMarkerBlock } from '@/types/layout'
+import type { LayoutBlock, PropStageBlock, PropMarkerBlock, Orientation } from '@/types/layout'
+
+interface GridCellNamed { type: 'stage' | 'comment'; name: string; colSpan?: number; rowSpan?: number }
+interface GridCellBlock extends LayoutBlock { type: 'block'; colSpan?: number; rowSpan?: number }
+interface GridCellEntrance { type: 'entrance'; name: string; rotation: number; orientation: Orientation; colSpan?: number; rowSpan?: number }
+interface GridCellCovered { type: 'covered' }
+type GridCell = GridCellNamed | GridCellBlock | GridCellEntrance | GridCellCovered
 
 const arrow = (rotation: number | undefined) =>
   ({ 0: ArrowUp, 90: ArrowRight, 180: ArrowDown, 270: ArrowLeft }[rotation ?? 0] || ArrowUp)
@@ -52,7 +58,7 @@ const gridDimensions = computed(() => {
 
 const layoutGrid = computed(() => {
   const { rows, cols, offsetX, offsetY } = gridDimensions.value
-  const grid = Array(rows).fill(null).map(() => Array(cols).fill(null))
+  const grid: (GridCell | null)[][] = Array(rows).fill(null).map(() => Array(cols).fill(null))
 
   const inGrid = (col: number, row: number) => col >= 0 && col < cols && row >= 0 && row < rows
 
@@ -95,9 +101,49 @@ const layoutGrid = computed(() => {
     }
   })
 
+  mergeAdjacentCells('stage')
+  mergeAdjacentCells('comment')
+
   return grid
 
-  function placeEntrance(orientation: string, line: number, start: number, span: number, name: string, rotation: number) {
+  function isCandidate(cell: GridCell | null | undefined, ref: GridCellNamed): cell is GridCellNamed {
+    return cell?.type === ref.type && (cell as GridCellNamed)?.name === ref.name
+  }
+
+  function rowMatchesSpan(r: number, c: number, colSpan: number, ref: GridCellNamed) {
+    for (let dc = 0; dc < colSpan; dc++) {
+      if (!isCandidate(grid[r]?.[c + dc], ref)) return false
+    }
+    return true
+  }
+
+  function mergeAdjacentCells(type: GridCellNamed['type']) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = grid[r][c]
+        if (cell?.type !== type) continue
+
+        const ref: GridCellNamed = { type, name: (cell as GridCellNamed).name }
+
+        let colSpan = 1
+        while (c + colSpan < cols && isCandidate(grid[r][c + colSpan], ref)) colSpan++
+
+        let rowSpan = 1
+        while (r + rowSpan < rows && rowMatchesSpan(r + rowSpan, c, colSpan, ref)) rowSpan++
+
+        for (let dr = 0; dr < rowSpan; dr++) {
+          for (let dc = 0; dc < colSpan; dc++) {
+            if (dr === 0 && dc === 0) continue
+            grid[r + dr][c + dc] = { type: 'covered' }
+          }
+        }
+
+        grid[r][c] = { ...ref, colSpan, rowSpan }
+      }
+    }
+  }
+
+  function placeEntrance(orientation: Orientation, line: number, start: number, span: number, name: string, rotation: number) {
     const cell = (offset: number) => orientation === 'row' ? [line, start + offset] : [start + offset, line]
     const spanKey = orientation === 'row' ? 'colSpan' : 'rowSpan'
 
@@ -228,7 +274,7 @@ watch(() => props.selectedSeats, (newSeats) => {
               >
                 <div v-if="cell === null" class="empty-cell"></div>
 
-                <div v-else-if="cell.type === 'stage'" class="stage-text">
+                <div v-else-if="cell.type === 'stage'" class="stage-text" :style="{ minWidth: `${(cell.colSpan ?? 1) * 200}px`, minHeight: `${(cell.rowSpan ?? 1) * 60}px` }">
                   {{ cell.name || 'STAGE' }}
                 </div>
 
@@ -253,7 +299,7 @@ watch(() => props.selectedSeats, (newSeats) => {
                   <component :is="arrow(cell.rotation)" class="entrance-arrow" />
                 </div>
 
-                <div v-else-if="cell.type === 'comment'" class="comment-text">
+                <div v-else-if="cell.type === 'comment'" class="comment-text" :style="{ minWidth: `${(cell.colSpan ?? 1) * 60}px`, minHeight: `${(cell.rowSpan ?? 1) * 60}px` }">
                   {{ cell.name }}
                 </div>
               </td>
