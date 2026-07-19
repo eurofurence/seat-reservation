@@ -249,14 +249,16 @@ class MasterCardSvgGenerator
         $cx = $x + $w / 2;
         $cy = $y + $h / 2;
 
+        $availableLength = $orientation === 'row' ? $w : $h;
         $labelW = $this->svg->textWidth($mpdf, $label, $sz);
-        $labelSvg = $this->svg->centeredLabelX($mpdf, $label, $sz, '#000000', $cx, $cy + $sz * SvgUtilities::BASELINE_FACTOR, $orientation === 'row' ? $w : $h);
+        $effectiveLabelW = min($labelW, $availableLength);
+        $labelSvg = $this->svg->centeredLabelX($mpdf, $label, $sz, '#000000', $cx, $cy + $sz * SvgUtilities::BASELINE_FACTOR, $availableLength);
         $textAngle = $rotation === 270 ? -90 : 90;
         $svg .= $orientation === 'row'
             ? $labelSvg
             : sprintf('<g transform="rotate(%d %.1f %.1f)">%s</g>', $textAngle, $cx, $cy, $labelSvg);
 
-        $arrowGap = $labelW / 2 + self::ARROW_LABEL_GAP;
+        $arrowGap = $effectiveLabelW / 2 + self::ARROW_LABEL_GAP;
         [$before, $after] = $orientation === 'row'
             ? [[$cx - $arrowGap, $cy], [$cx + $arrowGap, $cy]]
             : [[$cx, $cy - $arrowGap], [$cx, $cy + $arrowGap]];

@@ -37,6 +37,7 @@ const props = withDefaults(defineProps<{
 })
 
 let tempBlockCounter = 0
+const nextTempKey = (): string => `temp-${++tempBlockCounter}`
 
 const GRID_ROWS = 8
 const GRID_COLS = 12
@@ -58,15 +59,21 @@ const stageFromProp = (block: PropStageBlock): FormStageBlock => ({
   position_y: pos(block.position_y)
 })
 
-const markerFromProp = (block: PropMarkerBlock): FormMarkerBlock => ({
-  id: block.id,
-  type: block.type,
-  name: block.name,
-  position_x: pos(block.position_x),
-  position_y: pos(block.position_y),
-  orientation: block.type === 'entrance' && block.position_y === -1 ? 'column' : 'row',
-  rotation: block.rotation || 0
-})
+const markerFromProp = (block: PropMarkerBlock): FormMarkerBlock => {
+  const x = pos(block.position_x)
+  const y = pos(block.position_y)
+  let orientation: Orientation = 'row'
+  if (block.type === 'entrance') {
+    if (x === -1 && y === -1) {
+      // cant figure at axis, so use the rotation to get some semblance of it
+      const r = block.rotation ?? 0
+      orientation = (r === 90 || r === 270) ? 'column' : 'row'
+    } else {
+      orientation = y === -1 ? 'column' : 'row'
+    }
+  }
+  return { id: block.id, type: block.type, name: block.name, position_x: x, position_y: y, orientation, rotation: block.rotation || 0 }
+}
 
 const rowsFromBlock = (block: PropBlock | null): FormRow[] => {
   const rowCount = block?.rows?.length || DEFAULT_ROW_COUNT
@@ -199,7 +206,7 @@ const handleCellClick = (rowIndex: number, colIndex: number) => {
   else setPosition(form.blocks, block.id, colIndex, rowIndex)
 }
 
-const setPosition = (list: Array<{ id: BlockId | null, position_x: number, position_y: number }>, id: BlockId, x: number, y: number) => {
+const setPosition = (list: Array<{ id: BlockId, position_x: number, position_y: number }>, id: BlockId, x: number, y: number) => {
   const target = list.find(b => b.id === id)
   if (target) Object.assign(target, { position_x: x, position_y: y })
 }
@@ -207,9 +214,18 @@ const setPosition = (list: Array<{ id: BlockId | null, position_x: number, posit
 const placeMarker = (markerIndex: number, rowIndex: number, colIndex: number) => {
   const marker = form.markerBlocks[markerIndex]
   if (!marker) return
-  if (marker.type === 'comment') Object.assign(marker, { position_x: colIndex, position_y: rowIndex })
-  else if (marker.orientation === 'column') Object.assign(marker, { position_x: colIndex, position_y: -1 })
-  else Object.assign(marker, { position_x: -1, position_y: rowIndex })
+  if (marker.type === 'comment') {
+    Object.assign(marker, { position_x: colIndex, position_y: rowIndex })
+    return
+  }
+  const others = form.markerBlocks.filter((_, i) => i !== markerIndex)
+  if (marker.orientation === 'column') {
+    if (others.some(m => m.orientation === 'column' && m.position_x === colIndex)) return
+    Object.assign(marker, { position_x: colIndex, position_y: -1 })
+  } else {
+    if (others.some(m => m.orientation === 'row' && m.position_y === rowIndex)) return
+    Object.assign(marker, { position_x: -1, position_y: rowIndex })
+  }
 }
 
 const rotateBlock = (blockId: BlockId) => {
@@ -219,7 +235,7 @@ const rotateBlock = (blockId: BlockId) => {
 
 const addStageBlock = () => {
   form.stageBlocks.push({
-    id: null,
+    id: nextTempKey(),
     name: `Stage ${form.stageBlocks.length + 1}`,
     ...UNPLACED
   })
@@ -237,17 +253,19 @@ const ENTRANCE_DIRECTIONS: Record<Orientation, number[]> = {
 }
 
 const addMarker = (type: MarkerType) => {
-  const base = { id: null, type, ...UNPLACED }
+  const id = nextTempKey()
   if (type === 'comment') {
-    form.markerBlocks.push({ ...base, name: 'Note' })
+    form.markerBlocks.push({ id, type, name: 'Note', ...UNPLACED })
     return
   }
   const count = form.markerBlocks.filter(m => m.type === 'entrance').length
   form.markerBlocks.push({
-    ...base,
+    id,
+    type,
     name: count === 0 ? 'Entrance' : `Entrance ${count + 1}`,
     orientation: 'row',
-    rotation: ENTRANCE_DIRECTIONS.row[0]
+    rotation: ENTRANCE_DIRECTIONS.row[0],
+    ...UNPLACED
   })
 }
 
@@ -420,7 +438,7 @@ const createNewBlock = () => {
   const { x, y } = nextFreeCell.value
 
   form.blocks.push({
-    id: `temp-${++tempBlockCounter}`,
+    id: nextTempKey(),
     name,
     position_x: x,
     position_y: y,
@@ -471,7 +489,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
       v-if="hasBookings"
       class="mb-6 flex items-start gap-3 rounded-md border border-red-300 bg-red-50 p-4 text-red-800"
     >
-      <TriangleAlert class="w-5 h-5 flex-shrink-0 mt-0.5" />
+      <TriangleAlert class="w-5 h-5 shrink-0 mt-0.5" />
       <div class="text-sm">
         <p class="font-semibold">Saving will delete all bookings for this room.</p>
         <p class="mt-1">
@@ -498,7 +516,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
           <div class="space-y-2 max-h-96 overflow-y-auto">
             <div
               v-for="(stageBlock, index) in form.stageBlocks"
-              :key="`stage-${stageBlock.id || index}`"
+              :key="stageBlock.id"
               class="border border-gray-200 rounded-lg p-3"
               :class="{ 'ring-2 ring-inset ring-red-500': selectedBlock?.id === stageBlock.id && selectedBlockType === 'stage' }"
             >
@@ -549,7 +567,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
           <div class="space-y-2 max-h-96 overflow-y-auto">
             <div
               v-for="(marker, index) in form.markerBlocks"
-              :key="`marker-${marker.id || 'new'}-${index}`"
+              :key="marker.id"
               class="border border-gray-200 rounded-lg p-3"
               :class="{ 'ring-2 ring-inset ring-amber-500': selectedBlockType === 'marker' && selectedBlock?.markerIndex === index }"
               @click="selectBlock({ ...marker, markerIndex: index }, 'marker')"
@@ -742,7 +760,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                       variant="ghost"
                       @click="removeSpecificRow(block, row.rowNumber)"
                       :disabled="block.rows.length <= 1"
-                      class="text-xs px-1 py-0 h-6 w-6 text-red-600 hover:bg-red-50 flex-shrink-0"
+                      class="text-xs px-1 py-0 h-6 w-6 text-red-600 hover:bg-red-50 shrink-0"
                       title="Delete this row"
                     >
                       ×

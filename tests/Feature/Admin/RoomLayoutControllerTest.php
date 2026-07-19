@@ -646,14 +646,13 @@ class RoomLayoutControllerTest extends TestCase
         Block::factory()->entrance()->create(['room_id' => $this->room->id, 'name' => 'Main Door', 'order' => 0]);
         Block::factory()->comment()->create(['room_id' => $this->room->id, 'name' => 'Pillar', 'order' => 1]);
 
-        $this->get(route('admin.rooms.layout', $this->room->id))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Admin/RoomLayout/Edit')
-                ->has('markerBlocks', 2)
-                ->where('markerBlocks.0.name', 'Main Door')
-                ->where('markerBlocks.1.name', 'Pillar')
-            );
+        $response = $this->get(route('admin.rooms.layout', $this->room->id));
+        $response->assertOk();
+
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertCount(2, $props['markerBlocks']);
+        $this->assertEquals('Main Door', $props['markerBlocks'][0]['name']);
+        $this->assertEquals('Pillar', $props['markerBlocks'][1]['name']);
     }
 
     /** @test */
@@ -700,6 +699,119 @@ class RoomLayoutControllerTest extends TestCase
             $query->where('block_id', $block->id);
         })->count();
         $this->assertEquals(5, $newSeats);
+    }
+
+    /** @test */
+    public function omitting_stage_blocks_preserves_existing_stage_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $stage = Block::factory()->stage()->create(['room_id' => $this->room->id]);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => $seating->position_x, 'position_y' => $seating->position_y, 'rotation' => $seating->rotation],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', ['id' => $stage->id]);
+    }
+
+    /** @test */
+    public function omitting_marker_blocks_preserves_existing_marker_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $entrance = Block::factory()->entrance()->create(['room_id' => $this->room->id]);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => $seating->position_x, 'position_y' => $seating->position_y, 'rotation' => $seating->rotation],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', ['id' => $entrance->id]);
+    }
+
+    /** @test */
+    public function layout_update_rejects_comment_marker_with_negative_x()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'comment', 'name' => 'Note', 'position_x' => -1, 'position_y' => 2, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0');
+    }
+
+    /** @test */
+    public function layout_update_rejects_entrance_marker_with_both_coordinates_negative()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'entrance', 'name' => 'Door', 'position_x' => -1, 'position_y' => -1, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0');
+    }
+
+    /** @test */
+    public function layout_update_rejects_marker_coordinates_outside_grid()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'comment', 'name' => 'Note', 'position_x' => 12, 'position_y' => 0, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0.position_x');
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'comment', 'name' => 'Note', 'position_x' => 0, 'position_y' => 8, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0.position_y');
+    }
+
+    /** @test */
+    public function layout_update_accepts_temp_id_for_new_stage_and_marker_blocks()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'stageBlocks' => [
+                ['id' => 'temp-1', 'name' => 'New Stage', 'position_x' => 0, 'position_y' => 0],
+            ],
+            'markerBlocks' => [
+                ['id' => 'temp-2', 'type' => 'entrance', 'name' => 'Door', 'position_x' => -1, 'position_y' => 1, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => $seating->position_x, 'position_y' => $seating->position_y, 'rotation' => $seating->rotation],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', ['room_id' => $this->room->id, 'type' => 'stage', 'name' => 'New Stage']);
+        $this->assertDatabaseHas('blocks', ['room_id' => $this->room->id, 'type' => 'entrance', 'name' => 'Door']);
     }
 
     /** @test */

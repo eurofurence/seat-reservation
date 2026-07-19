@@ -7,7 +7,6 @@ use App\Models\Booking;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class RoomLayoutController extends Controller
@@ -76,33 +75,43 @@ class RoomLayoutController extends Controller
 
     public function update(Request $request, Room $room)
     {
-        $roomBlockIds = $room->blocks()->pluck('id')->all();
+        $ownedId = fn ($scope, string $message) => function (string $_attribute, $value, $fail) use ($scope, $message) {
+            if ($value === null || (is_string($value) && str_starts_with($value, 'temp-'))) {
+                return;
+            }
+            if (! $scope->clone()->where('id', $value)->exists()) {
+                $fail($message);
+            }
+        };
 
         $request->validate([
             'stageBlocks' => 'sometimes|array',
-            'stageBlocks.*.id' => ['nullable', Rule::in($room->stageBlocks()->pluck('id')->all())],
+            'stageBlocks.*.id' => ['nullable', $ownedId($room->stageBlocks(), 'The selected stage block id is invalid for this room.')],
             'stageBlocks.*.name' => 'required|string|max:255',
             'stageBlocks.*.position_x' => 'required|integer|min:-1',
             'stageBlocks.*.position_y' => 'required|integer|min:-1',
             'markerBlocks' => 'sometimes|array',
-            'markerBlocks.*.id' => ['nullable', Rule::in($room->markerBlocks()->pluck('id')->all())],
+            'markerBlocks.*.id' => ['nullable', $ownedId($room->markerBlocks(), 'The selected marker block id is invalid for this room.')],
             'markerBlocks.*.type' => 'required|string|in:entrance,comment',
             'markerBlocks.*.name' => 'required|string|max:255',
-            'markerBlocks.*.position_x' => 'required|integer|min:-1',
-            'markerBlocks.*.position_y' => 'required|integer|min:-1',
+            'markerBlocks.*.position_x' => ['required', 'integer', 'min:-1', 'max:11'],
+            'markerBlocks.*.position_y' => ['required', 'integer', 'min:-1', 'max:7'],
             'markerBlocks.*.rotation' => 'nullable|integer|in:0,90,180,270',
-            'blocks' => 'required|array',
-            'blocks.*.id' => [
-                'required',
-                function (string $attribute, $value, $fail) use ($roomBlockIds) {
-                    $isTempId = is_string($value) && str_starts_with($value, 'temp-');
-                    $isExistingRoomBlock = is_numeric($value) && in_array((int) $value, $roomBlockIds, true);
-
-                    if (! $isTempId && ! $isExistingRoomBlock) {
-                        $fail('The selected block id is invalid for this room.');
+            'markerBlocks.*' => [
+                function (string $attribute, $value, $fail) {
+                    $type = $value['type'] ?? null;
+                    $x = isset($value['position_x']) ? (int) $value['position_x'] : null;
+                    $y = isset($value['position_y']) ? (int) $value['position_y'] : null;
+                    if ($type === 'comment' && ($x === -1 || $y === -1)) {
+                        $fail('Comment markers must have valid grid coordinates.');
+                    }
+                    if ($type === 'entrance' && $x === -1 && $y === -1) {
+                        $fail('Entrance markers must be placed on a row or column.');
                     }
                 },
             ],
+            'blocks' => 'required|array',
+            'blocks.*.id' => ['required', $ownedId($room->blocks(), 'The selected block id is invalid for this room.')],
             'blocks.*.name' => 'required|string|max:255',
             'blocks.*.position_x' => 'required|integer|min:-1',
             'blocks.*.position_y' => 'required|integer|min:-1',
@@ -117,27 +126,31 @@ class RoomLayoutController extends Controller
         $blockIdMap = [];
 
         DB::transaction(function () use ($request, $room, &$blockIdMap) {
-            $this->reconcileBlocks($room, $room->stageBlocks(), $request->stageBlocks ?? [], function ($data, $index) {
-                return [
-                    'name' => $data['name'],
-                    'type' => 'stage',
-                    'position_x' => $data['position_x'],
-                    'position_y' => $data['position_y'],
-                    'rotation' => 0,
-                    'order' => $index,
-                ];
-            });
+            if ($request->has('stageBlocks')) {
+                $this->reconcileBlocks($room, $room->stageBlocks(), $request->stageBlocks, function ($data, $index) {
+                    return [
+                        'name' => $data['name'],
+                        'type' => 'stage',
+                        'position_x' => $data['position_x'],
+                        'position_y' => $data['position_y'],
+                        'rotation' => 0,
+                        'order' => $index,
+                    ];
+                });
+            }
 
-            $this->reconcileBlocks($room, $room->markerBlocks(), $request->markerBlocks ?? [], function ($data, $index) {
-                return [
-                    'name' => $data['name'],
-                    'type' => $data['type'],
-                    'position_x' => $data['position_x'],
-                    'position_y' => $data['position_y'],
-                    'rotation' => $data['rotation'] ?? 0,
-                    'order' => $index,
-                ];
-            });
+            if ($request->has('markerBlocks')) {
+                $this->reconcileBlocks($room, $room->markerBlocks(), $request->markerBlocks, function ($data, $index) {
+                    return [
+                        'name' => $data['name'],
+                        'type' => $data['type'],
+                        'position_x' => $data['position_x'],
+                        'position_y' => $data['position_y'],
+                        'rotation' => $data['rotation'] ?? 0,
+                        'order' => $index,
+                    ];
+                });
+            }
 
             $nextBlockOrder = ($room->blocks()->max('order') ?? -1) + 1;
 
@@ -249,7 +262,12 @@ class RoomLayoutController extends Controller
      */
     private function reconcileBlocks(Room $room, $scope, array $submitted, callable $attributes): void
     {
-        $submittedIds = collect($submitted)->pluck('id')->filter()->all();
+        $isTempId = fn ($id) => is_string($id) && str_starts_with($id, 'temp-');
+
+        $submittedIds = collect($submitted)
+            ->pluck('id')
+            ->filter(fn ($id) => $id !== null && ! $isTempId($id))
+            ->all();
         $toDelete = array_diff($scope->clone()->pluck('id')->all(), $submittedIds);
 
         if (! empty($toDelete)) {
@@ -258,9 +276,10 @@ class RoomLayoutController extends Controller
 
         foreach ($submitted as $index => $data) {
             $values = $attributes($data, $index);
+            $id = $data['id'] ?? null;
 
-            if ($data['id']) {
-                $scope->clone()->where('id', $data['id'])->update($values);
+            if ($id !== null && ! $isTempId($id)) {
+                $scope->clone()->where('id', $id)->update($values);
             } else {
                 $room->allBlocks()->create($values);
             }

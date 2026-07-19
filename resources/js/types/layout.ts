@@ -74,14 +74,14 @@ export interface FormBlock {
 }
 
 export interface FormStageBlock {
-  id: BlockId | null
+  id: BlockId
   name: string
   position_x: number
   position_y: number
 }
 
 export interface FormMarkerBlock {
-  id: BlockId | null
+  id: BlockId
   type: MarkerType
   name: string
   position_x: number

@@ -44,7 +44,7 @@ const getRowOrder = (rows: Row[], rotation: number) => {
   return rows
 }
 
-const getJustificationClass = (alignment: Alignment | undefined, rotation: number | undefined) => {
+const getJustificationClass = (alignment: Alignment | undefined, _rotation: number | undefined) => {
   switch (alignment ?? 'center') {
     case 'left': return 'justify-start'
     case 'right': return 'justify-end'

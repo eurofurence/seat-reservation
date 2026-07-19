@@ -114,8 +114,10 @@ const blockBounds = computed(() => {
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
 
   const consider = (x: number, y: number) => {
-    if (x >= 0) { minX = Math.min(minX, x); maxX = Math.max(maxX, x) }
-    if (y >= 0) { minY = Math.min(minY, y); maxY = Math.max(maxY, y) }
+    if (x >= 0 && y >= 0) {
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x)
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+    }
   }
 
   props.blocks?.forEach(b => consider(b.position_x, b.position_y))
