@@ -88,24 +88,24 @@ class RoomLayoutController extends Controller
             'stageBlocks' => 'sometimes|array',
             'stageBlocks.*.id' => ['nullable', $ownedId($room->stageBlocks(), 'The selected stage block id is invalid for this room.')],
             'stageBlocks.*.name' => 'required|string|max:255',
-            'stageBlocks.*.position_x' => 'required|integer|min:-1',
-            'stageBlocks.*.position_y' => 'required|integer|min:-1',
+            'stageBlocks.*.position_x' => 'required|integer|min:-1|max:11',
+            'stageBlocks.*.position_y' => 'required|integer|min:-1|max:7',
             'markerBlocks' => 'sometimes|array',
             'markerBlocks.*.id' => ['nullable', $ownedId($room->markerBlocks(), 'The selected marker block id is invalid for this room.')],
             'markerBlocks.*.type' => 'required|string|in:entrance,comment',
             'markerBlocks.*.name' => 'required|string|max:255',
-            'markerBlocks.*.position_x' => ['required', 'integer', 'min:-1', 'max:11'],
-            'markerBlocks.*.position_y' => ['required', 'integer', 'min:-1', 'max:7'],
+            'markerBlocks.*.position_x' => 'required|integer|min:-1|max:11',
+            'markerBlocks.*.position_y' => 'required|integer|min:-1|max:7',
             'markerBlocks.*.rotation' => 'nullable|integer|in:0,90,180,270',
             'markerBlocks.*' => [
-                function (string $attribute, $value, $fail) {
+                function (string $_attribute, $value, $fail) {
                     $type = $value['type'] ?? null;
                     $x = isset($value['position_x']) ? (int) $value['position_x'] : null;
                     $y = isset($value['position_y']) ? (int) $value['position_y'] : null;
                     if ($type === 'comment' && ($x === -1 || $y === -1)) {
                         $fail('Comment markers must have valid grid coordinates.');
                     }
-                    if ($type === 'entrance' && $x === -1 && $y === -1) {
+                    if ($type === 'entrance' && ($x === -1) === ($y === -1)) {
                         $fail('Entrance markers must be placed on a row or column.');
                     }
                 },
@@ -113,8 +113,8 @@ class RoomLayoutController extends Controller
             'blocks' => 'required|array',
             'blocks.*.id' => ['required', $ownedId($room->blocks(), 'The selected block id is invalid for this room.')],
             'blocks.*.name' => 'required|string|max:255',
-            'blocks.*.position_x' => 'required|integer|min:-1',
-            'blocks.*.position_y' => 'required|integer|min:-1',
+            'blocks.*.position_x' => 'required|integer|min:-1|max:11',
+            'blocks.*.position_y' => 'required|integer|min:-1|max:7',
             'blocks.*.rotation' => 'required|integer|in:0,90,180,270',
             'blocks.*.rowsData' => 'nullable|array',
             'blocks.*.rowsData.*.rowNumber' => 'integer|min:1|max:50',
