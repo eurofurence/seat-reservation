@@ -136,7 +136,7 @@ class RoomLayoutController extends Controller
                         'rotation' => 0,
                         'order' => $index,
                     ];
-                });
+                }, $blockIdMap);
             }
 
             if ($request->has('markerBlocks')) {
@@ -149,7 +149,7 @@ class RoomLayoutController extends Controller
                         'rotation' => $data['rotation'] ?? 0,
                         'order' => $index,
                     ];
-                });
+                }, $blockIdMap);
             }
 
             $nextBlockOrder = ($room->blocks()->max('order') ?? -1) + 1;
@@ -260,7 +260,7 @@ class RoomLayoutController extends Controller
      * @param  \Illuminate\Database\Eloquent\Relations\HasMany  $scope
      * @param  array<int,array<string,mixed>>  $submitted
      */
-    private function reconcileBlocks(Room $room, $scope, array $submitted, callable $attributes): void
+    private function reconcileBlocks(Room $room, $scope, array $submitted, callable $attributes, array &$blockIdMap = []): void
     {
         $isTempId = fn ($id) => is_string($id) && str_starts_with($id, 'temp-');
 
@@ -281,7 +281,10 @@ class RoomLayoutController extends Controller
             if ($id !== null && ! $isTempId($id)) {
                 $scope->clone()->where('id', $id)->update($values);
             } else {
-                $room->allBlocks()->create($values);
+                $block = $room->allBlocks()->create($values);
+                if ($id !== null) {
+                    $blockIdMap[$id] = $block->id;
+                }
             }
         }
     }

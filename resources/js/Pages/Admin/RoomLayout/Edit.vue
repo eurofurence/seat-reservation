@@ -375,9 +375,14 @@ const toBlockPayload = (b: FormBlock): BlockPayload => ({
 // Use server provided ids for new blocks
 const applyBlockIdMap = () => {
   const map = props.blockIdMap || {}
-  form.blocks.forEach(block => {
-    if (map[block.id] != null) block.id = map[block.id]
-  })
+  const remap = (list: Array<{ id: BlockId }>) => {
+    list.forEach(block => {
+      if (map[block.id] != null) block.id = map[block.id]
+    })
+  }
+  remap(form.stageBlocks)
+  remap(form.markerBlocks)
+  remap(form.blocks)
 }
 
 const showSaveError = (errors: Record<string, string>) => {

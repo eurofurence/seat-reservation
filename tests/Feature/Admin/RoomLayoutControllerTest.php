@@ -225,6 +225,42 @@ class RoomLayoutControllerTest extends TestCase
     }
 
     /** @test */
+    public function layout_update_returns_id_mapping_for_new_stage_and_marker_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $response = $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'stageBlocks' => [
+                ['id' => 'temp-1', 'name' => 'Stage 1', 'position_x' => 0, 'position_y' => 0],
+            ],
+            'markerBlocks' => [
+                ['id' => 'temp-2', 'type' => 'comment', 'name' => 'Note', 'position_x' => 1, 'position_y' => 1, 'rotation' => 0],
+            ],
+            'blocks' => [
+                [
+                    'id' => $block->id,
+                    'name' => $block->name,
+                    'position_x' => $block->position_x,
+                    'position_y' => $block->position_y,
+                    'rotation' => $block->rotation,
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHas('success');
+
+        $stageId = Block::where('room_id', $this->room->id)->where('type', 'stage')->value('id');
+        $markerId = Block::where('room_id', $this->room->id)->where('type', 'comment')->value('id');
+
+        $response->assertSessionHas('blockIdMap', [
+            'temp-1' => $stageId,
+            'temp-2' => $markerId,
+        ]);
+    }
+
+    /** @test */
     public function layout_update_rejects_block_id_from_another_room()
     {
         $this->actingAs($this->admin);
