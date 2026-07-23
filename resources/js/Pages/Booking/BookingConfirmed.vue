@@ -50,7 +50,7 @@ const props = defineProps<Props>()
                         <InfoIcon class="h-5 w-5 text-orange-600" />
                         <AlertDescription class="text-orange-800">
                             <strong class="block mb-2">Important: Ticket Collection Required</strong>
-                            Please come to the Infodesk by <strong>{{ fmt(event.reservation_ends_at, 'MMM D, YYYY HH:mm') }}</strong>
+                            Please come to the Infodesk before <strong>{{ fmt(event.reservation_ends_at, 'MMM D, YYYY HH:mm') }}</strong>
                             to exchange this booking code for your Priority Access Ticket.
                             <br><br>
                             <span class="font-semibold">

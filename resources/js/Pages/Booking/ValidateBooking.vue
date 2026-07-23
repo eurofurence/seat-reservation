@@ -10,6 +10,7 @@ import { Textarea } from '@/Components/ui/textarea'
 import { Alert } from '@/Components/ui/alert'
 import { ArrowLeft, Calendar, MapPin, Clock, AlertCircle, Check } from 'lucide-vue-next'
 import { fmt } from "@/lib/datetime"
+import TimezoneNote from "@/Components/TimezoneNote.vue"
 
 defineOptions({layout: FullWidthLayout})
 
@@ -104,6 +105,7 @@ function goBack() {
             <span class="font-medium mr-2">Date & Time:</span>
             <span>{{ fmt(event.starts_at, 'MMM D, YYYY - HH:mm') }}</span>
           </div>
+          <TimezoneNote />
           <div class="flex items-center text-sm">
             <AlertCircle class="h-4 w-4 mr-2 text-gray-500" />
             <span class="font-medium mr-2">Seats Selected:</span>
