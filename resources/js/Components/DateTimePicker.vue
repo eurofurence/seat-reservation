@@ -4,7 +4,7 @@ import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 import { Calendar } from '@/Components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
-import { CalendarIcon } from 'lucide-vue-next'
+import { CalendarIcon, X } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { parseDate } from '@internationalized/date'
 import dayjs, { APP_TIMEZONE, fmt } from '@/lib/datetime'
@@ -57,6 +57,11 @@ const time = ref(parseTime(props.modelValue))
 watch([date, time], ([newDate, newTime]) => {
   emit('update:modelValue', combineDateTime(newDate, newTime))
 })
+
+const clear = () => {
+  date.value = undefined
+  time.value = ''
+}
 </script>
 
 <template>
@@ -91,6 +96,15 @@ watch([date, time], ([newDate, newTime]) => {
           :class="{ 'border-red-500': error }"
         />
       </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label="Clear"
+        @click="clear"
+      >
+        <X class="h-4 w-4" />
+      </Button>
     </div>
     <span v-if="error" class="text-sm text-red-500">{{ error }}</span>
     <p v-if="hint" class="text-sm text-muted-foreground mt-1">{{ hint }}</p>
