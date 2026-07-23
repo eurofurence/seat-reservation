@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { Calendar, Home, MapPin, Menu, X, ChevronRight, ArrowLeft } from 'lucide-vue-next'
-import dayjs from 'dayjs'
+import dayjs, { fmt } from '@/lib/datetime'
 import { Button } from '@/Components/ui/button'
 import ToastProvider from '@/Components/ToastProvider.vue'
 import { cn } from '@/lib/utils.ts'
@@ -114,7 +114,7 @@ const navigateTo = (route) => {
                 <div class="text-left">
                   <div class="font-medium">{{ event.name }}</div>
                   <div class="text-xs text-gray-500">
-                    {{ dayjs(event.starts_at).format('MMM D, YYYY HH:mm') }}
+                    {{ fmt(event.starts_at, 'MMM D, YYYY HH:mm') }}
                   </div>
                 </div>
               </button>

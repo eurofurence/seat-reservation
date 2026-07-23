@@ -6,11 +6,8 @@ import { Calendar } from '@/Components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
 import { CalendarIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
-import { DateFormatter, parseDate } from '@internationalized/date'
-import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
-
-dayjs.extend(utc)
+import { parseDate } from '@internationalized/date'
+import dayjs, { APP_TIMEZONE, fmt } from '@/lib/datetime'
 
 interface Props {
   modelValue: string
@@ -25,36 +22,30 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const df = new DateFormatter('en-US', {
-  dateStyle: 'medium'
-})
-
-// Convert datetime string to CalendarDate for the date picker
 const parseDateTime = (dateTimeString: string): any => {
   if (!dateTimeString) return undefined
   try {
-    return parseDate(dayjs(dateTimeString).format('YYYY-MM-DD'))
+    return parseDate(fmt(dateTimeString, 'YYYY-MM-DD'))
   } catch {
     return undefined
   }
 }
 
-// Convert datetime string to time string for time input
 const parseTime = (dateTimeString: string) => {
   if (!dateTimeString) return ''
   try {
-    return dayjs(dateTimeString).format('HH:mm')
+    return fmt(dateTimeString, 'HH:mm')
   } catch {
     return ''
   }
 }
 
-// Combine date and time into datetime string
 const combineDateTime = (date: any, time: string) => {
   if (!date || !time) return ''
   try {
     const dateStr = date.toString() // YYYY-MM-DD format
-    return dayjs(`${dateStr}T${time}:00`).utc().format()
+    // Entered value is app-timezone wall-clock; emit UTC so it stores unshifted.
+    return dayjs.tz(`${dateStr}T${time}:00`, APP_TIMEZONE).utc().format()
   } catch {
     return ''
   }
@@ -84,7 +75,7 @@ watch([date, time], ([newDate, newTime]) => {
               )"
             >
               <CalendarIcon class="mr-2 h-4 w-4" />
-              {{ date ? df.format(dayjs(date.toString()).toDate()) : 'Pick a date' }}
+              {{ date ? dayjs(date.toString()).format('MMM D, YYYY') : 'Pick a date' }}
             </Button>
           </PopoverTrigger>
           <PopoverContent class="w-auto p-0">

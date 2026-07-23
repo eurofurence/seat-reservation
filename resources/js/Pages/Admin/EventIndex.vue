@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Table } from '@/Components/ui/table'
 import { Plus, Edit, Trash2, Calendar, Clock, MapPin, Users, Download } from 'lucide-vue-next'
-import dayjs from 'dayjs'
+import dayjs, { fmt } from '@/lib/datetime'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog'
 import EventForm from '@/Components/EventForm.vue'
 
@@ -174,15 +174,15 @@ const getEventStatus = (event) => {
                 <div class="space-y-1">
                   <div class="flex items-center text-sm" v-if="event.starts_at">
                     <Calendar class="h-4 w-4 mr-1 text-gray-400" />
-                    {{ dayjs(event.starts_at).format('MMM DD, YYYY HH:mm') }}
+                    {{ fmt(event.starts_at, 'MMM D, YYYY HH:mm') }}
                   </div>
                   <div class="flex items-center text-sm text-gray-500" v-if="event.booking_starts_at">
                     <Clock class="h-4 w-4 mr-1 text-gray-400" />
-                    Booking opens {{ dayjs(event.booking_starts_at).format('MMM DD, HH:mm') }}
+                    Booking opens {{ fmt(event.booking_starts_at, 'MMM D, HH:mm') }}
                   </div>
                   <div class="flex items-center text-sm text-gray-500" v-if="event.reservation_ends_at">
                     <Clock class="h-4 w-4 mr-1 text-gray-400" />
-                    Reservations until {{ dayjs(event.reservation_ends_at).format('MMM DD, HH:mm') }}
+                    Reservations until {{ fmt(event.reservation_ends_at, 'MMM D, HH:mm') }}
                   </div>
                 </div>
               </td>

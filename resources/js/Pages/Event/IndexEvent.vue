@@ -6,7 +6,8 @@ import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
 import { ArrowLeft, Volume2, Calendar, MapPin, Clock, Users, Search } from 'lucide-vue-next'
-import dayjs from "dayjs"
+import { fmt } from "@/lib/datetime"
+import TimezoneNote from "@/Components/TimezoneNote.vue"
 
 defineOptions({layout: Layout})
 
@@ -32,7 +33,7 @@ const getTicketAvailabilityStatus = (event) => {
 }
 
 const formatDateTime = (dateTime) => {
-  return dayjs(dateTime).format('MMM DD, YYYY - HH:mm')
+  return fmt(dateTime, 'MMM D, YYYY - HH:mm')
 }
 
 function goBack() {
@@ -80,6 +81,7 @@ function goBack() {
 
       <!-- Events List -->
       <template v-if="events.length">
+        <TimezoneNote class="mb-6 lg:mb-8" />
         <div
           v-for="(group, index) in [openEvents, upcomingEvents]"
           :key="index"

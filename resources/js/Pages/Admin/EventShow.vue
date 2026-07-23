@@ -17,7 +17,7 @@ import { Checkbox } from '@/Components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
 import {Download, Calendar, Clock, MapPin, Users, Plus, UserPlus, X, Pencil, Trash2, Info} from 'lucide-vue-next'
-import dayjs from 'dayjs'
+import dayjs, { fmt } from '@/lib/datetime'
 import axios from 'axios'
 
 defineOptions({layout: AdminLayout})
@@ -149,15 +149,13 @@ const registrationStatus = computed(() => {
         return { isOpen: true, status: 'Open', color: 'text-emerald-600' }
     }
 
-    const now = new Date()
-    const reservationEnd = new Date(props.event.reservation_ends_at)
-    const isOpen = now <= reservationEnd
+    const reservationEnd = dayjs(props.event.reservation_ends_at)
+    const isOpen = !dayjs().isAfter(reservationEnd)
 
     return {
         isOpen,
         status: isOpen ? 'Open' : 'Closed',
-        color: isOpen ? 'text-emerald-600' : 'text-red-600',
-        endDate: reservationEnd
+        color: isOpen ? 'text-emerald-600' : 'text-red-600'
     }
 })
 
@@ -463,10 +461,10 @@ const navigateToPage = (linkUrl) => {
                         <span class="font-bold" :class="registrationStatus.color">{{ registrationStatus.status }}</span>
                     </div>
                     <div v-if="event.booking_starts_at" class="text-sm text-muted-foreground">
-                        Booking opens {{ dayjs(event.booking_starts_at).format('MMM DD, YYYY HH:mm') }}
+                        Booking opens {{ fmt(event.booking_starts_at, 'MMM D, YYYY HH:mm') }}
                     </div>
                     <div v-if="event.reservation_ends_at" class="text-sm text-muted-foreground">
-                        {{ registrationStatus.isOpen ? 'Closes' : 'Closed' }} {{ dayjs(event.reservation_ends_at).format('MMM DD, YYYY HH:mm') }}
+                        {{ registrationStatus.isOpen ? 'Closes' : 'Closed' }} {{ fmt(event.reservation_ends_at, 'MMM D, YYYY HH:mm') }}
                     </div>
                 </div>
             </div>
@@ -478,11 +476,11 @@ const navigateToPage = (linkUrl) => {
                 <div class="flex flex-wrap gap-4 text-sm text-muted-foreground">
                     <div class="flex items-center">
                         <Calendar class="h-4 w-4 mr-1"/>
-                        {{ dayjs(event.starts_at).format('MMM DD, YYYY') }}
+                        {{ fmt(event.starts_at, 'MMM D, YYYY') }}
                     </div>
                     <div class="flex items-center">
                         <Clock class="h-4 w-4 mr-1"/>
-                        {{ dayjs(event.starts_at).format('HH:mm') }}
+                        {{ fmt(event.starts_at, 'HH:mm') }}
                     </div>
                     <div class="flex items-center">
                         <MapPin class="h-4 w-4 mr-1"/>
@@ -732,8 +730,8 @@ const navigateToPage = (linkUrl) => {
                                         <div class="text-sm">{{ getSeatInfo(booking) }}</div>
                                     </td>
                                     <td class="p-2">
-                                        <div class="text-xs">{{ dayjs(booking.created_at).format('MMM DD') }}</div>
-                                        <div class="text-xs text-muted-foreground">{{ dayjs(booking.created_at).format('HH:mm') }}</div>
+                                        <div class="text-xs">{{ fmt(booking.created_at, 'MMM D') }}</div>
+                                        <div class="text-xs text-muted-foreground">{{ fmt(booking.created_at, 'HH:mm') }}</div>
                                     </td>
                                     <td class="p-2">
                                         <input

@@ -10,22 +10,22 @@ import { Label } from '@/Components/ui/label'
 import { Textarea } from '@/Components/ui/textarea'
 import { Alert } from '@/Components/ui/alert'
 import { Badge } from '@/Components/ui/badge'
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  User, 
-  AlertCircle, 
-  CheckCircle, 
-  Edit3, 
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  AlertCircle,
+  CheckCircle,
+  Edit3,
   Trash2,
   Info,
   ChevronDown,
   ChevronUp,
   Settings
 } from 'lucide-vue-next'
-import dayjs from "dayjs"
+import dayjs, { fmt } from "@/lib/datetime"
 
 defineOptions({layout: Layout})
 
@@ -45,6 +45,8 @@ const form = useForm({
 // Collapsible seat layout state
 const showRoomPlan = ref(false)
 
+const formatDateAtTime = (dateTime) => fmt(dateTime, 'MMMM D, YYYY [at] HH:mm')
+
 // Check if user can modify booking
 const canModify = computed(() => {
     const now = dayjs()
@@ -57,7 +59,7 @@ const bookingStatus = computed(() => {
     const now = dayjs()
     const eventStart = dayjs(props.event.starts_at)
     const reservationEnd = dayjs(props.event.reservation_ends_at)
-    
+
     if (props.booking.picked_up_at) {
         return {
             status: 'picked_up',
@@ -66,7 +68,7 @@ const bookingStatus = computed(() => {
             icon: CheckCircle
         }
     }
-    
+
     if (now.isAfter(eventStart)) {
         return {
             status: 'completed',
@@ -75,7 +77,7 @@ const bookingStatus = computed(() => {
             icon: CheckCircle
         }
     }
-    
+
     if (now.isAfter(reservationEnd)) {
         return {
             status: 'cancelled',
@@ -84,7 +86,7 @@ const bookingStatus = computed(() => {
             icon: AlertCircle
         }
     }
-    
+
     return {
         status: 'active',
         color: 'bg-green-100 text-green-800 border-green-200',
@@ -97,7 +99,7 @@ function cancelReservation() {
     if (!confirm('Are you sure you want to cancel your reservation? This action cannot be undone.')) {
         return
     }
-    
+
     form.delete(route('bookings.destroy', {booking: props.booking.id, event: props.event.id}), {
         onSuccess: () => {
             router.visit(route('bookings.index'))
@@ -114,7 +116,7 @@ function updateBooking() {
 
 <template>
     <Head title="Manage Reservation" />
-    
+
     <div class="min-h-screen bg-gray-50">
         <!-- Header -->
         <div class="bg-white shadow-sm border-b">
@@ -150,11 +152,11 @@ function updateBooking() {
                             <div class="space-y-2 text-gray-600">
                                 <div class="flex items-center">
                                     <Calendar class="h-4 w-4 mr-2" />
-                                    <span>{{ dayjs(event.starts_at).format('MMMM DD, YYYY') }}</span>
+                                    <span>{{ fmt(event.starts_at, 'MMMM D, YYYY') }}</span>
                                 </div>
                                 <div class="flex items-center">
                                     <Clock class="h-4 w-4 mr-2" />
-                                    <span>{{ dayjs(event.starts_at).format('HH:mm') }}</span>
+                                    <span>{{ fmt(event.starts_at, 'HH:mm') }}</span>
                                 </div>
                                 <div class="flex items-center">
                                     <MapPin class="h-4 w-4 mr-2" />
@@ -175,7 +177,7 @@ function updateBooking() {
                             {{ booking.seat.row.block.name }} - {{ booking.seat.row.name }} - Seat {{ booking.seat.label }}
                         </div>
                         <div class="text-sm text-gray-600 mt-1">
-                            Booked on {{ dayjs(booking.created_at).format('MMMM DD, YYYY [at] HH:mm') }}
+                            Booked on {{ formatDateAtTime(booking.created_at) }}
                         </div>
                         <div v-if="booking.booking_code" class="mt-3 pt-3 border-t border-gray-200">
                             <div class="text-sm text-gray-600 mb-1">Booking Code for Ticket Pickup:</div>
@@ -205,7 +207,7 @@ function updateBooking() {
                             {{ showRoomPlan ? 'Hide Room Plan' : 'Show Room Plan' }}
                         </Button>
                     </div>
-                    
+
                     <div v-if="showRoomPlan" class="bg-gray-50 rounded-lg p-4">
                         <SeatLayout
                             :event="event"
@@ -242,7 +244,7 @@ function updateBooking() {
                     <div>
                         <div class="font-medium">Ticket Picked Up</div>
                         <div class="text-sm text-gray-600 mt-1">
-                            Your ticket was picked up on {{ dayjs(booking.picked_up_at).format('MMMM DD, YYYY [at] HH:mm') }}. 
+                            Your ticket was picked up on {{ formatDateAtTime(booking.picked_up_at) }}.
                             You can no longer modify or cancel this reservation.
                         </div>
                     </div>
@@ -273,7 +275,7 @@ function updateBooking() {
                     <div>
                         <div class="font-medium">Active Reservation</div>
                         <div class="text-sm text-gray-600 mt-1">
-                            You can modify or cancel this reservation until {{ dayjs(event.reservation_ends_at).format('MMMM DD, YYYY [at] HH:mm') }}.
+                            You can modify or cancel this reservation until {{ formatDateAtTime(event.reservation_ends_at) }}.
                         </div>
                     </div>
                 </Alert>
@@ -284,7 +286,7 @@ function updateBooking() {
                     <div>
                         <div class="font-medium text-amber-900">Important: Pickup Required</div>
                         <div class="text-sm text-amber-800 mt-1">
-                            <strong>You must pick up your Priority Access Ticket (PAT) at the Infodesk before {{ dayjs(event.reservation_ends_at).format('MMMM DD, YYYY [at] HH:mm') }}.</strong>
+                            <strong>You must pick up your Priority Access Ticket (PAT) at the Infodesk before {{ formatDateAtTime(event.reservation_ends_at) }}.</strong>
                         </div>
                         <div class="text-sm text-amber-800 mt-2">
                             ⚠️ If you do not pick up your PAT before the reservation deadline, your ticket will not be valid and your reservation will be cancelled.
@@ -297,7 +299,7 @@ function updateBooking() {
             <Card>
                 <div class="p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-6">Reservation Details</h3>
-                    
+
                     <form @submit.prevent="updateBooking" class="space-y-6">
                         <div>
                             <Label for="name">Name on Reservation</Label>
@@ -327,16 +329,16 @@ function updateBooking() {
 
                         <!-- Action Buttons -->
                         <div v-if="canModify" class="flex flex-col sm:flex-row gap-3 pt-4">
-                            <Button 
-                                type="submit" 
+                            <Button
+                                type="submit"
                                 :disabled="form.processing"
                                 class="flex items-center justify-center"
                             >
                                 <Edit3 class="h-4 w-4 mr-2" />
                                 {{ form.processing ? 'Saving...' : 'Save Changes' }}
                             </Button>
-                            
-                            <Button 
+
+                            <Button
                                 type="button"
                                 variant="destructive"
                                 @click="cancelReservation"

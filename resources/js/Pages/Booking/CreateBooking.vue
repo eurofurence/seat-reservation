@@ -7,7 +7,8 @@ import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
 import { ArrowLeft, AlertCircle, Calendar, MapPin, Clock, ArrowRight, Settings } from 'lucide-vue-next'
-import dayjs from "dayjs"
+import { fmt } from "@/lib/datetime"
+import TimezoneNote from "@/Components/TimezoneNote.vue"
 
 defineOptions({layout: FullWidthLayout})
 
@@ -96,7 +97,7 @@ function goBack() {
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-amber-800">
         <AlertCircle class="h-5 w-5 flex-shrink-0" />
         <p class="text-sm lg:text-base font-medium">
-          Booking is not open yet{{ event.booking_starts_at ? ` — opens ${dayjs(event.booking_starts_at).format('MMM DD, YYYY - HH:mm')}` : '' }}. You can browse the seating layout, but seats cannot be booked until then.
+          Booking is not open yet{{ event.booking_starts_at ? ` — opens ${fmt(event.booking_starts_at, 'MMM D, YYYY - HH:mm')}` : '' }}. You can browse the seating layout, but seats cannot be booked until then.
         </p>
       </div>
     </div>
@@ -136,13 +137,14 @@ function goBack() {
               <div class="flex items-center text-sm lg:text-base">
                 <Clock class="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
                 <span class="font-medium mr-2">Date & Time:</span>
-                <span>{{ dayjs(event.starts_at).format('MMM DD, YYYY - HH:mm') }}</span>
+                <span>{{ fmt(event.starts_at, 'MMM D, YYYY - HH:mm') }}</span>
               </div>
               <div v-if="!event.is_booking_open && event.booking_starts_at" class="flex items-center text-sm lg:text-base text-amber-600">
                 <AlertCircle class="h-4 w-4 mr-2 flex-shrink-0" />
                 <span class="font-medium mr-2">Booking Opens:</span>
-                <span>{{ dayjs(event.booking_starts_at).format('MMM DD, YYYY - HH:mm') }}</span>
+                <span>{{ fmt(event.booking_starts_at, 'MMM D, YYYY - HH:mm') }}</span>
               </div>
+              <TimezoneNote />
             </div>
           </Card>
 
