@@ -57,7 +57,7 @@ class TelegramNotificationServiceTest extends TestCase
         Config::set('services.telegram.chat_id', 'test_chat_id');
 
         $service = new TelegramNotificationService;
-        $endTime = new \DateTime('2023-12-25 15:30:00');
+        $endTime = new \DateTime('2023-12-25 15:30:00', new \DateTimeZone('UTC'));
         $result = $service->notifyReservationPeriodEnded('Test Event', $endTime);
 
         $this->assertTrue($result);
@@ -68,7 +68,8 @@ class TelegramNotificationServiceTest extends TestCase
                 && $request['chat_id'] === 'test_chat_id'
                 && str_contains($request['text'], 'Reservation Period Ended')
                 && str_contains($request['text'], 'Test Event')
-                && str_contains($request['text'], '2023-12-25 15:30:00');
+                // Displayed in Europe/Berlin: 15:30 UTC -> 16:30 CET.
+                && str_contains($request['text'], '2023-12-25 16:30:00');
         });
     }
 }

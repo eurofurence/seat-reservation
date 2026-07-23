@@ -8,6 +8,9 @@ import { CalendarIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { DateFormatter, parseDate } from '@internationalized/date'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+
+dayjs.extend(utc)
 
 interface Props {
   modelValue: string
@@ -30,8 +33,7 @@ const df = new DateFormatter('en-US', {
 const parseDateTime = (dateTimeString: string): any => {
   if (!dateTimeString) return undefined
   try {
-    const date = new Date(dateTimeString)
-    return parseDate(date.toISOString().split('T')[0])
+    return parseDate(dayjs(dateTimeString).format('YYYY-MM-DD'))
   } catch {
     return undefined
   }
@@ -41,8 +43,7 @@ const parseDateTime = (dateTimeString: string): any => {
 const parseTime = (dateTimeString: string) => {
   if (!dateTimeString) return ''
   try {
-    const date = new Date(dateTimeString)
-    return date.toTimeString().slice(0, 5) // HH:MM format
+    return dayjs(dateTimeString).format('HH:mm')
   } catch {
     return ''
   }
@@ -53,7 +54,7 @@ const combineDateTime = (date: any, time: string) => {
   if (!date || !time) return ''
   try {
     const dateStr = date.toString() // YYYY-MM-DD format
-    return `${dateStr}T${time}:00`
+    return dayjs(`${dateStr}T${time}:00`).utc().format()
   } catch {
     return ''
   }

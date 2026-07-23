@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -70,7 +71,8 @@ class TelegramNotificationService
     {
         $message = "⏰ <b>Reservation Period Ended</b>\n\n";
         $message .= "Event: <b>{$eventName}</b>\n";
-        $message .= "Reservation ended: <b>{$reservationEndTime->format('Y-m-d H:i:s')}</b>\n\n";
+        $localTime = Carbon::instance($reservationEndTime)->setTimezone('Europe/Berlin')->format('Y-m-d H:i:s');
+        $message .= "Reservation ended: <b>{$localTime}</b>\n\n";
         $message .= 'The reservation period for this event has ended.';
 
         return $this->sendMessage($message);
