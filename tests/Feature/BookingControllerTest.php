@@ -479,6 +479,69 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
+    public function events_index_includes_events_with_no_reservation_deadline()
+    {
+        $noDeadlineEvent = Event::factory()->create([
+            'room_id' => $this->room->id,
+            'starts_at' => Carbon::now()->addDays(7),
+            'reservation_ends_at' => null,
+            'max_tickets' => 100,
+            'booking_starts_at' => Carbon::now()->subMinute(),
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('events.index'));
+
+        $response->assertOk();
+        $events = $response->getOriginalContent()->getData()['page']['props']['events'];
+        $eventIds = collect($events)->pluck('id');
+
+        $this->assertTrue($eventIds->contains($noDeadlineEvent->id));
+    }
+
+    /** @test */
+    public function events_index_excludes_events_whose_deadline_has_passed()
+    {
+        $closedEvent = Event::factory()->create([
+            'room_id' => $this->room->id,
+            'starts_at' => Carbon::now()->addDays(7),
+            'reservation_ends_at' => Carbon::now()->subMinute(),
+            'max_tickets' => 100,
+            'booking_starts_at' => Carbon::now()->subDay(),
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('events.index'));
+
+        $response->assertOk();
+        $events = $response->getOriginalContent()->getData()['page']['props']['events'];
+        $eventIds = collect($events)->pluck('id');
+
+        $this->assertFalse($eventIds->contains($closedEvent->id));
+    }
+
+    /** @test */
+    public function events_index_excludes_events_that_have_already_started()
+    {
+        $startedEvent = Event::factory()->create([
+            'room_id' => $this->room->id,
+            'starts_at' => Carbon::now()->subMinute(),
+            'reservation_ends_at' => null,
+            'max_tickets' => 100,
+            'booking_starts_at' => Carbon::now()->subDay(),
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('events.index'));
+
+        $response->assertOk();
+        $events = $response->getOriginalContent()->getData()['page']['props']['events'];
+        $eventIds = collect($events)->pluck('id');
+
+        $this->assertFalse($eventIds->contains($startedEvent->id));
+    }
+
+    /** @test */
     public function user_cannot_book_when_no_tickets_left()
     {
         $this->event->update(['max_tickets' => 1]);

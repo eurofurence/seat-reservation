@@ -14,7 +14,10 @@ class EventController extends Controller
         // Events are shown even before their booking window opens, so staff/users
         // can see what's planned; the seat picker itself blocks booking until open.
         $events = Event::with('room:id,name')
-            ->where('reservation_ends_at', '>', now())
+            ->where(function ($query) {
+                $query->whereNull('reservation_ends_at')
+                    ->orWhere('reservation_ends_at', '>', now());
+            })
             ->where('starts_at', '>', now())
             ->select('id', 'room_id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at', 'tickets', 'max_tickets')
             ->orderBy('starts_at')
