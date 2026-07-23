@@ -123,7 +123,7 @@ function goBack() {
                       </div>
                       <div class="flex items-center">
                         <Calendar class="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span class="text-xs lg:text-sm">Booking Deadline: {{ formatDateTime(event.reservation_ends_at) }}</span>
+                        <span class="text-xs lg:text-sm">Booking Deadline: {{ event.reservation_ends_at ? formatDateTime(event.reservation_ends_at) : 'No deadline' }}</span>
                       </div>
                     </div>
                   </div>
