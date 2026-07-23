@@ -59,6 +59,44 @@ class BlockTest extends TestCase
     }
 
     /** @test */
+    public function marker_scope_filters_entrance_and_comment_blocks()
+    {
+        $room = Room::factory()->create();
+
+        $entrance = Block::factory()->entrance()->create(['room_id' => $room->id]);
+        $comment = Block::factory()->comment()->create(['room_id' => $room->id]);
+        $seating = Block::factory()->seating()->create(['room_id' => $room->id]);
+        $stage = Block::factory()->stage()->create(['room_id' => $room->id]);
+
+        $markers = Block::marker()->get();
+
+        $this->assertCount(2, $markers);
+        $this->assertTrue($markers->contains($entrance));
+        $this->assertTrue($markers->contains($comment));
+        $this->assertFalse($markers->contains($seating));
+        $this->assertFalse($markers->contains($stage));
+    }
+
+    /** @test */
+    public function room_marker_blocks_relation_returns_entrance_and_comment_blocks()
+    {
+        $room = Room::factory()->create();
+        $other = Room::factory()->create();
+
+        $entrance = Block::factory()->entrance()->create(['room_id' => $room->id, 'order' => 2]);
+        $comment = Block::factory()->comment()->create(['room_id' => $room->id, 'order' => 1]);
+        Block::factory()->seating()->create(['room_id' => $room->id]);
+        Block::factory()->entrance()->create(['room_id' => $other->id]);
+
+        $markers = $room->markerBlocks()->get();
+
+        $this->assertCount(2, $markers);
+        $this->assertTrue($markers->contains($entrance));
+        $this->assertTrue($markers->contains($comment));
+        $this->assertEquals($comment->id, $markers->first()->id); // ordered by 'order'
+    }
+
+    /** @test */
     public function block_has_rows_relationship_ordered_by_order()
     {
         $room = Room::factory()->create();

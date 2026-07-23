@@ -225,6 +225,42 @@ class RoomLayoutControllerTest extends TestCase
     }
 
     /** @test */
+    public function layout_update_returns_id_mapping_for_new_stage_and_marker_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $response = $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'stageBlocks' => [
+                ['id' => 'temp-1', 'name' => 'Stage 1', 'position_x' => 0, 'position_y' => 0],
+            ],
+            'markerBlocks' => [
+                ['id' => 'temp-2', 'type' => 'comment', 'name' => 'Note', 'position_x' => 1, 'position_y' => 1, 'rotation' => 0],
+            ],
+            'blocks' => [
+                [
+                    'id' => $block->id,
+                    'name' => $block->name,
+                    'position_x' => $block->position_x,
+                    'position_y' => $block->position_y,
+                    'rotation' => $block->rotation,
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHas('success');
+
+        $stageId = Block::where('room_id', $this->room->id)->where('type', 'stage')->value('id');
+        $markerId = Block::where('room_id', $this->room->id)->where('type', 'comment')->value('id');
+
+        $response->assertSessionHas('blockIdMap', [
+            'temp-1' => $stageId,
+            'temp-2' => $markerId,
+        ]);
+    }
+
+    /** @test */
     public function layout_update_rejects_block_id_from_another_room()
     {
         $this->actingAs($this->admin);
@@ -438,6 +474,224 @@ class RoomLayoutControllerTest extends TestCase
     }
 
     /** @test */
+    public function layout_update_reconciles_marker_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $keptEntrance = Block::factory()->create([
+            'room_id' => $this->room->id,
+            'type' => 'entrance',
+            'name' => 'Old Entrance',
+            'position_x' => -1,
+            'position_y' => 2,
+            'rotation' => 0,
+        ]);
+        $removedComment = Block::factory()->create([
+            'room_id' => $this->room->id,
+            'type' => 'comment',
+            'name' => 'Stale Note',
+        ]);
+
+        $seatingBlock = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $updateData = [
+            'markerBlocks' => [
+                [
+                    'id' => $keptEntrance->id,
+                    'type' => 'entrance',
+                    'name' => 'Main Entrance',
+                    'position_x' => -1,
+                    'position_y' => 3,
+                    'rotation' => 90,
+                ],
+                [
+                    'id' => null,
+                    'type' => 'comment',
+                    'name' => 'New Note',
+                    'position_x' => 4,
+                    'position_y' => 4,
+                    'rotation' => 0,
+                ],
+            ],
+            'blocks' => [
+                [
+                    'id' => $seatingBlock->id,
+                    'name' => $seatingBlock->name,
+                    'position_x' => $seatingBlock->position_x,
+                    'position_y' => $seatingBlock->position_y,
+                    'rotation' => $seatingBlock->rotation,
+                ],
+            ],
+        ];
+
+        $response = $this->put(route('admin.rooms.layout.update', $this->room->id), $updateData);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'Room layout updated successfully!');
+
+        // Existing marker updated in place
+        $this->assertDatabaseHas('blocks', [
+            'id' => $keptEntrance->id,
+            'type' => 'entrance',
+            'name' => 'Main Entrance',
+            'position_y' => 3,
+            'rotation' => 90,
+        ]);
+
+        // New marker created
+        $this->assertDatabaseHas('blocks', [
+            'room_id' => $this->room->id,
+            'type' => 'comment',
+            'name' => 'New Note',
+            'position_x' => 4,
+            'position_y' => 4,
+        ]);
+
+        // Marker absent from submission is deleted
+        $this->assertDatabaseMissing('blocks', ['id' => $removedComment->id]);
+    }
+
+    /** @test */
+    public function reconcile_updates_order_on_existing_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $stage1 = Block::factory()->stage()->create(['room_id' => $this->room->id, 'order' => 99]);
+        $stage2 = Block::factory()->stage()->create(['room_id' => $this->room->id, 'order' => 98]);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        // Submit with reversed order
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'stageBlocks' => [
+                ['id' => $stage2->id, 'name' => $stage2->name, 'position_x' => $stage2->position_x, 'position_y' => $stage2->position_y],
+                ['id' => $stage1->id, 'name' => $stage1->name, 'position_x' => $stage1->position_x, 'position_y' => $stage1->position_y],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => $seating->position_x, 'position_y' => $seating->position_y, 'rotation' => $seating->rotation],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', ['id' => $stage2->id, 'order' => 0]);
+        $this->assertDatabaseHas('blocks', ['id' => $stage1->id, 'order' => 1]);
+    }
+
+    /** @test */
+    public function reconcile_deletes_all_blocks_when_empty_array_submitted()
+    {
+        $this->actingAs($this->admin);
+
+        $stage1 = Block::factory()->stage()->create(['room_id' => $this->room->id]);
+        $stage2 = Block::factory()->stage()->create(['room_id' => $this->room->id]);
+        $entrance = Block::factory()->entrance()->create(['room_id' => $this->room->id]);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'stageBlocks' => [],
+            'markerBlocks' => [],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => $seating->position_x, 'position_y' => $seating->position_y, 'rotation' => $seating->rotation],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('blocks', ['id' => $stage1->id]);
+        $this->assertDatabaseMissing('blocks', ['id' => $stage2->id]);
+        $this->assertDatabaseMissing('blocks', ['id' => $entrance->id]);
+        $this->assertDatabaseHas('blocks', ['id' => $seating->id]);
+    }
+
+    /** @test */
+    public function reconcile_assigns_contiguous_order_to_new_and_existing_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $existing = Block::factory()->entrance()->create(['room_id' => $this->room->id, 'order' => 5]);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'comment', 'name' => 'A', 'position_x' => 1, 'position_y' => 1, 'rotation' => 0],
+                ['id' => $existing->id, 'type' => 'entrance', 'name' => $existing->name, 'position_x' => $existing->position_x, 'position_y' => $existing->position_y, 'rotation' => 0],
+                ['id' => null, 'type' => 'comment', 'name' => 'B', 'position_x' => 2, 'position_y' => 2, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => $seating->position_x, 'position_y' => $seating->position_y, 'rotation' => $seating->rotation],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', ['name' => 'A', 'order' => 0]);
+        $this->assertDatabaseHas('blocks', ['id' => $existing->id, 'order' => 1]);
+        $this->assertDatabaseHas('blocks', ['name' => 'B', 'order' => 2]);
+    }
+
+    /** @test */
+    public function layout_update_validates_marker_block_type()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'seating', 'name' => 'Bad', 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0.type');
+    }
+
+    /** @test */
+    public function layout_update_validates_marker_block_rotation()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'entrance', 'name' => 'Door', 'position_x' => -1, 'position_y' => 0, 'rotation' => 45],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0.rotation');
+    }
+
+    /** @test */
+    public function layout_update_rejects_marker_block_id_from_another_room()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+        $other = Room::factory()->create();
+        $foreignMarker = Block::factory()->entrance()->create(['room_id' => $other->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => $foreignMarker->id, 'type' => 'entrance', 'name' => 'Door', 'position_x' => -1, 'position_y' => 0, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0.id');
+
+        $this->assertDatabaseHas('blocks', ['id' => $foreignMarker->id, 'room_id' => $other->id]);
+    }
+
+    /** @test */
+    public function layout_editor_includes_marker_blocks_in_page_props()
+    {
+        $this->actingAs($this->admin);
+        Block::factory()->entrance()->create(['room_id' => $this->room->id, 'name' => 'Main Door', 'order' => 0]);
+        Block::factory()->comment()->create(['room_id' => $this->room->id, 'name' => 'Pillar', 'order' => 1]);
+
+        $response = $this->get(route('admin.rooms.layout', $this->room->id));
+        $response->assertOk();
+
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertCount(2, $props['markerBlocks']);
+        $this->assertEquals('Main Door', $props['markerBlocks'][0]['name']);
+        $this->assertEquals('Pillar', $props['markerBlocks'][1]['name']);
+    }
+
+    /** @test */
     public function row_recreation_deletes_old_structure()
     {
         $this->actingAs($this->admin);
@@ -481,6 +735,119 @@ class RoomLayoutControllerTest extends TestCase
             $query->where('block_id', $block->id);
         })->count();
         $this->assertEquals(5, $newSeats);
+    }
+
+    /** @test */
+    public function omitting_stage_blocks_preserves_existing_stage_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $stage = Block::factory()->stage()->create(['room_id' => $this->room->id]);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => $seating->position_x, 'position_y' => $seating->position_y, 'rotation' => $seating->rotation],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', ['id' => $stage->id]);
+    }
+
+    /** @test */
+    public function omitting_marker_blocks_preserves_existing_marker_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $entrance = Block::factory()->entrance()->create(['room_id' => $this->room->id]);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => $seating->position_x, 'position_y' => $seating->position_y, 'rotation' => $seating->rotation],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', ['id' => $entrance->id]);
+    }
+
+    /** @test */
+    public function layout_update_rejects_comment_marker_with_negative_x()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'comment', 'name' => 'Note', 'position_x' => -1, 'position_y' => 2, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0');
+    }
+
+    /** @test */
+    public function layout_update_rejects_entrance_marker_with_both_coordinates_negative()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'entrance', 'name' => 'Door', 'position_x' => -1, 'position_y' => -1, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0');
+    }
+
+    /** @test */
+    public function layout_update_rejects_marker_coordinates_outside_grid()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'comment', 'name' => 'Note', 'position_x' => 12, 'position_y' => 0, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0.position_x');
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'markerBlocks' => [
+                ['id' => null, 'type' => 'comment', 'name' => 'Note', 'position_x' => 0, 'position_y' => 8, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ])->assertSessionHasErrors('markerBlocks.0.position_y');
+    }
+
+    /** @test */
+    public function layout_update_accepts_temp_id_for_new_stage_and_marker_blocks()
+    {
+        $this->actingAs($this->admin);
+        $seating = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'stageBlocks' => [
+                ['id' => 'temp-1', 'name' => 'New Stage', 'position_x' => 0, 'position_y' => 0],
+            ],
+            'markerBlocks' => [
+                ['id' => 'temp-2', 'type' => 'entrance', 'name' => 'Door', 'position_x' => -1, 'position_y' => 1, 'rotation' => 0],
+            ],
+            'blocks' => [
+                ['id' => $seating->id, 'name' => $seating->name, 'position_x' => $seating->position_x, 'position_y' => $seating->position_y, 'rotation' => $seating->rotation],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', ['room_id' => $this->room->id, 'type' => 'stage', 'name' => 'New Stage']);
+        $this->assertDatabaseHas('blocks', ['room_id' => $this->room->id, 'type' => 'entrance', 'name' => 'Door']);
     }
 
     /** @test */

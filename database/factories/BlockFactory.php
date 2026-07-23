@@ -21,8 +21,8 @@ class BlockFactory extends Factory
             'room_id' => Room::factory(),
             'name' => fake()->randomElement(['Block A', 'Block B', 'Block C', 'Main Floor', 'Balcony']),
             'type' => 'seating',
-            'position_x' => fake()->numberBetween(0, 10),
-            'position_y' => fake()->numberBetween(0, 10),
+            'position_x' => fake()->numberBetween(0, 11),
+            'position_y' => fake()->numberBetween(0, 7),
             'rotation' => fake()->randomElement([0, 90, 180, 270]),
             'order' => fake()->numberBetween(0, 10),
         ];
@@ -47,7 +47,26 @@ class BlockFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'type' => 'stage',
             'name' => fake()->randomElement(['Main Stage', 'Side Stage', 'Platform', 'Podium']),
-            'rotation' => 0, // Stages typically don't rotate
+            'rotation' => 0,
+        ]);
+    }
+
+    public function entrance(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'entrance',
+            'name' => 'Entrance',
+            'position_x' => -1,
+            'position_y' => 2,
+            'rotation' => 0,
+        ]);
+    }
+
+    public function comment(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'comment',
+            'name' => 'Note',
         ]);
     }
 }

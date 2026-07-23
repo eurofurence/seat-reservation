@@ -50,4 +50,10 @@ class Block extends Model
     {
         return $query->where('type', 'stage');
     }
+
+    // Non-bookable annotation blocks: entrance rows/columns and text comments.
+    public function scopeMarker($query)
+    {
+        return $query->whereIn('type', ['entrance', 'comment']);
+    }
 }
