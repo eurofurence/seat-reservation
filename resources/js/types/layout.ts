@@ -23,6 +23,8 @@ export interface LayoutBlock {
   rotation?: number
   position_x: number
   position_y: number
+  colspan?: number
+  rowspan?: number
   rows?: Row[]
 }
 
@@ -38,6 +40,8 @@ export interface PropBlock {
   position_x: number
   position_y: number
   rotation?: number
+  colspan?: number
+  rowspan?: number
   rows?: PropRow[]
 }
 
@@ -46,6 +50,8 @@ export interface PropStageBlock {
   name: string
   position_x: number
   position_y: number
+  colspan?: number
+  rowspan?: number
 }
 
 export interface PropMarkerBlock {
@@ -55,6 +61,8 @@ export interface PropMarkerBlock {
   position_x: number
   position_y: number
   rotation?: number
+  colspan?: number
+  rowspan?: number
 }
 
 export interface FormRow {
@@ -70,6 +78,8 @@ export interface FormBlock {
   position_x: number
   position_y: number
   rotation: number
+  colspan: number
+  rowspan: number
   rows: FormRow[]
 }
 
@@ -78,6 +88,8 @@ export interface FormStageBlock {
   name: string
   position_x: number
   position_y: number
+  colspan: number
+  rowspan: number
 }
 
 export interface FormMarkerBlock {
@@ -88,4 +100,6 @@ export interface FormMarkerBlock {
   position_y: number
   orientation?: Orientation
   rotation?: number
+  colspan: number
+  rowspan: number
 }

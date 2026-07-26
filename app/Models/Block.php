@@ -20,6 +20,8 @@ class Block extends Model
         'position_x',
         'position_y',
         'rotation',
+        'colspan',
+        'rowspan',
         'order',
     ];
 
@@ -27,6 +29,8 @@ class Block extends Model
         'rotation' => 'integer',
         'position_x' => 'integer',
         'position_y' => 'integer',
+        'colspan' => 'integer',
+        'rowspan' => 'integer',
         'order' => 'integer',
     ];
 

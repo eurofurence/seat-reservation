@@ -69,19 +69,11 @@ const layoutGrid = computed(() => {
   const inGrid = (col: number, row: number) => col >= 0 && col < cols && row >= 0 && row < rows
 
   props.stageBlocks?.forEach(stageBlock => {
-    const col = stageBlock.position_x - offsetX
-    const row = stageBlock.position_y - offsetY
-    if (stageBlock.position_x >= 0 && stageBlock.position_y >= 0 && inGrid(col, row)) {
-      grid[row][col] = { type: 'stage', name: stageBlock.name }
-    }
+    place(stageBlock, { type: 'stage', name: stageBlock.name })
   })
 
   props.blocks?.forEach(block => {
-    const col = block.position_x - offsetX
-    const row = block.position_y - offsetY
-    if (block.position_x >= 0 && block.position_y >= 0 && inGrid(col, row)) {
-      grid[row][col] = { type: 'block', ...block }
-    }
+    place(block, { type: 'block', ...block })
   })
 
   const bounds = blockBounds.value
@@ -90,11 +82,7 @@ const layoutGrid = computed(() => {
     const { position_x: x, position_y: y, name } = marker
 
     if (marker.type === 'comment') {
-      const col = x - offsetX
-      const row = y - offsetY
-      if (x >= 0 && y >= 0 && inGrid(col, row)) {
-        grid[row][col] = { type: 'comment', name }
-      }
+      place(marker, { type: 'comment', name })
       return
     }
 
@@ -107,44 +95,25 @@ const layoutGrid = computed(() => {
     }
   })
 
-  mergeAdjacentCells('stage')
-  mergeAdjacentCells('comment')
-
   return grid
 
-  function isCandidate(cell: GridCell | null | undefined, ref: GridCellNamed): cell is GridCellNamed {
-    return cell?.type === ref.type && (cell as GridCellNamed)?.name === ref.name
-  }
+  function place(
+    source: { position_x: number, position_y: number, colspan?: number, rowspan?: number },
+    cell: Exclude<GridCell, GridCellCovered>
+  ) {
+    const col = source.position_x - offsetX
+    const row = source.position_y - offsetY
+    if (source.position_x < 0 || source.position_y < 0 || !inGrid(col, row)) return
 
-  function rowMatchesSpan(r: number, c: number, colSpan: number, ref: GridCellNamed) {
-    for (let dc = 0; dc < colSpan; dc++) {
-      if (!isCandidate(grid[r]?.[c + dc], ref)) return false
-    }
-    return true
-  }
+    const colSpan = Math.max(1, source.colspan ?? 1)
+    const rowSpan = Math.max(1, source.rowspan ?? 1)
 
-  function mergeAdjacentCells(type: GridCellNamed['type']) {
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const cell = grid[r][c]
-        if (cell?.type !== type) continue
-
-        const ref: GridCellNamed = { type, name: (cell as GridCellNamed).name }
-
-        let colSpan = 1
-        while (c + colSpan < cols && isCandidate(grid[r][c + colSpan], ref)) colSpan++
-
-        let rowSpan = 1
-        while (r + rowSpan < rows && rowMatchesSpan(r + rowSpan, c, colSpan, ref)) rowSpan++
-
-        for (let dr = 0; dr < rowSpan; dr++) {
-          for (let dc = 0; dc < colSpan; dc++) {
-            if (dr === 0 && dc === 0) continue
-            grid[r + dr][c + dc] = { type: 'covered' }
-          }
-        }
-
-        grid[r][c] = { ...ref, colSpan, rowSpan }
+    for (let dr = 0; dr < rowSpan; dr++) {
+      for (let dc = 0; dc < colSpan; dc++) {
+        if (!inGrid(col + dc, row + dr)) continue
+        grid[row + dr][col + dc] = (dr === 0 && dc === 0)
+          ? { ...cell, colSpan, rowSpan }
+          : { type: 'covered' }
       }
     }
   }
@@ -165,17 +134,17 @@ const layoutGrid = computed(() => {
 const blockBounds = computed(() => {
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
 
-  const consider = (x: number, y: number) => {
+  const consider = (x: number, y: number, colspan = 1, rowspan = 1) => {
     if (x >= 0 && y >= 0) {
-      minX = Math.min(minX, x); maxX = Math.max(maxX, x)
-      minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x + colspan - 1)
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y + rowspan - 1)
     }
   }
 
-  props.blocks?.forEach(b => consider(b.position_x, b.position_y))
-  props.stageBlocks?.forEach(b => consider(b.position_x, b.position_y))
+  props.blocks?.forEach(b => consider(b.position_x, b.position_y, b.colspan, b.rowspan))
+  props.stageBlocks?.forEach(b => consider(b.position_x, b.position_y, b.colspan, b.rowspan))
   props.markerBlocks?.forEach(m => {
-    if (m.type === 'comment') consider(m.position_x, m.position_y)
+    if (m.type === 'comment') consider(m.position_x, m.position_y, m.colspan, m.rowspan)
   })
 
   return {

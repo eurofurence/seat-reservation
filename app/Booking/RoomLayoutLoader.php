@@ -30,7 +30,7 @@ class RoomLayoutLoader
     public function blocks(Room $room): Collection
     {
         return $room->blocks()
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
+            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'colspan', 'rowspan', 'order')
             ->with(['rows' => function ($query) {
                 $query->select('id', 'block_id', 'name', 'order', 'alignment')
                     ->orderBy('order');
@@ -46,7 +46,7 @@ class RoomLayoutLoader
     public function stageBlocks(Room $room): Collection
     {
         return $room->stageBlocks()
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'order')
+            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'colspan', 'rowspan', 'order')
             ->orderBy('order')
             ->get();
     }

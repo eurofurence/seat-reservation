@@ -52,11 +52,15 @@ const CELL_BASE = 'w-full h-full border rounded cursor-pointer flex flex-col ite
 
 const pos = (value: number | null | undefined) => (value != null ? value : -1)
 
+const span = (value: number | null | undefined) => (value != null && value >= 1 ? value : 1)
+
 const stageFromProp = (block: PropStageBlock): FormStageBlock => ({
   id: block.id,
   name: block.name,
   position_x: pos(block.position_x),
-  position_y: pos(block.position_y)
+  position_y: pos(block.position_y),
+  colspan: span(block.colspan),
+  rowspan: span(block.rowspan)
 })
 
 const markerFromProp = (block: PropMarkerBlock): FormMarkerBlock => {
@@ -72,7 +76,15 @@ const markerFromProp = (block: PropMarkerBlock): FormMarkerBlock => {
       orientation = y === -1 ? 'column' : 'row'
     }
   }
-  return { id: block.id, type: block.type, name: block.name, position_x: x, position_y: y, orientation, rotation: block.rotation || 0 }
+  return {
+    id: block.id,
+    type: block.type,
+    name: block.name,
+    position_x: x, position_y: y,
+    orientation,
+    rotation: block.rotation || 0,
+    colspan: span(block.colspan), rowspan: span(block.rowspan)
+  }
 }
 
 const rowsFromBlock = (block: PropBlock | null): FormRow[] => {
@@ -94,6 +106,8 @@ const blockFromProp = (block: PropBlock): FormBlock => ({
   position_x: pos(block.position_x),
   position_y: pos(block.position_y),
   rotation: block.rotation || 0,
+  colspan: span(block.colspan),
+  rowspan: span(block.rowspan),
   rows: rowsFromBlock(block)
 })
 
@@ -104,7 +118,28 @@ const form = useForm({
 })
 
 type SelectedType = 'stage' | 'seating' | 'marker'
-const selectedBlock = ref<any>(null)
+
+type CellType = 'stage' | 'seating' | 'comment' | 'entrance'
+
+interface SelectedBlock {
+  id: BlockId
+  type?: CellType
+  position_x: number
+  position_y: number
+  colspan?: number
+  rowspan?: number
+  rotation?: number
+  markerIndex?: number
+}
+
+type PlacementCell = SelectedBlock & { type: CellType }
+
+type GridCell =
+  | null
+  | (PlacementCell & { colSpan: number, rowSpan: number })
+  | { type: 'covered', id: BlockId }
+
+const selectedBlock = ref<SelectedBlock | null>(null)
 const selectedBlockType = ref<SelectedType | null>(null)
 const expandedBlocks = ref<Set<BlockId>>(new Set())
 const showNewBlockDialog = ref(false)
@@ -129,28 +164,39 @@ const markerOrientation = (marker: FormMarkerBlock): Orientation => (marker.posi
 
 const markerCells = (marker: FormMarkerBlock): Array<[number, number]> => {
   const { position_x: x, position_y: y } = marker
-  if (marker.type === 'comment') return [[y, x]]
   if (markerOrientation(marker) === 'column') {
     return Array.from({ length: GRID_ROWS }, (_, r) => [r, x])
   }
   return Array.from({ length: GRID_COLS }, (_, c) => [y, c])
 }
 
+const placeSpanned = (grid: GridCell[][], cell: PlacementCell) => {
+  const { position_x: x, position_y: y } = cell
+  if (!inGrid(x, y)) return
+  const colSpan = Math.max(1, cell.colspan ?? 1)
+  const rowSpan = Math.max(1, cell.rowspan ?? 1)
+  for (let dr = 0; dr < rowSpan; dr++) {
+    for (let dc = 0; dc < colSpan; dc++) {
+      if (!inGrid(x + dc, y + dr)) continue
+      grid[y + dr][x + dc] = (dr === 0 && dc === 0)
+        ? { ...cell, colSpan, rowSpan }
+        : { type: 'covered', id: cell.id }
+    }
+  }
+}
+
 const layoutGrid = computed(() => {
   const grid = Array(GRID_ROWS).fill(null).map(() => Array(GRID_COLS).fill(null))
 
-  form.stageBlocks.forEach(stageBlock => {
-    const { position_x: x, position_y: y } = stageBlock
-    if (inGrid(x, y)) grid[y][x] = { type: 'stage', ...stageBlock }
-  })
-
-  form.blocks.forEach(block => {
-    const { position_x: x, position_y: y } = block
-    if (inGrid(x, y)) grid[y][x] = { type: 'seating', ...block }
-  })
+  form.stageBlocks.forEach(stageBlock => placeSpanned(grid, { type: 'stage', ...stageBlock }))
+  form.blocks.forEach(block => placeSpanned(grid, { type: 'seating', ...block }))
 
   form.markerBlocks.forEach((marker, index) => {
     const cell = { ...marker, markerIndex: index, orientation: markerOrientation(marker) }
+    if (marker.type === 'comment') {
+      placeSpanned(grid, cell)
+      return
+    }
     for (const [y, x] of markerCells(marker)) {
       if (grid[y]?.[x] === null) grid[y][x] = cell
     }
@@ -186,9 +232,22 @@ const isBlockExpanded = (blockId: BlockId) => {
   return expandedBlocks.value.has(blockId)
 }
 
-const selectBlock = (block: any, type: SelectedType) => {
+const selectBlock = (block: SelectedBlock, type: SelectedType) => {
   selectedBlock.value = block
   selectedBlockType.value = type
+}
+
+const footprintFree = (block: SelectedBlock, x: number, y: number) => {
+  const colspan = Math.max(1, block.colspan ?? 1)
+  const rowspan = Math.max(1, block.rowspan ?? 1)
+  for (let dr = 0; dr < rowspan; dr++) {
+    for (let dc = 0; dc < colspan; dc++) {
+      if (!inGrid(x + dc, y + dr)) return false
+      const cell = layoutGrid.value[y + dr][x + dc]
+      if (cell !== null && cell.id !== block.id) return false
+    }
+  }
+  return true
 }
 
 const handleCellClick = (rowIndex: number, colIndex: number) => {
@@ -197,13 +256,15 @@ const handleCellClick = (rowIndex: number, colIndex: number) => {
   if (!block || !type) return
 
   if (type === 'marker' && block.type === 'entrance') {
-    return placeMarker(block.markerIndex, rowIndex, colIndex)
+    if (block.markerIndex !== undefined) placeMarker(block.markerIndex, rowIndex, colIndex)
+    return
   }
-  if (layoutGrid.value[rowIndex][colIndex] !== null) return
+  if (!footprintFree(block, colIndex, rowIndex)) return
 
   if (type === 'stage') setPosition(form.stageBlocks, block.id, colIndex, rowIndex)
-  else if (type === 'marker') placeMarker(block.markerIndex, rowIndex, colIndex)
-  else setPosition(form.blocks, block.id, colIndex, rowIndex)
+  else if (type === 'marker') {
+    if (block.markerIndex !== undefined) placeMarker(block.markerIndex, rowIndex, colIndex)
+  } else setPosition(form.blocks, block.id, colIndex, rowIndex)
 }
 
 const setPosition = (list: Array<{ id: BlockId, position_x: number, position_y: number }>, id: BlockId, x: number, y: number) => {
@@ -237,6 +298,8 @@ const addStageBlock = () => {
   form.stageBlocks.push({
     id: nextTempKey(),
     name: `Stage ${form.stageBlocks.length + 1}`,
+    colspan: 1,
+    rowspan: 1,
     ...UNPLACED
   })
 }
@@ -248,14 +311,14 @@ const removeStageBlock = (index: number) => {
 }
 
 const ENTRANCE_DIRECTIONS: Record<Orientation, number[]> = {
-  row: [180, 0],
+  row: [0, 180],
   column: [90, 270]
 }
 
 const addMarker = (type: MarkerType) => {
   const id = nextTempKey()
   if (type === 'comment') {
-    form.markerBlocks.push({ id, type, name: 'Note', ...UNPLACED })
+    form.markerBlocks.push({ id, type, name: 'Note', colspan: 1, rowspan: 1, ...UNPLACED })
     return
   }
   const count = form.markerBlocks.filter(m => m.type === 'entrance').length
@@ -265,6 +328,8 @@ const addMarker = (type: MarkerType) => {
     name: count === 0 ? 'Entrance' : `Entrance ${count + 1}`,
     orientation: 'row',
     rotation: ENTRANCE_DIRECTIONS.row[0],
+    colspan: 1,
+    rowspan: 1,
     ...UNPLACED
   })
 }
@@ -335,7 +400,9 @@ const toStagePayload = (s: FormStageBlock) => ({
   id: s.id,
   name: s.name,
   position_x: s.position_x,
-  position_y: s.position_y
+  position_y: s.position_y,
+  colspan: s.colspan,
+  rowspan: s.rowspan
 })
 
 const toMarkerPayload = (m: FormMarkerBlock) => ({
@@ -344,7 +411,9 @@ const toMarkerPayload = (m: FormMarkerBlock) => ({
   name: m.name,
   position_x: m.position_x,
   position_y: m.position_y,
-  rotation: m.rotation ?? 0
+  rotation: m.rotation ?? 0,
+  colspan: m.colspan,
+  rowspan: m.rowspan
 })
 
 const toRowPayload = (r: FormRow) => ({
@@ -360,6 +429,8 @@ interface BlockPayload {
   position_x: number
   position_y: number
   rotation: number
+  colspan: number
+  rowspan: number
   rowsData: ReturnType<typeof toRowPayload>[] // always >= 1 row; seeded on load, guarded on removal
 }
 
@@ -369,6 +440,8 @@ const toBlockPayload = (b: FormBlock): BlockPayload => ({
   position_x: b.position_x,
   position_y: b.position_y,
   rotation: b.rotation,
+  colspan: b.colspan,
+  rowspan: b.rowspan,
   rowsData: b.rows.map(toRowPayload)
 })
 
@@ -448,6 +521,8 @@ const createNewBlock = () => {
     position_x: x,
     position_y: y,
     rotation: 0,
+    colspan: 1,
+    rowspan: 1,
     rows: rowsFromBlock(null)
   })
 
@@ -546,6 +621,17 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                   </Button>
                 </div>
 
+                <div class="flex gap-4 mt-2" @click.stop>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Cols</Label>
+                    <Input v-model.number="stageBlock.colspan" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Rows</Label>
+                    <Input v-model.number="stageBlock.rowspan" type="number" min="1" max="8" class="text-xs h-7 w-16" />
+                  </div>
+                </div>
+
                 <div class="text-xs text-gray-500 mt-2">
                   <span v-if="isPlaced(stageBlock)" class="text-green-600">• Placed ({{ stageBlock.position_y }}, {{ stageBlock.position_x }})</span>
                   <span v-else class="text-orange-600">• Not placed</span>
@@ -624,6 +710,17 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                   >
                     <RotateCw class="w-4 h-4" />
                   </Button>
+                </div>
+              </div>
+
+              <div v-if="marker.type === 'comment'" class="flex gap-4 mb-2" @click.stop>
+                <div class="flex items-center gap-2">
+                  <Label class="text-xs">Cols</Label>
+                  <Input v-model.number="marker.colspan" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                </div>
+                <div class="flex items-center gap-2">
+                  <Label class="text-xs">Rows</Label>
+                  <Input v-model.number="marker.rowspan" type="number" min="1" max="8" class="text-xs h-7 w-16" />
                 </div>
               </div>
 
@@ -709,6 +806,17 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
               </div>
 
               <div v-if="isBlockExpanded(block.id)" class="border-t bg-gray-50 p-3">
+                <div class="flex gap-4 mb-3">
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Cols</Label>
+                    <Input v-model.number="block.colspan" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Rows</Label>
+                    <Input v-model.number="block.rowspan" type="number" min="1" max="8" class="text-xs h-7 w-16" />
+                  </div>
+                </div>
+
                 <div class="flex justify-between items-center mb-2">
                   <Label class="text-xs">Row Configuration ({{ block.rows.length }} rows)</Label>
                   <div class="flex gap-1">
@@ -794,11 +902,13 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
           <div class="overflow-auto">
             <table class="layout-table w-full border-collapse border border-gray-300">
               <tbody>
-                <tr v-for="(row, rowIndex) in layoutGrid" :key="rowIndex">
+                <tr v-for="(row, rowIndex) in layoutGrid" :key="rowIndex" class="layout-row">
+                  <template v-for="(cell, colIndex) in row" :key="colIndex">
                   <td
-                    v-for="(cell, colIndex) in row"
-                    :key="colIndex"
-                    class="layout-cell border border-gray-300 w-24 h-24 p-1 relative"
+                    v-if="cell?.type !== 'covered'"
+                    :colspan="cell?.colSpan || 1"
+                    :rowspan="cell?.rowSpan || 1"
+                    class="layout-cell border border-gray-300 w-24 p-1 relative"
                     :class="{
                       'bg-gray-50': cell === null,
                       'bg-red-100': cell?.type === 'stage',
@@ -850,6 +960,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                       <div class="text-xs whitespace-normal break-words">{{ cell.name }}</div>
                     </div>
                   </td>
+                  </template>
                 </tr>
               </tbody>
             </table>
@@ -971,24 +1082,35 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
   min-width: 800px;
 }
 
+.layout-row {
+  height: 96px;
+}
+
 .layout-cell {
   min-width: 96px;
-  min-height: 96px;
+  height: 96px;
   position: relative;
   transition: background-color 0.2s ease;
+}
+
+.layout-cell > div {
+  position: absolute;
+  inset: 4px;
+  width: auto;
+  height: auto;
 }
 
 .layout-cell:hover {
   background-color: #f0f9ff !important;
 }
 
-.layout-cell .bg-white {
-  transition: all 0.2s ease;
+.layout-cell > div.cursor-pointer {
+  transition: inset 0.15s ease;
 }
 
-.layout-cell .bg-white:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.layout-cell > div.cursor-pointer:hover {
+  inset: 2px;
+  z-index: 10;
 }
 
 .text-lg {
@@ -1001,16 +1123,24 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
     min-width: 600px;
   }
 
+  .layout-row {
+    height: 80px;
+  }
+
   .layout-cell {
     min-width: 80px;
-    min-height: 80px;
+    height: 80px;
   }
 }
 
 @media (max-width: 768px) {
+  .layout-row {
+    height: 60px;
+  }
+
   .layout-cell {
     min-width: 60px;
-    min-height: 60px;
+    height: 60px;
   }
 
   .layout-cell .text-xs {

@@ -83,7 +83,7 @@ class BookingController extends Controller
             : [];
 
         $markerBlocks = $event->room->markerBlocks()
-            ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'order')
+            ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'colspan', 'rowspan', 'order')
             ->get();
 
         return Inertia::render('Booking/CreateBooking', [
@@ -263,7 +263,7 @@ class BookingController extends Controller
             ->find($booking->id);
 
         $markerBlocks = $event->room->markerBlocks()
-            ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'order')
+            ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'colspan', 'rowspan', 'order')
             ->get();
 
         // Get user's booked seat IDs for highlighting

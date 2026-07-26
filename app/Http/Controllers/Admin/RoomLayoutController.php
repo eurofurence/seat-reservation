@@ -90,6 +90,8 @@ class RoomLayoutController extends Controller
             'stageBlocks.*.name' => 'required|string|max:255',
             'stageBlocks.*.position_x' => 'required|integer|min:-1|max:11',
             'stageBlocks.*.position_y' => 'required|integer|min:-1|max:7',
+            'stageBlocks.*.colspan' => 'nullable|integer|min:1|max:12',
+            'stageBlocks.*.rowspan' => 'nullable|integer|min:1|max:8',
             'markerBlocks' => 'sometimes|array',
             'markerBlocks.*.id' => ['nullable', $ownedId($room->markerBlocks(), 'The selected marker block id is invalid for this room.')],
             'markerBlocks.*.type' => 'required|string|in:entrance,comment',
@@ -97,6 +99,8 @@ class RoomLayoutController extends Controller
             'markerBlocks.*.position_x' => 'required|integer|min:-1|max:11',
             'markerBlocks.*.position_y' => 'required|integer|min:-1|max:7',
             'markerBlocks.*.rotation' => 'nullable|integer|in:0,90,180,270',
+            'markerBlocks.*.colspan' => 'nullable|integer|min:1|max:12',
+            'markerBlocks.*.rowspan' => 'nullable|integer|min:1|max:8',
             'markerBlocks.*' => [
                 function (string $_attribute, $value, $fail) {
                     $type = $value['type'] ?? null;
@@ -116,6 +120,8 @@ class RoomLayoutController extends Controller
             'blocks.*.position_x' => 'required|integer|min:-1|max:11',
             'blocks.*.position_y' => 'required|integer|min:-1|max:7',
             'blocks.*.rotation' => 'required|integer|in:0,90,180,270',
+            'blocks.*.colspan' => 'nullable|integer|min:1|max:12',
+            'blocks.*.rowspan' => 'nullable|integer|min:1|max:8',
             'blocks.*.rowsData' => 'nullable|array',
             'blocks.*.rowsData.*.rowNumber' => 'integer|min:1|max:50',
             'blocks.*.rowsData.*.seatCount' => 'integer|min:1|max:100',
@@ -134,6 +140,8 @@ class RoomLayoutController extends Controller
                         'position_x' => $data['position_x'],
                         'position_y' => $data['position_y'],
                         'rotation' => 0,
+                        'colspan' => $data['colspan'] ?? 1,
+                        'rowspan' => $data['rowspan'] ?? 1,
                         'order' => $index,
                     ];
                 }, $blockIdMap);
@@ -147,6 +155,8 @@ class RoomLayoutController extends Controller
                         'position_x' => $data['position_x'],
                         'position_y' => $data['position_y'],
                         'rotation' => $data['rotation'] ?? 0,
+                        'colspan' => $data['colspan'] ?? 1,
+                        'rowspan' => $data['rowspan'] ?? 1,
                         'order' => $index,
                     ];
                 }, $blockIdMap);
@@ -165,6 +175,8 @@ class RoomLayoutController extends Controller
                         'position_x' => $blockData['position_x'],
                         'position_y' => $blockData['position_y'],
                         'rotation' => $blockData['rotation'],
+                        'colspan' => $blockData['colspan'] ?? 1,
+                        'rowspan' => $blockData['rowspan'] ?? 1,
                         'order' => $nextBlockOrder++,
                     ]);
                     $blockIdMap[$blockData['id']] = $block->id;
@@ -179,6 +191,8 @@ class RoomLayoutController extends Controller
                         'position_x' => $blockData['position_x'],
                         'position_y' => $blockData['position_y'],
                         'rotation' => $blockData['rotation'],
+                        'colspan' => $blockData['colspan'] ?? 1,
+                        'rowspan' => $blockData['rowspan'] ?? 1,
                     ]);
 
                     // If rowsData is provided, update the block structure

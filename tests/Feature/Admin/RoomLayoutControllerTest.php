@@ -869,4 +869,76 @@ class RoomLayoutControllerTest extends TestCase
         $response = $this->delete(route('admin.rooms.blocks.delete', ['room' => $this->room->id, 'block' => $block->id]));
         $response->assertForbidden();
     }
+
+    /** @test */
+    public function layout_update_persists_colspan_and_rowspan()
+    {
+        $this->actingAs($this->admin);
+
+        $seatingBlock = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                [
+                    'id' => $seatingBlock->id,
+                    'name' => 'Block A',
+                    'position_x' => 2,
+                    'position_y' => 2,
+                    'rotation' => 0,
+                    'colspan' => 4,
+                    'rowspan' => 2,
+                    'rowsData' => [['rowNumber' => 1, 'seatCount' => 5, 'isCustom' => false]],
+                ],
+            ],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('blocks', ['id' => $seatingBlock->id, 'colspan' => 4, 'rowspan' => 2]);
+    }
+
+    /** @test */
+    public function layout_update_defaults_colspan_and_rowspan_to_one()
+    {
+        $this->actingAs($this->admin);
+
+        $seatingBlock = Block::factory()->seating()->create(['room_id' => $this->room->id, 'colspan' => 3, 'rowspan' => 3]);
+
+        $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                [
+                    'id' => $seatingBlock->id,
+                    'name' => 'Block A',
+                    'position_x' => 0,
+                    'position_y' => 0,
+                    'rotation' => 0,
+                    'rowsData' => [['rowNumber' => 1, 'seatCount' => 5, 'isCustom' => false]],
+                ],
+            ],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('blocks', ['id' => $seatingBlock->id, 'colspan' => 1, 'rowspan' => 1]);
+    }
+
+    /** @test */
+    public function layout_update_validates_span_range()
+    {
+        $this->actingAs($this->admin);
+
+        $seatingBlock = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $response = $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                [
+                    'id' => $seatingBlock->id,
+                    'name' => 'Block A',
+                    'position_x' => 0,
+                    'position_y' => 0,
+                    'rotation' => 0,
+                    'colspan' => 0,
+                    'rowspan' => 99,
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors(['blocks.0.colspan', 'blocks.0.rowspan']);
+    }
 }

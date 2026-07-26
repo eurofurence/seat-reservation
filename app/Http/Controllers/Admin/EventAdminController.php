@@ -118,7 +118,7 @@ class EventAdminController extends Controller
         [$room, $blocks, $stageBlocks, $bookedSeats] = $layout->load($event);
 
         $markerBlocks = $room->markerBlocks()
-            ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'order')
+            ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'colspan', 'rowspan', 'order')
             ->get();
 
         // Get seat to booking mapping for seat clicks

@@ -68,7 +68,7 @@ class SeatingCardsController extends Controller
 
             $room = $event->room;
             $masterBlocks = $room->blocks()
-                ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation')
+                ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'colspan', 'rowspan')
                 ->with(['rows' => function ($query) {
                     $query->select('id', 'block_id', 'order', 'alignment')
                         ->orderBy('order')
@@ -76,10 +76,10 @@ class SeatingCardsController extends Controller
                 }])
                 ->get();
             $masterStageBlocks = $room->stageBlocks()
-                ->select('id', 'room_id', 'name', 'position_x', 'position_y')
+                ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'colspan', 'rowspan')
                 ->get();
             $masterMarkerBlocks = $room->markerBlocks()
-                ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation')
+                ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'colspan', 'rowspan')
                 ->get();
 
             // mPDF configuration with custom Zhurzh font
