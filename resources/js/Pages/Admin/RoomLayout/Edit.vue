@@ -7,7 +7,7 @@ import { Card } from '@/Components/ui/card'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { useToast } from '@/Components/ui/toast'
-import { Trash2, RotateCw, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, TriangleAlert } from 'lucide-vue-next'
+import { Trash2, RotateCw, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, TriangleAlert, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import type {
   BlockId, Orientation, MarkerType,
   PropBlock, PropStageBlock, PropMarkerBlock,
@@ -142,6 +142,15 @@ type GridCell =
 const selectedBlock = ref<SelectedBlock | null>(null)
 const selectedBlockType = ref<SelectedType | null>(null)
 const expandedBlocks = ref<Set<BlockId>>(new Set())
+
+type PanelKey = 'stage' | 'entrances' | 'comments' | 'seating'
+const collapsedPanels = ref<Set<PanelKey>>(new Set())
+const togglePanel = (panel: PanelKey) => {
+  collapsedPanels.value.has(panel)
+    ? collapsedPanels.value.delete(panel)
+    : collapsedPanels.value.add(panel)
+}
+const isPanelCollapsed = (panel: PanelKey) => collapsedPanels.value.has(panel)
 const showNewBlockDialog = ref(false)
 const newBlockName = ref('')
 
@@ -586,14 +595,17 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
       <div class="lg:col-span-2 space-y-4">
 
         <Card class="p-4 gap-0">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold">Stage Blocks</h3>
+          <div class="flex justify-between items-center" :class="{ 'mb-2': !isPanelCollapsed('stage') }">
+            <button @click="togglePanel('stage')" class="flex items-center gap-1 font-semibold">
+              <component :is="isPanelCollapsed('stage') ? ChevronRight : ChevronDown" class="w-4 h-4" />
+              Stage Blocks
+            </button>
             <Button size="sm" variant="outline" class="text-xs" @click="addStageBlock">
               + Add Stage
             </Button>
           </div>
 
-          <div class="space-y-2 max-h-96 overflow-y-auto">
+          <div v-show="!isPanelCollapsed('stage')" class="space-y-2 max-h-96 overflow-y-auto">
             <div
               v-for="(stageBlock, index) in form.stageBlocks"
               :key="stageBlock.id"
@@ -641,114 +653,165 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
           </div>
         </Card>
 
-        <!-- Marker Blocks Management -->
+        <!-- Entrance Management -->
         <Card class="p-4 gap-0">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold">Markers</h3>
-            <div class="flex gap-1">
-              <Button size="sm" variant="outline" class="text-xs" @click="addMarker('entrance')">
-                + Entrance
-              </Button>
-              <Button size="sm" variant="outline" class="text-xs" @click="addMarker('comment')">
-                + Comment
-              </Button>
-            </div>
+          <div class="flex justify-between items-center" :class="{ 'mb-2': !isPanelCollapsed('entrances') }">
+            <button @click="togglePanel('entrances')" class="flex items-center gap-1 font-semibold">
+              <component :is="isPanelCollapsed('entrances') ? ChevronRight : ChevronDown" class="w-4 h-4" />
+              Entrances
+            </button>
+            <Button size="sm" variant="outline" class="text-xs" @click="addMarker('entrance')">
+              + Entrance
+            </Button>
           </div>
 
-          <div class="space-y-2 max-h-96 overflow-y-auto">
-            <div
-              v-for="(marker, index) in form.markerBlocks"
-              :key="marker.id"
-              class="border border-gray-200 rounded-lg p-3"
-              :class="{ 'ring-2 ring-inset ring-amber-500': selectedBlockType === 'marker' && selectedBlock?.markerIndex === index }"
-              @click="selectBlock({ ...marker, markerIndex: index }, 'marker')"
-            >
-              <div class="flex items-end justify-between mb-2">
-                <div class="flex-1">
-                  <Label class="text-xs">
-                    {{ marker.type === 'entrance' ? 'Entrance label' : 'Comment text' }}
-                  </Label>
-                  <Input
-                    v-model="marker.name"
-                    class="text-sm mt-1"
-                    @click.stop
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  @click.stop="removeMarkerBlock(index)"
-                  class="text-xs px-2 py-1 ml-2"
-                  title="Remove marker"
-                >
-                  <Trash2 class="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div v-if="marker.type === 'entrance'" class="space-y-2 mb-2">
-                <div class="flex items-center gap-2">
-                  <Label class="text-xs w-16">Spans</Label>
-                  <select
-                    :value="marker.orientation"
-                    @click.stop
-                    @change="setEntranceOrientation(marker, ($event.target as HTMLSelectElement).value as Orientation)"
-                    class="text-xs h-7 border border-gray-300 rounded px-2 flex-1"
-                  >
-                    <option value="row">Full row (horizontal)</option>
-                    <option value="column">Full column (vertical)</option>
-                  </select>
-                </div>
-                <div class="flex items-center gap-2">
-                  <Label class="text-xs w-16">Direction</Label>
-                  <component :is="getOrientationArrow(marker.rotation)" class="w-5 h-5" />
+          <div v-show="!isPanelCollapsed('entrances')" class="space-y-2 max-h-96 overflow-y-auto">
+            <template v-for="(marker, index) in form.markerBlocks" :key="marker.id">
+              <div
+                v-if="marker.type === 'entrance'"
+                class="border border-gray-200 rounded-lg p-3"
+                :class="{ 'ring-2 ring-inset ring-amber-500': selectedBlockType === 'marker' && selectedBlock?.markerIndex === index }"
+                @click="selectBlock({ ...marker, markerIndex: index }, 'marker')"
+              >
+                <div class="flex items-end justify-between mb-2">
+                  <div class="flex-1">
+                    <Label class="text-xs">Entrance label</Label>
+                    <Input
+                      v-model="marker.name"
+                      class="text-sm mt-1"
+                      @click.stop
+                    />
+                  </div>
                   <Button
                     size="sm"
-                    variant="outline"
-                    @click.stop="rotateEntrance(marker)"
-                    class="text-xs px-2 py-1"
-                    title="Rotate direction"
+                    variant="destructive"
+                    @click.stop="removeMarkerBlock(index)"
+                    class="text-xs px-2 py-1 ml-2"
+                    title="Remove entrance"
                   >
-                    <RotateCw class="w-4 h-4" />
+                    <Trash2 class="w-4 h-4" />
                   </Button>
                 </div>
-              </div>
 
-              <div v-if="marker.type === 'comment'" class="flex gap-4 mb-2" @click.stop>
-                <div class="flex items-center gap-2">
-                  <Label class="text-xs">Cols</Label>
-                  <Input v-model.number="marker.colspan" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                <div class="space-y-2 mb-2">
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs w-16">Spans</Label>
+                    <select
+                      :value="marker.orientation"
+                      @click.stop
+                      @change="setEntranceOrientation(marker, ($event.target as HTMLSelectElement).value as Orientation)"
+                      class="text-xs h-7 border border-gray-300 rounded px-2 flex-1"
+                    >
+                      <option value="row">Full row (horizontal)</option>
+                      <option value="column">Full column (vertical)</option>
+                    </select>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs w-16">Direction</Label>
+                    <component :is="getOrientationArrow(marker.rotation)" class="w-5 h-5" />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      @click.stop="rotateEntrance(marker)"
+                      class="text-xs px-2 py-1"
+                      title="Rotate direction"
+                    >
+                      <RotateCw class="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <Label class="text-xs">Rows</Label>
-                  <Input v-model.number="marker.rowspan" type="number" min="1" max="8" class="text-xs h-7 w-16" />
-                </div>
-              </div>
 
-              <div class="text-xs text-gray-500">
-                <span v-if="getMarkerPlacementStatus(marker)" class="text-green-600">
-                  <template v-if="marker.type === 'comment'">• Placed ({{ marker.position_y }}, {{ marker.position_x }})</template>
-                  <template v-else-if="marker.orientation === 'column'">• Column {{ marker.position_x }}</template>
-                  <template v-else>• Row {{ marker.position_y }}</template>
-                </span>
-                <span v-else class="text-orange-600">• Not placed</span>
+                <div class="text-xs text-gray-500">
+                  <span v-if="getMarkerPlacementStatus(marker)" class="text-green-600">
+                    <template v-if="marker.orientation === 'column'">• Column {{ marker.position_x }}</template>
+                    <template v-else>• Row {{ marker.position_y }}</template>
+                  </span>
+                  <span v-else class="text-orange-600">• Not placed</span>
+                </div>
               </div>
-            </div>
-            <p v-if="form.markerBlocks.length === 0" class="text-xs text-gray-400">
-              No markers yet. Add an entrance row/column or a comment note.
+            </template>
+            <p v-if="!form.markerBlocks.some(m => m.type === 'entrance')" class="text-xs text-gray-400">
+              No entrances yet. Add an entrance row or column.
+            </p>
+          </div>
+        </Card>
+
+        <!-- Comment Management -->
+        <Card class="p-4 gap-0">
+          <div class="flex justify-between items-center" :class="{ 'mb-2': !isPanelCollapsed('comments') }">
+            <button @click="togglePanel('comments')" class="flex items-center gap-1 font-semibold">
+              <component :is="isPanelCollapsed('comments') ? ChevronRight : ChevronDown" class="w-4 h-4" />
+              Comments
+            </button>
+            <Button size="sm" variant="outline" class="text-xs" @click="addMarker('comment')">
+              + Comment
+            </Button>
+          </div>
+
+          <div v-show="!isPanelCollapsed('comments')" class="space-y-2 max-h-96 overflow-y-auto">
+            <template v-for="(marker, index) in form.markerBlocks" :key="marker.id">
+              <div
+                v-if="marker.type === 'comment'"
+                class="border border-gray-200 rounded-lg p-3"
+                :class="{ 'ring-2 ring-inset ring-amber-500': selectedBlockType === 'marker' && selectedBlock?.markerIndex === index }"
+                @click="selectBlock({ ...marker, markerIndex: index }, 'marker')"
+              >
+                <div class="flex items-end justify-between mb-2">
+                  <div class="flex-1">
+                    <Label class="text-xs">Comment text</Label>
+                    <Input
+                      v-model="marker.name"
+                      class="text-sm mt-1"
+                      @click.stop
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    @click.stop="removeMarkerBlock(index)"
+                    class="text-xs px-2 py-1 ml-2"
+                    title="Remove comment"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div class="flex gap-4 mb-2" @click.stop>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Cols</Label>
+                    <Input v-model.number="marker.colspan" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Rows</Label>
+                    <Input v-model.number="marker.rowspan" type="number" min="1" max="8" class="text-xs h-7 w-16" />
+                  </div>
+                </div>
+
+                <div class="text-xs text-gray-500">
+                  <span v-if="getMarkerPlacementStatus(marker)" class="text-green-600">• Placed ({{ marker.position_y }}, {{ marker.position_x }})</span>
+                  <span v-else class="text-orange-600">• Not placed</span>
+                </div>
+              </div>
+            </template>
+            <p v-if="!form.markerBlocks.some(m => m.type === 'comment')" class="text-xs text-gray-400">
+              No comments yet. Add a comment note.
             </p>
           </div>
         </Card>
 
         <!-- Seating Blocks Management -->
         <Card class="p-4 gap-0">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold">Seating Blocks</h3>
+          <div class="flex justify-between items-center" :class="{ 'mb-2': !isPanelCollapsed('seating') }">
+            <button @click="togglePanel('seating')" class="flex items-center gap-1 font-semibold">
+              <component :is="isPanelCollapsed('seating') ? ChevronRight : ChevronDown" class="w-4 h-4" />
+              Seating Blocks
+            </button>
             <Button size="sm" variant="outline" class="text-xs" @click="openNewBlockDialog">
               + Add Block
             </Button>
           </div>
 
-          <div class="space-y-2 overflow-y-auto">
+          <div v-show="!isPanelCollapsed('seating')" class="space-y-2 overflow-y-auto">
             <div
               v-for="block in form.blocks"
               :key="block.id"
