@@ -84,6 +84,20 @@ class RoomLayoutController extends Controller
             }
         };
 
+        $spanFits = function (string $_attribute, $value, $fail) {
+            $x = isset($value['position_x']) ? (int) $value['position_x'] : null;
+            $y = isset($value['position_y']) ? (int) $value['position_y'] : null;
+            $colspan = isset($value['colspan']) ? (int) $value['colspan'] : 1;
+            $rowspan = isset($value['rowspan']) ? (int) $value['rowspan'] : 1;
+
+            if ($x !== null && $x !== -1 && $x + $colspan > 12) {
+                $fail('The block extends past the right edge of the grid.');
+            }
+            if ($y !== null && $y !== -1 && $y + $rowspan > 8) {
+                $fail('The block extends past the bottom edge of the grid.');
+            }
+        };
+
         $request->validate([
             'stageBlocks' => 'sometimes|array',
             'stageBlocks.*.id' => ['nullable', $ownedId($room->stageBlocks(), 'The selected stage block id is invalid for this room.')],
@@ -92,6 +106,7 @@ class RoomLayoutController extends Controller
             'stageBlocks.*.position_y' => 'required|integer|min:-1|max:7',
             'stageBlocks.*.colspan' => 'nullable|integer|min:1|max:12',
             'stageBlocks.*.rowspan' => 'nullable|integer|min:1|max:8',
+            'stageBlocks.*' => [$spanFits],
             'markerBlocks' => 'sometimes|array',
             'markerBlocks.*.id' => ['nullable', $ownedId($room->markerBlocks(), 'The selected marker block id is invalid for this room.')],
             'markerBlocks.*.type' => 'required|string|in:entrance,comment',
@@ -102,6 +117,7 @@ class RoomLayoutController extends Controller
             'markerBlocks.*.colspan' => 'nullable|integer|min:1|max:12',
             'markerBlocks.*.rowspan' => 'nullable|integer|min:1|max:8',
             'markerBlocks.*' => [
+                $spanFits,
                 function (string $_attribute, $value, $fail) {
                     $type = $value['type'] ?? null;
                     $x = isset($value['position_x']) ? (int) $value['position_x'] : null;
@@ -122,6 +138,7 @@ class RoomLayoutController extends Controller
             'blocks.*.rotation' => 'required|integer|in:0,90,180,270',
             'blocks.*.colspan' => 'nullable|integer|min:1|max:12',
             'blocks.*.rowspan' => 'nullable|integer|min:1|max:8',
+            'blocks.*' => [$spanFits],
             'blocks.*.rowsData' => 'nullable|array',
             'blocks.*.rowsData.*.rowNumber' => 'integer|min:1|max:50',
             'blocks.*.rowsData.*.seatCount' => 'integer|min:1|max:100',

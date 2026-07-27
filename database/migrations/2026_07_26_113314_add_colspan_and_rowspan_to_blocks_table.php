@@ -45,6 +45,8 @@ return new class extends Migration
             ->where('type', $type)
             ->where('position_x', '>=', 0)
             ->where('position_y', '>=', 0)
+            ->orderBy('position_y')
+            ->orderBy('position_x')
             ->get(['id', 'name', 'position_x', 'position_y']);
 
         $grid = [];

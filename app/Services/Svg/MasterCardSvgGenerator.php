@@ -74,7 +74,7 @@ class MasterCardSvgGenerator
             $svg .= match ($c['type']) {
                 'stage' => $this->stageCell($c, $bx, $by, $cw, $ch, $mpdf),
                 'comment' => $this->commentCell($c, $bx, $by, $cw, $ch, $mpdf),
-                default => $this->seatingCell($c, $bx, $by, $bookedSeatIds, $mpdf),
+                default => $this->seatingCell($c, $bx, $by, $cw, $ch, $bookedSeatIds, $mpdf),
             };
         }
 
@@ -282,12 +282,12 @@ class MasterCardSvgGenerator
         return $svg;
     }
 
-    private function seatingCell(array $c, float $bx, float $by, array $bookedSeatIds, Mpdf $mpdf): string
+    private function seatingCell(array $c, float $bx, float $by, float $cw, float $ch, array $bookedSeatIds, Mpdf $mpdf): string
     {
-        $cxMid = $bx + $c['w'] / 2;
+        $cxMid = $bx + $cw / 2;
 
-        return $this->svg->rect($bx, $by, $c['w'], $c['h'], 'none', 3, 10)
-            .$this->svg->centeredLabelX($mpdf, $c['block']->name, SvgUtilities::SIZE_BLOCK_LABEL, '#000000', $cxMid, $by + 22, $c['w'] - 12)
+        return $this->svg->rect($bx, $by, $cw, $ch, 'none', 3, 10)
+            .$this->svg->centeredLabelX($mpdf, $c['block']->name, SvgUtilities::SIZE_BLOCK_LABEL, '#000000', $cxMid, $by + 22, $cw - 12)
             .$this->seatDots($c, $cxMid, $by, $bookedSeatIds);
     }
 
