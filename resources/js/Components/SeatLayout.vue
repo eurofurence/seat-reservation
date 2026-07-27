@@ -250,6 +250,7 @@ watch(() => props.selectedSeats, (newSeats) => {
                   'layout-cell',
                   {
                     'stage-layout-cell': cell && cell.type === 'stage',
+                    'comment-layout-cell': cell && cell.type === 'comment',
                     'entrance-layout-cell': cell && cell.type === 'entrance',
                     'entrance-layout-row': cell && cell.type === 'entrance' && cell.orientation === 'row',
                     'entrance-layout-column': cell && cell.type === 'entrance' && cell.orientation === 'column'
@@ -287,7 +288,7 @@ watch(() => props.selectedSeats, (newSeats) => {
                   <component :is="arrow(cell.rotation)" class="entrance-arrow" />
                 </div>
 
-                <div v-else-if="cell.type === 'comment'" class="comment-text" :style="{ minWidth: `${(cell.colSpan ?? 1) * 60}px`, minHeight: `${(cell.rowSpan ?? 1) * 60}px` }">
+                <div v-else-if="cell.type === 'comment'" class="comment-text">
                   {{ cell.name }}
                 </div>
               </td>
@@ -400,6 +401,13 @@ watch(() => props.selectedSeats, (newSeats) => {
   cursor: not-allowed;
   user-select: none;
   min-width: 200px;
+}
+
+.comment-layout-cell {
+  position: relative;
+  padding: 8px;
+  min-width: 200px;
+  min-height: 60px;
 }
 
 .entrance-layout-cell {
@@ -527,12 +535,11 @@ watch(() => props.selectedSeats, (newSeats) => {
 }
 
 .comment-text {
+  position: absolute;
+  inset: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
-  min-height: 60px;
   padding: 6px;
   background-color: #f3f4f6;
   border: 1px solid #d1d5db;
@@ -542,7 +549,8 @@ watch(() => props.selectedSeats, (newSeats) => {
   font-weight: 600;
   text-align: center;
   white-space: normal;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
   user-select: none;
 }
 </style>
