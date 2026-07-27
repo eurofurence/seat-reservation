@@ -12,6 +12,6 @@ const abbreviation = computed(() =>
 <template>
   <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
     <InfoIcon class="h-3.5 w-3.5 shrink-0" />
-    <span>All times are in Eurofurence Time ({{ APP_TIMEZONE }} {{ abbreviation }}).</span>
+    <span>All times are in Eurofurence Time ({{ APP_TIMEZONE }} {{ abbreviation }}) and use 24-hour format (HH:MM).</span>
   </div>
 </template>

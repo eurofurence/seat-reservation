@@ -58,6 +58,11 @@ watch([date, time], ([newDate, newTime]) => {
   emit('update:modelValue', combineDateTime(newDate, newTime))
 })
 
+const onTimeInput = (e: Event) => {
+  const digits = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 4)
+  time.value = digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits
+}
+
 const clear = () => {
   date.value = undefined
   time.value = ''
@@ -90,10 +95,14 @@ const clear = () => {
       </div>
       <div class="w-32">
         <Input
-          v-model="time"
-          type="time"
+          :model-value="time"
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]{2}:[0-9]{2}"
+          maxlength="5"
           placeholder="HH:MM"
           :class="{ 'border-red-500': error }"
+          @input="onTimeInput"
         />
       </div>
       <Button
