@@ -48,7 +48,16 @@ class EventAdminController extends Controller
     public function update(Request $request, $id)
     {
         $event = Event::findOrFail($id);
-        $event->update($this->validatedEventData($request));
+        $data = $this->validatedEventData($request);
+
+        if ((int) $data['room_id'] !== (int) $event->room_id
+            && Booking::where('event_id', $event->id)->exists()) {
+            throw ValidationException::withMessages([
+                'room_id' => 'The room cannot be changed because this event already has bookings.',
+            ]);
+        }
+
+        $event->update($data);
 
         return redirect()->route('admin.events.index')
             ->with('success', 'Event updated successfully');
