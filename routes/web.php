@@ -42,17 +42,24 @@ Route::middleware('auth')->group(function () {
 
         // Events
         Route::get('/events', [\App\Http\Controllers\Admin\EventAdminController::class, 'index'])->name('events.index');
-        Route::get('/events/export-all', [\App\Http\Controllers\Admin\EventAdminController::class, 'exportAll'])->name('events.export-all');
+        Route::get('/events/export-all', \App\Http\Controllers\Admin\ExportAllBookingsController::class)->name('events.export-all');
+        Route::get('/import-bookings/template', \App\Http\Controllers\Admin\GlobalImportTemplateController::class)->name('import-bookings.template');
+        Route::post('/import-bookings', \App\Http\Controllers\Admin\GlobalProposeImportController::class)->name('import-bookings.propose');
         Route::post('/events', [\App\Http\Controllers\Admin\EventAdminController::class, 'store'])->name('events.store');
         Route::put('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'update'])->name('events.update');
         Route::delete('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'destroy'])->name('events.destroy');
         Route::get('/events/{event}', [\App\Http\Controllers\Admin\EventAdminController::class, 'show'])->name('events.show');
-        Route::get('/events/{event}/export', [\App\Http\Controllers\Admin\EventAdminController::class, 'export'])->name('events.export');
-        Route::get('/events/{event}/seating-cards', [\App\Http\Controllers\Admin\EventAdminController::class, 'seatingCards'])->name('events.seating-cards');
-        Route::post('/events/{event}/manual-booking', [\App\Http\Controllers\Admin\EventAdminController::class, 'manualBooking'])->name('events.manual-booking');
-        Route::post('/events/{event}/toggle-pickup', [\App\Http\Controllers\Admin\EventAdminController::class, 'togglePickup'])->name('events.toggle-pickup');
-        Route::put('/events/{event}/bookings/{booking}', [\App\Http\Controllers\Admin\EventAdminController::class, 'updateBooking'])->name('events.update-booking');
-        Route::delete('/events/{event}/bookings/{booking}', [\App\Http\Controllers\Admin\EventAdminController::class, 'deleteBooking'])->name('events.delete-booking');
+        Route::get('/events/{event}/export', \App\Http\Controllers\Admin\ExportBookingsController::class)->name('events.export');
+        Route::get('/events/{event}/seating-cards', \App\Http\Controllers\Admin\SeatingCardsController::class)->name('events.seating-cards');
+        Route::post('/events/{event}/manual-booking', \App\Http\Controllers\Admin\ManualBookingController::class)->name('events.manual-booking');
+        Route::get('/events/{event}/import-bookings/template', \App\Http\Controllers\Admin\ImportTemplateController::class)->name('events.import-bookings.template');
+        Route::post('/events/{event}/import-bookings', \App\Http\Controllers\Admin\ProposeImportController::class)->name('events.import-bookings.propose');
+        Route::get('/events/{event}/import-bookings/preview', \App\Http\Controllers\Admin\ImportPreviewController::class)->name('events.import-bookings.preview');
+        Route::post('/events/{event}/import-bookings/autoplace', \App\Http\Controllers\Admin\AutoPlaceSeatsController::class)->name('events.import-bookings.autoplace');
+        Route::post('/events/{event}/import-bookings/confirm', \App\Http\Controllers\Admin\ConfirmImportController::class)->name('events.import-bookings.confirm');
+        Route::post('/events/{event}/toggle-pickup', \App\Http\Controllers\Admin\TogglePickupController::class)->name('events.toggle-pickup');
+        Route::put('/events/{event}/bookings/{booking}', \App\Http\Controllers\Admin\UpdateBookingController::class)->name('events.update-booking');
+        Route::delete('/events/{event}/bookings/{booking}', \App\Http\Controllers\Admin\DeleteBookingController::class)->name('events.delete-booking');
 
         // Rooms
         Route::get('/rooms', [\App\Http\Controllers\Admin\RoomAdminController::class, 'index'])->name('rooms.index');

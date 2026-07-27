@@ -10,15 +10,17 @@ import { CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Table } from '@/Components/ui/table'
 import { Input } from '@/Components/ui/input'
-import { Textarea } from '@/Components/ui/textarea'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Checkbox } from '@/Components/ui/checkbox'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
-import {Download, Calendar, Clock, MapPin, Users, Plus, UserPlus, X, Pencil, Trash2, Info} from 'lucide-vue-next'
+import {Download, Upload, Calendar, Clock, MapPin, Users, Plus, UserPlus, X, Pencil, Trash2, Info} from 'lucide-vue-next'
 import dayjs, { fmt } from '@/lib/datetime'
-import axios from 'axios'
+import SeatStatistics from '@/Components/Admin/SeatStatistics.vue'
+import ImportDialog from '@/Components/Admin/ImportDialog.vue'
+import EditBookingDialog from '@/Components/Admin/EditBookingDialog.vue'
+import DeleteBookingDialog from '@/Components/Admin/DeleteBookingDialog.vue'
+import { useCsvDownload } from '@/composables/useCsvDownload'
 
 defineOptions({layout: AdminLayout})
 
@@ -56,20 +58,12 @@ const manualBookingForm = ref({
 // Search state - initialize from props
 const searchQuery = ref(props.search || '')
 
-// Edit/Delete modal state
-const editModal = ref({
-    show: false,
-    booking: null,
-    name: '',
-    comment: '',
-    isProcessing: false
-})
+// Edit/Delete modal state (dialog UI lives in EditBookingDialog/DeleteBookingDialog)
+const editingBooking = ref(null)
+const editOpen = ref(false)
 
-const deleteModal = ref({
-    show: false,
-    booking: null,
-    isProcessing: false
-})
+const deletingBooking = ref(null)
+const deleteOpen = ref(false)
 
 // Calculate seat statistics
 const seatStats = computed(() => {
@@ -83,7 +77,6 @@ const seatStats = computed(() => {
     })
 
     const bookedCount = props.bookedSeats?.length || 0
-    const selectedCount = selectedSeats.value.length
     const availableCount = totalSeats - bookedCount
 
     const maxTickets = props.event.max_tickets || totalSeats
@@ -92,7 +85,6 @@ const seatStats = computed(() => {
     return {
         total: totalSeats,
         available: availableCount,
-        selected: selectedCount,
         booked: bookedCount,
         maxTickets,
         ticketsRemaining,
@@ -240,7 +232,7 @@ const clearManualBooking = () => {
 }
 
 // Handle pickup toggle
-const togglePickup = async (booking, event) => {
+const togglePickup = (booking, event) => {
     const isRevert = !!booking.picked_up_at
 
     if (isRevert && !confirm('This ticket is already marked as picked up. Are you sure you want to revert it to unpicked?')) {
@@ -248,81 +240,29 @@ const togglePickup = async (booking, event) => {
         return
     }
 
-    try {
-        const response = await axios.post(route('admin.events.toggle-pickup', props.event.id), {
-            booking_id: booking.id,
-            picked_up: !isRevert
-        })
-
-        if (response.data.success) {
-            // Refresh the page to show updated pickup status
-            router.reload()
-        }
-
-    } catch (error) {
-        console.error('Error toggling pickup status:', error)
-        alert('Error updating pickup status. Please try again.')
-    }
+    router.post(route('admin.events.toggle-pickup', props.event.id), {
+        booking_id: booking.id,
+        picked_up: !isRevert,
+    }, {
+        preserveScroll: true,
+        onError: () => {
+            // Revert the checkbox to its previous state if the request failed - the flash
+            // toast from AdminLayout will surface the error message.
+            event.target.checked = isRevert
+        },
+    })
 }
 
 // Open edit modal
 const openEditModal = (booking) => {
-    editModal.value = {
-        show: true,
-        booking: booking,
-        name: booking.guest_name || booking.name || (booking.user ? booking.user.name : ''),
-        comment: booking.comment || '',
-        isProcessing: false
-    }
-}
-
-// Save edited booking
-const saveEditedBooking = () => {
-    if (!editModal.value.name.trim()) {
-        alert('Please enter a name')
-        return
-    }
-
-    const editForm = useForm({
-        name: editModal.value.name,
-        comment: editModal.value.comment
-    })
-
-    editModal.value.isProcessing = true
-
-    editForm.put(route('admin.events.update-booking', [props.event.id, editModal.value.booking.id]), {
-        onSuccess: () => {
-            editModal.value.show = false
-        },
-        onFinish: () => {
-            editModal.value.isProcessing = false
-        }
-    })
+    editingBooking.value = booking
+    editOpen.value = true
 }
 
 // Open delete modal
 const openDeleteModal = (booking) => {
-    deleteModal.value = {
-        show: true,
-        booking: booking,
-        isProcessing: false
-    }
-}
-
-// Delete booking
-const deleteBooking = () => {
-    const deleteForm = useForm({})
-
-    deleteModal.value.isProcessing = true
-
-    deleteForm.delete(route('admin.events.delete-booking', [props.event.id, deleteModal.value.booking.id]), {
-        onSuccess: () => {
-            deleteModal.value.show = false
-        },
-        onFinish: () => {
-            deleteModal.value.isProcessing = false
-        }
-    })
+    deletingBooking.value = booking
+    deleteOpen.value = true
 }
 
 // Get display name for booking (guest name from the booking)
@@ -396,22 +336,10 @@ const clearSearch = () => {
 
 const includeUnpicked = ref(false)
 
-const exportBookings = async () => {
-    try {
-        const response = await axios.get(route('admin.events.export', props.event.id), {
-            responseType: 'blob',
-        })
+const { download } = useCsvDownload()
 
-        const url = window.URL.createObjectURL(new Blob([response.data]))
-        const link = document.createElement('a')
-        link.href = url
-        link.setAttribute('download', `bookings-${props.event.id}-${Date.now()}.csv`)
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-    } catch (error) {
-        console.error('Error exporting bookings:', error)
-    }
+const exportBookings = () => {
+    download(route('admin.events.export', props.event.id), `bookings-${props.event.id}-${Date.now()}.csv`)
 }
 
 const printSeatCards = () => {
@@ -421,6 +349,9 @@ const printSeatCards = () => {
     }
     window.open(url.toString(), '_blank')
 }
+
+// Bulk booking import (dialog UI lives in ImportDialog)
+const importOpen = ref(false)
 
 const getSeatInfo = (booking) => {
     if (!booking.seat) return 'N/A'
@@ -497,6 +428,10 @@ const navigateToPage = (linkUrl) => {
                             <Download class="mr-2 h-4 w-4"/>
                             Export Bookings
                         </Button>
+                        <Button @click="importOpen = true" variant="outline">
+                            <Upload class="mr-2 h-4 w-4"/>
+                            Import Bookings
+                        </Button>
                         <Button @click="printSeatCards" variant="outline">
                             <Download class="mr-2 h-4 w-4"/>
                             Print Seat Cards
@@ -512,52 +447,7 @@ const navigateToPage = (linkUrl) => {
 
         <!-- Seat Statistics -->
         <div class="mb-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Ticket Statistics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold">{{ seatStats.maxTickets }}</div>
-                            <div class="text-sm text-muted-foreground">Available Tickets</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-red-600">{{ seatStats.booked }}</div>
-                            <div class="text-sm text-muted-foreground">Tickets Requested</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold" :class="seatStats.ticketsRemaining > 0 ? 'text-emerald-600' : 'text-red-600'">{{ seatStats.ticketsRemaining }}</div>
-                            <div class="text-sm text-muted-foreground">Tickets Remaining</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-blue-600">{{ seatStats.selected }}</div>
-                            <div class="text-sm text-muted-foreground">Currently Selected</div>
-                        </div>
-                    </div>
-
-                    <!-- Progress bar for remaining tickets -->
-                    <div class="mt-4 p-3 bg-gray-50 rounded-lg">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium">Remaining Tickets</span>
-                            <span class="text-sm text-muted-foreground">{{ Math.round((seatStats.booked / seatStats.maxTickets) * 100) }}%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                                class="h-2 rounded-full transition-all duration-300"
-                                :class="seatStats.isOverLimit ? 'bg-red-500' : seatStats.ticketsRemaining === 0 ? 'bg-yellow-500' : 'bg-emerald-500'"
-                                :style="{ width: Math.min(100, (seatStats.booked / seatStats.maxTickets) * 100) + '%' }"
-                            ></div>
-                        </div>
-                        <div v-if="seatStats.isOverLimit" class="mt-2 text-sm text-red-600 font-medium">
-                            ⚠️ {{ seatStats.booked - seatStats.maxTickets }} tickets over limit
-                        </div>
-                        <div v-else-if="seatStats.ticketsRemaining === 0" class="mt-2 text-sm text-yellow-600 font-medium">
-                            🎟️ Event is sold out
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+            <SeatStatistics :stats="seatStats" />
         </div>
 
         <!-- Main Content: Side by Side Layout -->
@@ -796,86 +686,24 @@ const navigateToPage = (linkUrl) => {
             </Card>
         </div>
 
-        <!-- Edit Booking Modal -->
-        <Dialog v-model:open="editModal.show">
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Edit Booking</DialogTitle>
-                </DialogHeader>
-                <div class="space-y-4 py-4">
-                    <div>
-                        <Label for="edit-name">Name</Label>
-                        <Input
-                            id="edit-name"
-                            v-model="editModal.name"
-                            placeholder="Name or team"
-                            class="mt-1"
-                        />
-                    </div>
-                    <div>
-                        <Label for="edit-comment">Comment</Label>
-                        <Textarea
-                            id="edit-comment"
-                            v-model="editModal.comment"
-                            placeholder="Additional notes..."
-                            class="mt-1"
-                            rows="3"
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button
-                        variant="outline"
-                        @click="editModal.show = false"
-                        :disabled="editModal.isProcessing"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        @click="saveEditedBooking"
-                        :disabled="editModal.isProcessing || !editModal.name.trim()"
-                    >
-                        {{ editModal.isProcessing ? 'Saving...' : 'Save Changes' }}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <EditBookingDialog
+            v-model:open="editOpen"
+            :event-id="event.id"
+            :booking="editingBooking"
+        />
 
-        <!-- Delete Confirmation Modal -->
-        <Dialog v-model:open="deleteModal.show">
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Delete Booking</DialogTitle>
-                </DialogHeader>
-                <div class="py-4">
-                    <p class="text-sm text-muted-foreground">
-                        Are you sure you want to delete this booking?
-                    </p>
-                    <div v-if="deleteModal.booking" class="mt-4 p-3 bg-gray-50 rounded-md">
-                        <div class="text-sm">
-                            <div><strong>Name:</strong> {{ getBookingDisplayName(deleteModal.booking) }}</div>
-                            <div><strong>Seat:</strong> {{ getSeatInfo(deleteModal.booking) }}</div>
-                        </div>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button
-                        variant="outline"
-                        @click="deleteModal.show = false"
-                        :disabled="deleteModal.isProcessing"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="destructive"
-                        @click="deleteBooking"
-                        :disabled="deleteModal.isProcessing"
-                    >
-                        {{ deleteModal.isProcessing ? 'Deleting...' : 'Delete Booking' }}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <DeleteBookingDialog
+            v-model:open="deleteOpen"
+            :event-id="event.id"
+            :booking="deletingBooking"
+            :display-name="deletingBooking ? getBookingDisplayName(deletingBooking) : ''"
+            :seat-info="deletingBooking ? getSeatInfo(deletingBooking) : ''"
+        />
+
+        <ImportDialog
+            v-model:open="importOpen"
+            :event-id="event.id"
+        />
 
     </div>
 </template>

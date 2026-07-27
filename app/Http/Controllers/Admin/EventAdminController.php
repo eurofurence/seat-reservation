@@ -2,19 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Booking\RoomLayoutLoader;
 use App\Http\Controllers\Controller;
-use App\Models\Block;
 use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Room;
-use App\Models\User;
-use App\Services\Svg\MasterCardSvgGenerator;
-use App\Services\Svg\OrderCardSvgGenerator;
-use App\Services\Svg\SvgUtilities;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -115,42 +109,17 @@ class EventAdminController extends Controller
             ->with('success', 'Event deleted successfully');
     }
 
-    public function show(Request $request, $id)
+    public function show(Request $request, $id, RoomLayoutLoader $layout)
     {
         $event = Event::select('id', 'name', 'starts_at', 'reservation_ends_at', 'booking_starts_at', 'max_tickets', 'room_id')
             ->with('room:id,name,stage_x,stage_y')
             ->findOrFail($id);
 
-        $room = $event->room;
-
-        // Load stage blocks for the room
-        $stageBlocks = $room->stageBlocks()
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'order')
-            ->orderBy('order')
-            ->get();
+        [$room, $blocks, $stageBlocks, $bookedSeats] = $layout->load($event);
 
         $markerBlocks = $room->markerBlocks()
             ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'order')
             ->get();
-
-        // Only load essential block data for the seat layout
-        $blocks = $room->blocks()
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
-            ->with(['rows' => function ($query) {
-                $query->select('id', 'block_id', 'name', 'order', 'alignment')
-                    ->orderBy('order');
-                $query->with(['seats' => function ($q) {
-                    $q->select('id', 'row_id', 'label', 'number')
-                        ->orderBy('number');
-                }]);
-            }])
-            ->orderBy('order')
-            ->get();
-
-        // Get all booked seat IDs for the seat layout
-        $bookedSeats = Booking::where('event_id', $id)
-            ->pluck('seat_id')
-            ->toArray();
 
         // Get seat to booking mapping for seat clicks
         $seatBookingMap = Booking::where('event_id', $id)
@@ -160,12 +129,8 @@ class EventAdminController extends Controller
         // Build bookings query with search
         $bookingsQuery = Booking::where('event_id', $id)
             ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code')
-            ->with([
-                'user:id,name',
-                'seat:id,row_id,label',
-                'seat.row:id,block_id,name',
-                'seat.row.block:id,name',
-            ]);
+            ->withSeatDetails()
+            ->with('user:id,name');
 
         // Apply booking code filter if provided
         if ($bookingCode = $request->get('bookingcode')) {
@@ -226,68 +191,6 @@ class EventAdminController extends Controller
         ]);
     }
 
-    public function export($id)
-    {
-        $event = Event::with('room')->findOrFail($id);
-
-        $bookings = Booking::where('event_id', $id)
-            ->with(['user', 'seat.row.block'])
-            ->get();
-
-        $csv = "Room,Event,Name,Guest Name,Comment,Block,Row,Seat,Picked Up,Booked At\n";
-
-        foreach ($bookings as $booking) {
-            $csv .= $this->bookingCsvRow($event, $booking);
-        }
-
-        return response($csv)
-            ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', 'attachment; filename="bookings-'.$event->name.'-'.date('Y-m-d').'.csv"');
-    }
-
-    public function exportAll()
-    {
-        $bookings = Booking::with(['event.room', 'user', 'seat.row.block'])->get();
-
-        $csv = "Room,Event,Name,Guest Name,Comment,Block,Row,Seat,Picked Up,Booked At\n";
-
-        foreach ($bookings as $booking) {
-            $csv .= $this->bookingCsvRow($booking->event, $booking);
-        }
-
-        return response($csv)
-            ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', 'attachment; filename="bookings-all-events-'.date('Y-m-d').'.csv"');
-    }
-
-    private function bookingCsvRow($event, $booking)
-    {
-        return sprintf(
-            "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-            $this->escapeCsvField($event->room->name ?? 'N/A'),
-            $this->escapeCsvField($event->name),
-            $this->escapeCsvField($booking->user ? $booking->user->name : 'N/A'),
-            $this->escapeCsvField($booking->name ?? 'N/A'),
-            $this->escapeCsvField($booking->comment ?? ''),
-            $this->escapeCsvField($booking->seat->row->block->name ?? 'N/A'),
-            $this->escapeCsvField($booking->seat->row->name ?? 'N/A'),
-            $this->escapeCsvField($booking->seat->label ?? 'N/A'),
-            $booking->picked_up_at ? 'Yes' : 'No',
-            $booking->created_at->format('Y-m-d H:i:s')
-        );
-    }
-
-    private function escapeCsvField($field)
-    {
-        // Escape quotes and wrap in quotes if contains comma, quote, or newline
-        $field = str_replace('"', '""', $field);
-        if (strpos($field, ',') !== false || strpos($field, '"') !== false || strpos($field, "\n") !== false) {
-            $field = '"'.$field.'"';
-        }
-
-        return $field;
-    }
-
     private function getSelectedSeatsParameter($request)
     {
         // Handle both formats: selected_seats=1,2,3 and seats[]=1&seats[]=2&seats[]=3
@@ -302,281 +205,5 @@ class EventAdminController extends Controller
         }
 
         return '';
-    }
-
-    public function seatingCards($id)
-    {
-        try {
-            $event = Event::with('room')->findOrFail($id);
-
-            $bookingsQuery = Booking::where('event_id', $id)
-                ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'picked_up_at')
-                ->with([
-                    'user:id,name',
-                    'seat:id,row_id,label,number',
-                    'seat.row:id,block_id,name,order',
-                    'seat.row.block:id,name,position_x,position_y',
-                ]);
-
-            if (! request()->boolean('include_unpicked')) {
-                $bookingsQuery->whereNotNull('picked_up_at');
-            }
-
-            // Wind seats by row order so placing the cards is easier and faster for the runners.
-            $bookings = $bookingsQuery->get()->sortBy(function ($booking) {
-                $block = $booking->seat->row->block;
-                $rowOrder = $booking->seat->row->order;
-                $seatNumber = $booking->seat->number;
-
-                $seatSort = $rowOrder % 2 === 1 ? $seatNumber : -$seatNumber;
-
-                return [
-                    $block->position_y,
-                    $block->position_x,
-                    $rowOrder,
-                    $seatSort,
-                ];
-            });
-
-            if ($bookings->isEmpty()) {
-                return back()->with('error', 'No bookings found for this event to generate seating cards.');
-            }
-
-            $blockIds = $bookings->pluck('seat.row.block.id')->unique()->all();
-
-            $previewBlocks = Block::whereIn('id', $blockIds)
-                ->with(['rows' => function ($query) {
-                    $query->select('id', 'block_id', 'name', 'order', 'alignment')
-                        ->orderBy('order')
-                        ->with(['seats' => function ($q) {
-                            $q->select('id', 'row_id', 'label', 'number')->orderBy('number');
-                        }]);
-                }])
-                ->get()
-                ->keyBy('id');
-
-            $bookedSeatIds = array_fill_keys($bookings->pluck('seat.id')->all(), true);
-
-            $room = $event->room;
-            $masterBlocks = $room->blocks()
-                ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation')
-                ->with(['rows' => function ($query) {
-                    $query->select('id', 'block_id', 'order', 'alignment')
-                        ->orderBy('order')
-                        ->with(['seats:id,row_id,number']);
-                }])
-                ->get();
-            $masterStageBlocks = $room->stageBlocks()
-                ->select('id', 'room_id', 'name', 'position_x', 'position_y')
-                ->get();
-            $masterMarkerBlocks = $room->markerBlocks()
-                ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation')
-                ->get();
-
-            // mPDF configuration with custom Zhurzh font
-            $mpdf = new \Mpdf\Mpdf([
-                'format' => 'A4-L',
-                'margin_left' => 0,
-                'margin_right' => 0,
-                'margin_top' => 0,
-                'margin_bottom' => 0,
-                'margin_header' => 0,
-                'margin_footer' => 0,
-                'fontDir' => [resource_path('assets/fonts')],
-                'fontdata' => [
-                    'zhurzh' => [
-                        'R' => 'Zhurzh.ttf',
-                    ],
-                ],
-                'default_font' => 'zhurzh',
-            ]);
-
-            // Set execution time limit for large batches
-            set_time_limit(300); // 5 minutes
-
-            $svg = new SvgUtilities;
-            $masterCard = new MasterCardSvgGenerator($svg);
-            $orderCard = new OrderCardSvgGenerator($svg);
-
-            $pages = [];
-
-            $pages[] = view('pdf.master-page', [
-                'event_name' => $event->name,
-                'room_name' => $room->name,
-                'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $masterMarkerBlocks, $bookedSeatIds, $mpdf),
-            ])->render();
-
-            $currentBlockId = null;
-
-            foreach ($bookings as $booking) {
-                $block = $booking->seat->row->block;
-
-                if ($block->id !== $currentBlockId) {
-                    $currentBlockId = $block->id;
-
-                    $previewBlock = $previewBlocks->get($block->id);
-
-                    $pages[] = view('pdf.order-card', [
-                        'info' => (object) [
-                            'event_name' => $event->name,
-                            'block_name' => 'Block '.$block->name,
-                        ],
-                        'preview' => $previewBlock
-                            ? $orderCard->render($previewBlock, $bookedSeatIds, $mpdf)
-                            : null,
-                    ])->render();
-                }
-
-                $pages[] = view('pdf.seating-card-single', [
-                    'booking' => $booking,
-                    'event' => $event,
-                ])->render();
-            }
-
-            // Write each pre-rendered page to the PDF.
-            foreach ($pages as $index => $html) {
-                if ($index > 0) {
-                    $mpdf->AddPage();
-                }
-
-                $mpdf->WriteHTML($html);
-            }
-
-            // Return PDF for browser preview
-            $filename = 'seating-cards-'.Str::slug($event->name).'-'.date('Y-m-d').'.pdf';
-
-            return response($mpdf->Output($filename, 'S'))
-                ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', 'inline; filename="'.$filename.'"');
-
-        } catch (\Exception $e) {
-            \Log::error('Seating cards generation failed: '.$e->getMessage());
-
-            return back()->with('error', 'Failed to generate seating cards: '.$e->getMessage());
-        }
-    }
-
-    public function manualBooking(Request $request, $id)
-    {
-        $request->validate([
-            'guest_name' => 'required|string|max:255',
-            'comment' => 'nullable|string|max:1000',
-            'seat_ids' => 'required|array|min:1',
-            'seat_ids.*' => 'required|integer|exists:seats,id',
-        ]);
-
-        $event = Event::findOrFail($id);
-
-        DB::beginTransaction();
-
-        try {
-            // Check if any seats are already booked for this event
-            $alreadyBooked = Booking::where('event_id', $id)
-                ->whereIn('seat_id', $request->seat_ids)
-                ->exists();
-
-            if ($alreadyBooked) {
-                DB::rollback();
-
-                return back()->with('error', 'One or more selected seats are already booked.');
-            }
-
-            // Create manual bookings for all selected seats (no user_id required)
-            $bookings = [];
-            foreach ($request->seat_ids as $seatId) {
-                $bookings[] = [
-                    'type' => 'admin', // Mark as admin booking
-                    'event_id' => $id,
-                    'user_id' => null, // No user association for manual bookings
-                    'seat_id' => $seatId,
-                    'name' => $request->guest_name,
-                    'comment' => $request->comment,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
-
-            Booking::insert($bookings);
-
-            DB::commit();
-
-            $bookingCount = count($request->seat_ids);
-            $seatText = $bookingCount === 1 ? 'seat' : 'seats';
-
-            return back()->with('success', "Successfully booked {$bookingCount} {$seatText} for {$request->guest_name}");
-
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            return back()->with('error', 'Failed to create booking: '.$e->getMessage());
-        }
-    }
-
-    public function togglePickup(Request $request, $id)
-    {
-        $request->validate([
-            'booking_id' => 'required|integer|exists:bookings,id',
-            'picked_up' => 'required|boolean',
-        ]);
-
-        try {
-            $booking = Booking::where('id', $request->booking_id)
-                ->where('event_id', $id)
-                ->firstOrFail();
-
-            $booking->picked_up_at = $request->picked_up ? now() : null;
-            $booking->save();
-
-            return response()->json([
-                'success' => true,
-                'message' => $request->picked_up ? 'Marked as picked up' : 'Marked as not picked up',
-                'picked_up_at' => $booking->picked_up_at,
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to update pickup status: '.$e->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function updateBooking(Request $request, $id, $bookingId)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'comment' => 'nullable|string|max:1000',
-        ]);
-
-        try {
-            $booking = Booking::where('id', $bookingId)
-                ->where('event_id', $id)
-                ->firstOrFail();
-
-            $booking->update([
-                'name' => $request->name,
-                'comment' => $request->comment,
-            ]);
-
-            return back()->with('success', 'Booking updated successfully');
-
-        } catch (\Exception $e) {
-            return back()->with('error', 'Failed to update booking: '.$e->getMessage());
-        }
-    }
-
-    public function deleteBooking(Request $request, $id, $bookingId)
-    {
-        try {
-            $booking = Booking::where('id', $bookingId)
-                ->where('event_id', $id)
-                ->firstOrFail();
-
-            $booking->delete();
-
-            return back()->with('success', 'Booking deleted successfully');
-
-        } catch (\Exception $e) {
-            return back()->with('error', 'Failed to delete booking: '.$e->getMessage());
-        }
     }
 }

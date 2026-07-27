@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Booking\RoomLayoutLoader;
 use App\Models\Booking;
 use App\Models\Event;
 use App\Models\Seat;
@@ -19,12 +20,10 @@ class BookingController extends Controller
         $bookings = Booking::where('user_id', auth()->id())
             ->join('events', 'bookings.event_id', '=', 'events.id')
             ->select('bookings.id', 'bookings.event_id', 'bookings.seat_id', 'bookings.name', 'bookings.comment', 'bookings.picked_up_at', 'bookings.created_at', 'bookings.booking_code')
+            ->withSeatDetails()
             ->with([
                 'event:id,name,starts_at,reservation_ends_at,room_id',
                 'event.room:id,name',
-                'seat:id,row_id,label',
-                'seat.row:id,block_id,name',
-                'seat.row.block:id,name',
             ])
             ->orderByRaw('bookings.picked_up_at is null desc')
             ->orderBy('events.reservation_ends_at')
@@ -36,7 +35,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function create(Event $event, Request $request)
+    public function create(Event $event, Request $request, RoomLayoutLoader $layout)
     {
         $ticketsLeft = $event->calculateTicketsLeft();
 
@@ -75,20 +74,6 @@ class BookingController extends Controller
                 ->with(['error' => 'This event has no room configured.']);
         }
 
-        // Load blocks with minimal seat data - optimized to prevent memory issues
-        $blocks = $event->room->blocks()
-            ->with([
-                'rows' => function ($query) {
-                    $query->orderBy('order')->select('id', 'block_id', 'name', 'order', 'alignment');
-                },
-                'rows.seats' => function ($query) {
-                    $query->orderBy('number')->select('id', 'row_id', 'number', 'label');
-                },
-            ])
-            ->orderBy('order')
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
-            ->get();
-
         // Get already booked seats for this event efficiently. Users browsing before the
         // booking window opens shouldn't see which seats are taken, since they can't book yet.
         // Admins get no special treatment here — use the admin panel to manage bookings early.
@@ -96,12 +81,6 @@ class BookingController extends Controller
         $bookedSeats = $isBookingOpen
             ? Booking::where('event_id', $event->id)->pluck('seat_id')->toArray()
             : [];
-
-        // Load stage blocks for the room
-        $stageBlocks = $event->room->stageBlocks()
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'order')
-            ->orderBy('order')
-            ->get();
 
         $markerBlocks = $event->room->markerBlocks()
             ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'order')
@@ -113,8 +92,8 @@ class BookingController extends Controller
                 'is_booking_open' => $isBookingOpen,
             ]),
             'room' => $event->room->only(['id', 'name', 'stage_x', 'stage_y']),
-            'blocks' => $blocks,
-            'stageBlocks' => $stageBlocks,
+            'blocks' => $layout->blocks($event->room),
+            'stageBlocks' => $layout->stageBlocks($event->room),
             'markerBlocks' => $markerBlocks,
             'bookedSeats' => $bookedSeats,
             'selectedSeats' => $request->get('seats', []), // Pass selected seats from URL
@@ -231,7 +210,7 @@ class BookingController extends Controller
             }
 
             // Generate unique booking code for ALL bookings through user interface
-            $bookingCode = $this->generateUniqueBookingCode();
+            $bookingCode = Booking::generateUniqueCode();
 
             // Create bookings
             foreach ($data['seats'] as $seatData) {
@@ -266,7 +245,7 @@ class BookingController extends Controller
             ->with(['success' => 'Your booking has been confirmed!']);
     }
 
-    public function show(Event $event, Booking $booking)
+    public function show(Event $event, Booking $booking, RoomLayoutLoader $layout)
     {
         if (auth()->user()->cannot('view', $booking)) {
             return redirect()->route('bookings.index')
@@ -279,28 +258,9 @@ class BookingController extends Controller
             ->find($event->id);
 
         $booking = Booking::select('id', 'event_id', 'user_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code')
-            ->with([
-                'event:id,name,starts_at,reservation_ends_at,room_id',
-                'event.room:id,name,stage_x,stage_y',
-                'seat:id,row_id,label',
-                'seat.row:id,block_id,name',
-                'seat.row.block:id,name',
-            ])
+            ->withSeatDetails()
+            ->with('event:id,name,starts_at,reservation_ends_at,room_id', 'event.room:id,name,stage_x,stage_y')
             ->find($booking->id);
-
-        // Load blocks for seat layout (minimal data for performance)
-        $blocks = $event->room->blocks()
-            ->select('id', 'room_id', 'name', 'position_x', 'position_y', 'rotation', 'order')
-            ->with(['rows' => function ($query) {
-                $query->select('id', 'block_id', 'name', 'order', 'alignment')
-                    ->orderBy('order');
-                $query->with(['seats' => function ($q) {
-                    $q->select('id', 'row_id', 'label', 'number')
-                        ->orderBy('number');
-                }]);
-            }])
-            ->orderBy('order')
-            ->get();
 
         $markerBlocks = $event->room->markerBlocks()
             ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'order')
@@ -321,7 +281,8 @@ class BookingController extends Controller
         return Inertia::render('Booking/ShowBooking', [
             'event' => $event,
             'booking' => $booking,
-            'blocks' => $blocks,
+            'blocks' => $layout->blocks($event->room),
+            'stageBlocks' => $layout->stageBlocks($event->room),
             'markerBlocks' => $markerBlocks,
             'bookedSeats' => $bookedSeats,
             'userBookedSeats' => $userBookedSeats,
@@ -418,29 +379,6 @@ class BookingController extends Controller
             ->count();
 
         return $existingBookings + $additionalSeats > self::MAX_SEATS_PER_EVENT;
-    }
-
-    /**
-     * Generate a unique 3-character alphanumeric booking code
-     */
-    private function generateUniqueBookingCode(): string
-    {
-        $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        $charactersLength = strlen($characters);
-
-        while (true) {
-            $code = '';
-            for ($i = 0; $i < 3; $i++) {
-                $code .= $characters[rand(0, $charactersLength - 1)];
-            }
-
-            // Check if this code is currently in use
-            $exists = Booking::where('booking_code', $code)->exists();
-
-            if (! $exists) {
-                return $code;
-            }
-        }
     }
 
     /**

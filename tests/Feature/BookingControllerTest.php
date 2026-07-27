@@ -373,6 +373,107 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
+    public function user_can_proceed_to_validation_page_with_selected_seats()
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', ['event' => $this->event, 'seats' => [$this->seats[0]->id, $this->seats[1]->id], 'validate' => true]));
+
+        $response->assertOk();
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertCount(2, $props['seats']);
+        $this->assertEquals([$this->seats[0]->id, $this->seats[1]->id], $props['seatIds']);
+    }
+
+    /** @test */
+    public function validation_page_rejects_seats_already_booked_by_someone_else()
+    {
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', ['event' => $this->event, 'seats' => [$this->seats[0]->id], 'validate' => true]));
+
+        $response->assertRedirect(route('bookings.create', $this->event))
+            ->assertSessionHas('error', 'Sorry, one or more of your selected seats were just booked by someone else. Please choose different seats.');
+    }
+
+    /** @test */
+    public function validation_page_rejects_selection_exceeding_remaining_tickets()
+    {
+        $this->event->update(['max_tickets' => 2]);
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', ['event' => $this->event, 'seats' => [$this->seats[1]->id, $this->seats[2]->id], 'validate' => true]));
+
+        $response->assertRedirect(route('bookings.create', $this->event))
+            ->assertSessionHas('error', 'Not enough tickets available for this event.');
+    }
+
+    /** @test */
+    public function validation_page_rejects_selection_exceeding_per_user_limit()
+    {
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+            'user_id' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', ['event' => $this->event, 'seats' => [$this->seats[1]->id, $this->seats[2]->id], 'validate' => true]));
+
+        $response->assertRedirect(route('bookings.create', $this->event))
+            ->assertSessionHas('error', 'You can only book a maximum of 2 seats per event.');
+    }
+
+    /** @test */
+    public function sold_out_event_redirects_away_from_seat_selection()
+    {
+        $this->event->update(['max_tickets' => 1]);
+        Booking::factory()->create([
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertRedirect(route('events.index'))
+            ->assertSessionHas('error', 'This event is sold out.');
+    }
+
+    /** @test */
+    public function user_at_booking_limit_is_redirected_from_seat_selection()
+    {
+        foreach ([0, 1] as $i) {
+            Booking::factory()->create([
+                'event_id' => $this->event->id,
+                'seat_id' => $this->seats[$i]->id,
+                'user_id' => $this->user->id,
+            ]);
+        }
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.create', $this->event));
+
+        $response->assertRedirect(route('bookings.index'))
+            ->assertSessionHas('error', 'You have already booked the maximum number of seats for this event.');
+    }
+
+    /** @test */
+    public function dashboard_redirects_to_bookings_index()
+    {
+        $this->actingAs($this->user)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('bookings.index'));
+    }
+
+    /** @test */
     public function user_cannot_store_booking_before_booking_starts_at()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);

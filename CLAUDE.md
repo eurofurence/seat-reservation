@@ -170,19 +170,25 @@ Flash messages are automatically displayed as toasts on:
 All admin routes use `admin.` prefix with middleware for authentication and shared admin data:
 
 ```php
-Route::prefix('admin')->name('admin.')->middleware(['auth', ShareAdminData::class])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', \App\Http\Middleware\ShareAdminData::class])->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
-    Route::resource('events', EventAdminController::class);
-    Route::resource('rooms', RoomAdminController::class);
-    Route::get('/rooms/{room}/layout', [RoomLayoutController::class, 'edit'])->name('rooms.layout');
+    // Routes are declared explicitly (no Route::resource) — see routes/web.php.
+    // Single-action endpoints (import/export/cards/booking management) use
+    // invokable controllers in app/Http/Controllers/Admin/.
 });
 ```
 
 ### Actual Route Names (from web.php)
 - `admin.dashboard` - Admin dashboard
-- `admin.events.index/store/show/destroy` - Event management
-- `admin.rooms.index/store/edit/update/destroy` - Room management  
-- `admin.rooms.layout` - Room floor plan editor
+- `admin.lookup-booking-code` - Booking code lookup
+- `admin.events.index/store/update/destroy/show` - Event management
+- `admin.events.export` / `admin.events.export-all` - CSV export (per event / all events)
+- `admin.events.seating-cards` - Seating card PDF
+- `admin.events.manual-booking` / `admin.events.toggle-pickup` / `admin.events.update-booking` / `admin.events.delete-booking` - Booking management
+- `admin.events.import-bookings.template/propose/preview/confirm` - Bulk CSV import (single event)
+- `admin.import-bookings.template/propose` - Global (cross-event) CSV import
+- `admin.rooms.index/store/edit/update/destroy` - Room management
+- `admin.rooms.layout` / `admin.rooms.layout.update` - Room floor plan editor
 - `admin.rooms.blocks.create/delete` - Block management within rooms
 
 ## UI Components & TypeScript
@@ -253,7 +259,8 @@ Room (stage_x, stage_y positioning)
 - `resources/js/lib/utils.ts` - Utility functions
 
 ### Controllers
-- `app/Http/Controllers/Admin/` - Admin-specific controllers
+- `app/Http/Controllers/Admin/` - Admin-specific controllers (single-action endpoints are invokable one-class-per-endpoint controllers, e.g. `ManualBookingController`, `SeatingCardsController`, `ExportBookingsController`, the `*Import*` controllers)
+- `app/Booking/` - Shared plain-PHP booking logic the controllers call (`RoomLayoutLoader`, `SeatAssigner`, `ImportCsvParser`, `ImportProposalBuilder`, `ImportBookingWriter`, `BookingCsvExporter`, `EventMatcher`, `GlobalImportSession`)
 - `app/Http/Middleware/ShareAdminData.php` - Shares data with admin views
 
 ## Common Issues
@@ -284,26 +291,23 @@ Room (stage_x, stage_y positioning)
 
 #### Code Generation
 ```php
-// BookingController::generateUniqueBookingCode()
-private function generateUniqueBookingCode(): string
+// Booking::generateUniqueCode() (static, on the model)
+public static function generateUniqueCode(): string
 {
     $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    while (true) {
-        $code = '';
-        for ($i = 0; $i < 3; $i++) {
-            $code .= $characters[rand(0, $charactersLength - 1)];
-        }
-        if (!Booking::where('booking_code', $code)->exists()) {
-            return $code;
-        }
-    }
+
+    do {
+        $code = $characters[random_int(0, 35)].$characters[random_int(0, 35)].$characters[random_int(0, 35)];
+    } while (static::where('booking_code', $code)->exists());
+
+    return $code;
 }
 ```
 
 #### User Interface vs Admin Manual Bookings
 ```php
 // User interface bookings (through BookingController) - GET booking codes
-$bookingCode = $this->generateUniqueBookingCode();
+$bookingCode = Booking::generateUniqueCode();
 foreach ($data['seats'] as $seatData) {
     $event->bookings()->create([
         'booking_code' => $bookingCode,  // Same code for all seats in one booking
@@ -311,7 +315,7 @@ foreach ($data['seats'] as $seatData) {
     ]);
 }
 
-// Admin manual bookings (through EventAdminController) - NO booking codes  
+// Admin manual bookings (through ManualBookingController) - NO booking codes
 $bookings[] = [
     'type' => 'admin',    // Mark as admin booking
     'user_id' => null,    // No user association
@@ -335,9 +339,11 @@ public function lookupBookingCode(Request $request)
         return back()->withErrors(['booking_code' => 'No booking found with this code.']);
     }
     
-    // Redirect to event with booking code filter
-    return redirect()->route('admin.events.show', $booking->event->id)
-        ->with(['bookingcode' => $bookingCode]);
+    // Redirect to event with booking code as a query-string filter
+    return redirect()->route('admin.events.show', [
+        'event' => $booking->event_id,
+        'bookingcode' => $bookingCode,
+    ]);
 }
 ```
 
@@ -352,7 +358,7 @@ The seating cards URL accepts an `include_unpicked` query parameter to control w
 The checkbox in the "Print Seat Cards" button in `EventShow.vue` sets this param at print time.
 
 ```php
-// EventAdminController::seatingCards()
+// SeatingCardsController (invokable)
 if (! request()->boolean('include_unpicked')) {
     $bookingsQuery->whereNotNull('picked_up_at');
 }
@@ -374,22 +380,15 @@ The codebase implements careful query optimization to avoid N+1 problems:
 // EventAdminController::show - Only load essential fields
 $bookingsQuery = Booking::where('event_id', $id)
     ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code')
-    ->with([
-        'user:id,name',
-        'seat:id,row_id,label',
-        'seat.row:id,block_id,name', 
-        'seat.row.block:id,name'
-    ]);
-
-// Load room data separately to avoid heavy loading
-$room = $event->room()->select('id', 'name')->first();
+    ->withSeatDetails() // Booking scope: seat + row + block with minimal fields
+    ->with('user:id,name');
 ```
 
 ### Manual Booking Controller Pattern
 Admin manual bookings use different validation and field names:
 
 ```php
-// EventAdminController::manualBooking validates 'guest_name'
+// ManualBookingController (invokable) validates 'guest_name'
 $request->validate([
     'guest_name' => 'required|string|max:255',  // Note: guest_name, not name
     'comment' => 'nullable|string|max:1000',

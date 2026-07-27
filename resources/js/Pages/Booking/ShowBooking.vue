@@ -33,6 +33,7 @@ const props = defineProps({
     booking: Object,
     event: Object,
     blocks: Array,
+    stageBlocks: Array,
     bookedSeats: Array,
     userBookedSeats: Array
 })
@@ -213,6 +214,7 @@ function updateBooking() {
                             :event="event"
                             :room="event.room"
                             :blocks="blocks"
+                            :stage-blocks="stageBlocks"
                             :selected-seats="userBookedSeats"
                             :booked-seats="bookedSeats"
                             :admin-mode="false"

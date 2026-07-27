@@ -27,15 +27,6 @@ class Row extends Model
         'alignment' => 'string',
     ];
 
-    public function getAlignmentOptions(): array
-    {
-        return [
-            'left' => 'Left',
-            'center' => 'Center',
-            'right' => 'Right',
-        ];
-    }
-
     public function block()
     {
         return $this->belongsTo(Block::class);

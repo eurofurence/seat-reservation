@@ -132,7 +132,7 @@ const navigateTo = (route) => {
       )"
     >
       <!-- Header Bar with Title and Breadcrumbs -->
-      <div class="bg-white border-b border-gray-200 px-4 lg:px-8 h-24 flex items-center justify-between">
+      <div class="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 lg:px-8 h-24 flex items-center justify-between">
         <div class="flex flex-col space-y-2">
           <!-- Breadcrumbs -->
           <nav v-if="breadcrumbs.length > 0" class="flex items-center space-x-2 text-sm text-gray-500">

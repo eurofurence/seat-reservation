@@ -1,15 +1,16 @@
 <script setup>
 import { Head, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
-import axios from 'axios'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Table } from '@/Components/ui/table'
-import { Plus, Edit, Trash2, Calendar, Clock, MapPin, Users, Download } from 'lucide-vue-next'
+import { Plus, Edit, Trash2, Calendar, Clock, MapPin, Users, Download, Upload } from 'lucide-vue-next'
 import dayjs, { fmt } from '@/lib/datetime'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog'
 import EventForm from '@/Components/EventForm.vue'
+import ImportDialog from '@/Components/Admin/ImportDialog.vue'
+import { useCsvDownload } from '@/composables/useCsvDownload'
 
 defineOptions({ layout: AdminLayout })
 
@@ -59,22 +60,12 @@ const viewEvent = (event) => {
   router.visit(`/admin/events/${event.id}`)
 }
 
-const exportAllBookings = async () => {
-  try {
-    const response = await axios.get(route('admin.events.export-all'), {
-      responseType: 'blob',
-    })
+const { download } = useCsvDownload()
 
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `bookings-all-events-${Date.now()}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-  } catch (error) {
-    console.error('Error exporting bookings:', error)
-  }
+const globalImportOpen = ref(false)
+
+const exportAllBookings = () => {
+  download(route('admin.events.export-all'), `bookings-all-events-${Date.now()}.csv`)
 }
 
 const getEventStatus = (event) => {
@@ -102,7 +93,11 @@ const getEventStatus = (event) => {
     <div class="flex justify-end items-center gap-2 mb-6">
       <Button @click="exportAllBookings" variant="outline">
         <Download class="mr-2 h-4 w-4" />
-        Export All Bookings
+        Export Bookings (All Events)
+      </Button>
+      <Button @click="globalImportOpen = true" variant="outline">
+        <Upload class="mr-2 h-4 w-4" />
+        Import Bookings (All Events)
       </Button>
       <Dialog :open="createDialogOpen" @update:open="createDialogOpen = $event">
         <DialogTrigger as-child>
@@ -236,5 +231,8 @@ const getEventStatus = (event) => {
         </Table>
       </CardContent>
     </Card>
+
+    <!-- Global (All Events) Import Bookings Modal -->
+    <ImportDialog v-model:open="globalImportOpen" />
   </div>
 </template>
