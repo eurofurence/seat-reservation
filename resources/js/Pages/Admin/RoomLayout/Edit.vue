@@ -281,6 +281,17 @@ const setPosition = (list: Array<{ id: BlockId, position_x: number, position_y: 
   if (target) Object.assign(target, { position_x: x, position_y: y })
 }
 
+const entranceAxisFree = (marker: FormMarkerBlock, orientation: Orientation, index: number) => {
+  const cells: Array<[number, number]> = orientation === 'column'
+    ? Array.from({ length: GRID_ROWS }, (_, r) => [r, index])
+    : Array.from({ length: GRID_COLS }, (_, c) => [index, c])
+  for (const [y, x] of cells) {
+    const cell = layoutGrid.value[y]?.[x]
+    if (cell !== null && cell.id !== marker.id) return false
+  }
+  return true
+}
+
 const placeMarker = (markerIndex: number, rowIndex: number, colIndex: number) => {
   const marker = form.markerBlocks[markerIndex]
   if (!marker) return
@@ -288,12 +299,11 @@ const placeMarker = (markerIndex: number, rowIndex: number, colIndex: number) =>
     Object.assign(marker, { position_x: colIndex, position_y: rowIndex })
     return
   }
-  const others = form.markerBlocks.filter((_, i) => i !== markerIndex)
   if (marker.orientation === 'column') {
-    if (others.some(m => m.orientation === 'column' && m.position_x === colIndex)) return
+    if (!entranceAxisFree(marker, 'column', colIndex)) return
     Object.assign(marker, { position_x: colIndex, position_y: -1 })
   } else {
-    if (others.some(m => m.orientation === 'row' && m.position_y === rowIndex)) return
+    if (!entranceAxisFree(marker, 'row', rowIndex)) return
     Object.assign(marker, { position_x: -1, position_y: rowIndex })
   }
 }
