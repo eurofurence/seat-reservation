@@ -9,7 +9,8 @@ import { Label } from '@/Components/ui/label'
 import { Textarea } from '@/Components/ui/textarea'
 import { Alert } from '@/Components/ui/alert'
 import { ArrowLeft, Calendar, MapPin, Clock, AlertCircle, Check } from 'lucide-vue-next'
-import dayjs from "dayjs"
+import { fmt } from "@/lib/datetime"
+import TimezoneNote from "@/Components/TimezoneNote.vue"
 
 defineOptions({layout: FullWidthLayout})
 
@@ -102,8 +103,9 @@ function goBack() {
           <div class="flex items-center text-sm">
             <Clock class="h-4 w-4 mr-2 text-gray-500" />
             <span class="font-medium mr-2">Date & Time:</span>
-            <span>{{ dayjs(event.starts_at).format('MMM DD, YYYY - HH:mm') }}</span>
+            <span>{{ fmt(event.starts_at, 'MMM D, YYYY - HH:mm') }}</span>
           </div>
+          <TimezoneNote />
           <div class="flex items-center text-sm">
             <AlertCircle class="h-4 w-4 mr-2 text-gray-500" />
             <span class="font-medium mr-2">Seats Selected:</span>

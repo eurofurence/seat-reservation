@@ -8,7 +8,7 @@ import { Calendar, Users, MapPin, TrendingUp, Search, Clock, CheckCircle, Extern
 import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
-import dayjs from 'dayjs'
+import { fmt } from '@/lib/datetime'
 
 defineOptions({ layout: AdminLayout })
 
@@ -66,10 +66,6 @@ const getBookerType = (booking) => {
 const getSeatInfo = (booking) => {
   if (!booking.seat) return 'N/A'
   return `${booking.seat.row.block.name} - ${booking.seat.row.name} - ${booking.seat.label}`
-}
-
-const formatTime = (dateTime) => {
-  return dayjs(dateTime).format('MMM DD, HH:mm')
 }
 </script>
 
@@ -202,7 +198,7 @@ const formatTime = (dateTime) => {
                     <div class="text-xs text-muted-foreground">{{ getSeatInfo(booking) }}</div>
                   </td>
                   <td class="p-2">
-                    <div class="text-xs">{{ formatTime(booking.created_at) }}</div>
+                    <div class="text-xs">{{ fmt(booking.created_at, 'MMM D, HH:mm') }}</div>
                   </td>
                   <td class="p-2">
                     <Badge v-if="booking.picked_up_at" class="bg-green-100 text-green-800">

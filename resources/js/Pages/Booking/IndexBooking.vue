@@ -5,7 +5,7 @@ import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
 import { Clock, MapPin, User, Plus, Search, LogOut, CheckCircle, AlertCircle, Info, Settings } from 'lucide-vue-next'
-import dayjs from "dayjs"
+import dayjs, { fmt } from "@/lib/datetime"
 
 defineOptions({layout: Layout})
 
@@ -13,13 +13,7 @@ defineProps({
     bookings: Object
 })
 
-const formatDateTime = (dateTime) => {
-  return dayjs(dateTime).format('MMM DD, HH:mm')
-}
-
-const formatFullDateTime = (dateTime) => {
-  return dayjs(dateTime).format('MMM DD, YYYY - HH:mm')
-}
+const formatDateTime = (dateTime) => fmt(dateTime, 'MMM D, HH:mm')
 
 const getSeatInfo = (booking) => {
   return `${booking.seat.row.block.name} - Row ${booking.seat.row.name} - Seat ${booking.seat.label}`
@@ -29,37 +23,37 @@ const getBookingStatus = (booking) => {
   const now = dayjs()
   const eventStart = dayjs(booking.event.starts_at)
   const reservationEnd = dayjs(booking.event.reservation_ends_at)
-  
+
   if (booking.picked_up_at) {
-    return { 
-      status: 'picked_up', 
-      color: 'bg-purple-100 text-purple-800 border-purple-200', 
+    return {
+      status: 'picked_up',
+      color: 'bg-purple-100 text-purple-800 border-purple-200',
       text: 'Ticket Picked Up',
       icon: CheckCircle
     }
   }
-  
+
   if (now.isAfter(eventStart)) {
-    return { 
-      status: 'completed', 
-      color: 'bg-gray-100 text-gray-800 border-gray-200', 
+    return {
+      status: 'completed',
+      color: 'bg-gray-100 text-gray-800 border-gray-200',
       text: 'Event Completed',
       icon: CheckCircle
     }
   }
-  
+
   if (now.isAfter(reservationEnd)) {
-    return { 
-      status: 'cancelled', 
-      color: 'bg-red-100 text-red-800 border-red-200', 
+    return {
+      status: 'cancelled',
+      color: 'bg-red-100 text-red-800 border-red-200',
       text: 'Cancelled',
       icon: AlertCircle
     }
   }
-  
-  return { 
-    status: 'active', 
-    color: 'bg-green-100 text-green-800 border-green-200', 
+
+  return {
+    status: 'active',
+    color: 'bg-green-100 text-green-800 border-green-200',
     text: 'Active',
     icon: CheckCircle
   }
@@ -68,7 +62,7 @@ const getBookingStatus = (booking) => {
 
 <template>
   <Head title="My Bookings" />
-  
+
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <div class="bg-white shadow-sm border-b">
@@ -112,8 +106,8 @@ const getBookingStatus = (booking) => {
       </Alert>
 
       <!-- PAT Pickup Warning -->
-      <Alert 
-        v-if="bookings.data && bookings.data.some(booking => !booking.picked_up_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at)))" 
+      <Alert
+        v-if="bookings.data && bookings.data.some(booking => !booking.picked_up_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at)))"
         class="mb-6 border-amber-200 bg-amber-50"
       >
         <AlertCircle class="h-4 w-4" />
@@ -130,8 +124,8 @@ const getBookingStatus = (booking) => {
 
       <!-- Bookings List -->
       <div v-if="bookings.data && bookings.data.length" class="space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6 lg:space-y-0">
-        <Link 
-          v-for="booking in bookings.data" 
+        <Link
+          v-for="booking in bookings.data"
           :key="booking.id"
           :href="route('bookings.show', {booking: booking.id, event: booking.event.id})"
           class="block"
@@ -141,7 +135,7 @@ const getBookingStatus = (booking) => {
               <div class="flex-1 min-w-0 lg:w-full">
                 <div class="flex items-start justify-between mb-3">
                   <h3 class="text-lg lg:text-xl font-semibold text-gray-900 lg:mb-2">{{ booking.event.name }}</h3>
-                  <span 
+                  <span
                     :class="[
                       'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ml-4 lg:ml-0 lg:w-fit',
                       getBookingStatus(booking).color
@@ -151,7 +145,7 @@ const getBookingStatus = (booking) => {
                     {{ getBookingStatus(booking).text }}
                   </span>
                 </div>
-                
+
                 <div class="space-y-2 lg:space-y-3 text-sm lg:text-base text-gray-600 mb-3 lg:mb-4">
                   <div class="flex items-center">
                     <Clock class="h-4 w-4 mr-2 flex-shrink-0" />
@@ -166,18 +160,18 @@ const getBookingStatus = (booking) => {
                     <span>{{ booking.name }}</span>
                   </div>
                 </div>
-                
+
                 <div class="text-sm lg:text-base text-gray-500 lg:pt-4 lg:border-t">
                   <div><strong>Seat:</strong> {{ getSeatInfo(booking) }}</div>
                   <div v-if="booking.booking_code" class="mt-1">
-                    <strong>Booking Code:</strong> 
+                    <strong>Booking Code:</strong>
                     <span class="font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-900 ml-1">{{ booking.booking_code }}</span>
                   </div>
                 </div>
 
                 <!-- PAT Pickup Warning for individual booking -->
-                <div 
-                  v-if="!booking.picked_up_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at))" 
+                <div
+                  v-if="!booking.picked_up_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at))"
                   class="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-md"
                 >
                   <div class="flex items-center text-amber-800">
@@ -185,7 +179,7 @@ const getBookingStatus = (booking) => {
                     <span class="text-xs font-medium">PAT pickup required</span>
                   </div>
                   <div class="text-xs text-amber-700 mt-1">
-                    Deadline: {{ dayjs(booking.event.reservation_ends_at).format('MMM DD, HH:mm') }}
+                    Deadline: {{ formatDateTime(booking.event.reservation_ends_at) }}
                   </div>
                 </div>
               </div>
@@ -193,7 +187,7 @@ const getBookingStatus = (booking) => {
           </Card>
         </Link>
       </div>
-      
+
       <!-- Pagination -->
       <div v-if="bookings.data && bookings.data.length && (bookings.prev_page_url || bookings.next_page_url)" class="mt-8 flex justify-center">
         <nav class="flex space-x-2">
@@ -226,7 +220,7 @@ const getBookingStatus = (booking) => {
         </div>
       </div>
     </div>
-    
+
     <!-- Fixed Bottom Action (Mobile Only) -->
     <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg lg:hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

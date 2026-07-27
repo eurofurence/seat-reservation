@@ -5,6 +5,7 @@ import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import DateTimePicker from '@/Components/DateTimePicker.vue'
+import TimezoneNote from '@/Components/TimezoneNote.vue'
 
 interface Event {
   id?: number
@@ -73,7 +74,7 @@ const cancel = () => {
       />
       <span v-if="form.errors.name" class="text-sm text-red-500">{{ form.errors.name }}</span>
     </div>
-    
+
     <div>
       <label class="block text-sm font-medium mb-2">Room *</label>
       <Select v-model="form.room_id">
@@ -88,7 +89,9 @@ const cancel = () => {
       </Select>
       <span v-if="form.errors.room_id" class="text-sm text-red-500">{{ form.errors.room_id }}</span>
     </div>
-    
+
+    <TimezoneNote />
+
     <DateTimePicker
       v-model="form.starts_at"
       label="Event Start Date & Time"
@@ -119,7 +122,7 @@ const cancel = () => {
       />
       <span v-if="form.errors.max_tickets" class="text-sm text-red-500">{{ form.errors.max_tickets }}</span>
     </div>
-    
+
     <div class="flex justify-end gap-2 pt-4">
       <Button variant="outline" @click="cancel" :disabled="form.processing">
         Cancel
