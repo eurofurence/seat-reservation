@@ -15,6 +15,7 @@ interface Event {
   reservation_ends_at: string
   booking_starts_at: string
   max_tickets: string | number
+  bookings_count?: number
 }
 
 interface Props {
@@ -23,6 +24,8 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const roomLocked = computed(() => !!props.event?.id && (props.event?.bookings_count ?? 0) > 0)
 
 const emit = defineEmits<{
   submitted: []
@@ -77,7 +80,7 @@ const cancel = () => {
 
     <div>
       <label class="block text-sm font-medium mb-2">Room *</label>
-      <Select v-model="form.room_id">
+      <Select v-model="form.room_id" :disabled="roomLocked">
         <SelectTrigger class="w-full" :class="{ 'border-red-500': form.errors.room_id }">
           <SelectValue placeholder="Select a room" />
         </SelectTrigger>
@@ -87,6 +90,9 @@ const cancel = () => {
           </SelectItem>
         </SelectContent>
       </Select>
+      <span v-if="roomLocked" class="text-sm text-muted-foreground">
+        The room cannot be changed because this event already has bookings.
+      </span>
       <span v-if="form.errors.room_id" class="text-sm text-red-500">{{ form.errors.room_id }}</span>
     </div>
 
