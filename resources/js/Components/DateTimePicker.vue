@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { Input } from '@/Components/ui/input'
+import { computed, ref, watch } from 'vue'
 import { Button } from '@/Components/ui/button'
 import { Calendar } from '@/Components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
+import { TimeFieldInput, TimeFieldRoot } from 'reka-ui'
 import { CalendarIcon, X } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
-import { parseDate } from '@internationalized/date'
+import { parseDate, Time } from '@internationalized/date'
 import dayjs, { APP_TIMEZONE, fmt } from '@/lib/datetime'
 
 interface Props {
@@ -22,19 +22,17 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const parseDateTime = (dateTimeString: string): any => {
-  if (!dateTimeString) return undefined
+const parseDateTime = (value: string): any => {
   try {
-    return parseDate(fmt(dateTimeString, 'YYYY-MM-DD'))
+    return value ? parseDate(fmt(value, 'YYYY-MM-DD')) : undefined
   } catch {
     return undefined
   }
 }
 
-const parseTime = (dateTimeString: string) => {
-  if (!dateTimeString) return ''
+const parseTime = (value: string) => {
   try {
-    return fmt(dateTimeString, 'HH:mm')
+    return value ? fmt(value, 'HH:mm') : ''
   } catch {
     return ''
   }
@@ -54,14 +52,20 @@ const combineDateTime = (date: any, time: string) => {
 const date = ref<any>(parseDateTime(props.modelValue))
 const time = ref(parseTime(props.modelValue))
 
+const timeValue = computed({
+  get: () => {
+    if (!time.value) return undefined
+    const [h, m] = time.value.split(':').map(Number)
+    return new Time(h, m)
+  },
+  set: (value) => {
+    time.value = value ? `${value}`.slice(0, 5) : ''
+  },
+})
+
 watch([date, time], ([newDate, newTime]) => {
   emit('update:modelValue', combineDateTime(newDate, newTime))
 })
-
-const onTimeInput = (e: Event) => {
-  const digits = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 4)
-  time.value = digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits
-}
 
 const clear = () => {
   date.value = undefined
@@ -94,16 +98,28 @@ const clear = () => {
         </Popover>
       </div>
       <div class="w-32">
-        <Input
-          :model-value="time"
-          type="text"
-          inputmode="numeric"
-          pattern="[0-9]{2}:[0-9]{2}"
-          maxlength="5"
-          placeholder="HH:MM"
-          :class="{ 'border-red-500': error }"
-          @input="onTimeInput"
-        />
+        <TimeFieldRoot
+          v-slot="{ segments }"
+          v-model="timeValue"
+          :hour-cycle="24"
+          granularity="minute"
+          :class="cn(
+            'border-input dark:bg-input/30 flex h-9 w-full min-w-0 items-center rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm',
+            'focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]',
+            error && 'border-destructive ring-destructive/20 dark:ring-destructive/40'
+          )"
+        >
+          <TimeFieldInput
+            v-for="item in segments"
+            :key="item.part"
+            :part="item.part"
+            :class="item.part === 'literal'
+              ? 'text-muted-foreground'
+              : 'focus:bg-[Highlight] focus:text-[HighlightText] rounded-sm px-0.5 tabular-nums outline-none'"
+          >
+            {{ item.value }}
+          </TimeFieldInput>
+        </TimeFieldRoot>
       </div>
       <Button
         type="button"
