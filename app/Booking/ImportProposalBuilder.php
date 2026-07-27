@@ -183,10 +183,12 @@ class ImportProposalBuilder
                 $requestedQuantity = $this->quantity($row);
 
                 // Structural encoding, not string concat, so a '|' in a name/comment can't
-                // alias two distinct guests together.
+                // alias two distinct guests together. Trimmed to match $nameKey/the
+                // already-booked grouping key above, so whitespace-only differences don't
+                // split one guest into two auto-assign groups.
                 $groupKey = serialize([
-                    mb_strtolower($guestName),
-                    mb_strtolower((string) $comment),
+                    mb_strtolower(trim($guestName)),
+                    mb_strtolower(trim((string) $comment)),
                 ]);
 
                 if (! isset($autoGroups[$groupKey])) {

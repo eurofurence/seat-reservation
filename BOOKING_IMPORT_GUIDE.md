@@ -44,7 +44,7 @@ Only one column is actually mandatory: `Guest Name` (case-insensitive). Everythi
 is optional and can be omitted from the header entirely — useful if you're collecting
 submissions via a form (e.g. Nextcloud Forms) that never asks people to pick an exact seat:
 
-```
+```text
 Guest Name,Comment,Block,Row,Seat,Number of Seats
 ```
 
@@ -264,7 +264,7 @@ Events)** on the events index page instead of a single event's Import Bookings b
 The CSV format is the same as above with one extra mandatory column, `Event`, identifying
 which event each row belongs to:
 
-```
+```text
 Event,Guest Name,Comment,Block,Row,Seat,Number of Seats
 ```
 
