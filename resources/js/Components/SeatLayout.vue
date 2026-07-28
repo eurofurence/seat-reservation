@@ -256,10 +256,13 @@ watch(() => props.selectedSeats, (newSeats) => {
                     'entrance-layout-column': cell && cell.type === 'entrance' && cell.orientation === 'column'
                   }
                 ]"
+                :style="cell && (cell.type === 'stage' || cell.type === 'comment')
+                  ? { minWidth: `${(cell.colSpan ?? 1) * 200}px`, minHeight: `${(cell.rowSpan ?? 1) * 60}px` }
+                  : undefined"
               >
                 <div v-if="cell === null" class="empty-cell"></div>
 
-                <div v-else-if="cell.type === 'stage'" class="stage-text" :style="{ minWidth: `${(cell.colSpan ?? 1) * 200}px`, minHeight: `${(cell.rowSpan ?? 1) * 60}px` }">
+                <div v-else-if="cell.type === 'stage'" class="stage-text">
                   {{ cell.name || 'STAGE' }}
                 </div>
 
@@ -288,7 +291,7 @@ watch(() => props.selectedSeats, (newSeats) => {
                   <component :is="arrow(cell.rotation)" class="entrance-arrow" />
                 </div>
 
-                <div v-else-if="cell.type === 'comment'" class="comment-text" :style="{ minWidth: `${(cell.colSpan ?? 1) * 200}px`, minHeight: `${(cell.rowSpan ?? 1) * 60}px` }">
+                <div v-else-if="cell.type === 'comment'" class="comment-text">
                   {{ cell.name }}
                 </div>
               </td>
@@ -535,11 +538,11 @@ watch(() => props.selectedSeats, (newSeats) => {
 }
 
 .comment-text {
+  position: absolute;
+  inset: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
   padding: 6px;
   background-color: #f3f4f6;
   border: 1px solid #d1d5db;
