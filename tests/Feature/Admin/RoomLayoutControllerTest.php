@@ -190,6 +190,68 @@ class RoomLayoutControllerTest extends TestCase
     }
 
     /** @test */
+    public function layout_update_rejects_overlapping_blocks_across_collections()
+    {
+        $this->actingAs($this->admin);
+
+        $seatingBlock = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+        $stageBlock = Block::factory()->stage()->create(['room_id' => $this->room->id]);
+
+        $response = $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'stageBlocks' => [
+                ['id' => $stageBlock->id, 'name' => 'Stage', 'position_x' => 2, 'position_y' => 2],
+            ],
+            'blocks' => [
+                [
+                    'id' => $seatingBlock->id,
+                    'name' => 'Block',
+                    'position_x' => 2,
+                    'position_y' => 2,
+                    'rotation' => 0,
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors(['stageBlocks.0.position_x', 'blocks.0.position_x']);
+    }
+
+    /** @test */
+    public function layout_update_rejects_overlapping_blocks_within_a_collection()
+    {
+        $this->actingAs($this->admin);
+
+        $blockA = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+        $blockB = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $response = $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                ['id' => $blockA->id, 'name' => 'Block A', 'position_x' => 3, 'position_y' => 3, 'rotation' => 0, 'colspan' => 2, 'rowspan' => 2],
+                ['id' => $blockB->id, 'name' => 'Block B', 'position_x' => 4, 'position_y' => 4, 'rotation' => 0],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors(['blocks.0.position_x', 'blocks.1.position_x']);
+    }
+
+    /** @test */
+    public function layout_update_allows_adjacent_non_overlapping_blocks()
+    {
+        $this->actingAs($this->admin);
+
+        $blockA = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+        $blockB = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+
+        $response = $this->put(route('admin.rooms.layout.update', $this->room->id), [
+            'blocks' => [
+                ['id' => $blockA->id, 'name' => 'Block A', 'position_x' => 0, 'position_y' => 0, 'rotation' => 0],
+                ['id' => $blockB->id, 'name' => 'Block B', 'position_x' => 1, 'position_y' => 0, 'rotation' => 0],
+            ],
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+    }
+
+    /** @test */
     public function layout_update_creates_block_from_temp_id_and_returns_mapping()
     {
         $this->actingAs($this->admin);

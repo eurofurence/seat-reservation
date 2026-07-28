@@ -140,8 +140,8 @@ type PlacementCell = SelectedBlock & {
   rotation?: number
   rows?: FormRow[]
   orientation?: Orientation
-  colSpan?: number
-  rowSpan?: number
+  gridColSpan?: number
+  gridRowSpan?: number
 }
 
 type GridCell =
@@ -196,9 +196,11 @@ const placeSpanned = (grid: GridCell[][], cell: PlacementCell) => {
   const rowSpan = span(cell.rowspan)
   for (let dr = 0; dr < rowSpan; dr++) {
     for (let dc = 0; dc < colSpan; dc++) {
+      // Persisted block positions/spans are expected to be validated (grid bounds + overlap)
+      // server-side before reaching this computed; a skipped cell here means legacy/inconsistent data.
       if (!inGrid(x + dc, y + dr)) continue
       grid[y + dr][x + dc] = (dr === 0 && dc === 0)
-        ? { ...cell, colSpan, rowSpan }
+        ? { ...cell, gridColSpan: colSpan, gridRowSpan: rowSpan }
         : { type: 'covered', id: cell.id }
     }
   }
@@ -313,8 +315,16 @@ const handleCellClick = (rowIndex: number, colIndex: number) => {
 
   if (type === 'marker') {
     if (block.markerIndex !== undefined) placeMarker(block.markerIndex, rowIndex, colIndex)
-  } else if (canPlace(blockRect(block, colIndex, rowIndex))) {
-    setPosition(type === 'stage' ? form.stageBlocks : form.blocks, block.id, colIndex, rowIndex)
+    return
+  }
+
+  // selectedBlock may be a snapshot (e.g. selected via a grid cell) whose span is stale
+  // relative to live edits made through the side panel since selection - re-fetch by id
+  // so validation uses the block's current colspan/rowspan.
+  const list = type === 'stage' ? form.stageBlocks : form.blocks
+  const current = list.find(b => b.id === block.id)
+  if (current && canPlace(blockRect(current, colIndex, rowIndex))) {
+    setPosition(list, current.id, colIndex, rowIndex)
   }
 }
 
@@ -1012,8 +1022,8 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                   <template v-for="(cell, colIndex) in row" :key="colIndex">
                   <td
                     v-if="cell?.type !== 'covered'"
-                    :colspan="cell?.colSpan || 1"
-                    :rowspan="cell?.rowSpan || 1"
+                    :colspan="cell?.gridColSpan || 1"
+                    :rowspan="cell?.gridRowSpan || 1"
                     class="layout-cell border border-gray-300 w-24 p-1 relative"
                     :class="{
                       'bg-gray-50': cell === null,

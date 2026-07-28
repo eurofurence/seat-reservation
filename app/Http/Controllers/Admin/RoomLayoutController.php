@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class RoomLayoutController extends Controller
@@ -146,6 +147,8 @@ class RoomLayoutController extends Controller
             'blocks.*.rowsData.*.alignment' => 'nullable|string|in:left,center,right',
         ]);
 
+        $this->validateNoOverlaps($request);
+
         $blockIdMap = [];
 
         DB::transaction(function () use ($request, $room, &$blockIdMap) {
@@ -248,6 +251,53 @@ class RoomLayoutController extends Controller
         return back()
             ->with('success', 'Room layout updated successfully!')
             ->with('blockIdMap', $blockIdMap);
+    }
+
+    // Checks placed footprints (stage/marker/seating blocks) for overlaps after field validation has
+    // passed. Items with an unplaced axis (position_x or position_y === -1) are skipped, mirroring the
+    // $spanFits bounds check above: unplaced blocks and axis-band entrance markers have no footprint
+    // to compare here.
+    private function validateNoOverlaps(Request $request): void
+    {
+        $rects = [];
+
+        foreach (['stageBlocks', 'markerBlocks', 'blocks'] as $collection) {
+            foreach ($request->input($collection, []) as $index => $item) {
+                $x = isset($item['position_x']) ? (int) $item['position_x'] : -1;
+                $y = isset($item['position_y']) ? (int) $item['position_y'] : -1;
+                if ($x === -1 || $y === -1) {
+                    continue;
+                }
+
+                $colspan = isset($item['colspan']) ? (int) $item['colspan'] : 1;
+                $rowspan = isset($item['rowspan']) ? (int) $item['rowspan'] : 1;
+
+                $rects[] = [
+                    'attribute' => "{$collection}.{$index}.position_x",
+                    'x1' => $x,
+                    'y1' => $y,
+                    'x2' => $x + $colspan - 1,
+                    'y2' => $y + $rowspan - 1,
+                ];
+            }
+        }
+
+        $errors = [];
+        for ($i = 0; $i < count($rects); $i++) {
+            for ($j = $i + 1; $j < count($rects); $j++) {
+                $a = $rects[$i];
+                $b = $rects[$j];
+                $overlaps = $a['x1'] <= $b['x2'] && $a['x2'] >= $b['x1'] && $a['y1'] <= $b['y2'] && $a['y2'] >= $b['y1'];
+                if ($overlaps) {
+                    $errors[$a['attribute']] = 'This block overlaps another block.';
+                    $errors[$b['attribute']] = 'This block overlaps another block.';
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     public function createBlock(Request $request, Room $room)
