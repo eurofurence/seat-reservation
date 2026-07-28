@@ -97,12 +97,16 @@ class MasterCardSvgGenerator
         $cells = [];
         foreach ($stageBlocks as $sb) {
             if ($placed($sb)) {
-                $cells[] = ['x' => $sb->position_x, 'y' => $sb->position_y, 'type' => 'stage', 'block' => $sb, 'w' => self::STAGE_SIZE, 'h' => self::STAGE_SIZE, 'colSpan' => $span($sb, 'colspan'), 'rowSpan' => $span($sb, 'rowspan')];
+                $colSpan = $span($sb, 'colspan');
+                $rowSpan = $span($sb, 'rowspan');
+                $cells[] = ['x' => $sb->position_x, 'y' => $sb->position_y, 'type' => 'stage', 'block' => $sb, 'w' => self::STAGE_SIZE * $colSpan, 'h' => self::STAGE_SIZE * $rowSpan, 'colSpan' => $colSpan, 'rowSpan' => $rowSpan];
             }
         }
         foreach ($markerBlocks as $mb) {
             if ($mb->type === 'comment' && $placed($mb)) {
-                $cells[] = ['x' => $mb->position_x, 'y' => $mb->position_y, 'type' => 'comment', 'block' => $mb, 'w' => self::STAGE_SIZE, 'h' => self::STAGE_SIZE, 'colSpan' => $span($mb, 'colspan'), 'rowSpan' => $span($mb, 'rowspan')];
+                $colSpan = $span($mb, 'colspan');
+                $rowSpan = $span($mb, 'rowspan');
+                $cells[] = ['x' => $mb->position_x, 'y' => $mb->position_y, 'type' => 'comment', 'block' => $mb, 'w' => self::STAGE_SIZE * $colSpan, 'h' => self::STAGE_SIZE * $rowSpan, 'colSpan' => $colSpan, 'rowSpan' => $rowSpan];
             }
         }
         foreach ($blocks as $b) {
