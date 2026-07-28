@@ -7,7 +7,7 @@ class ImportBookingWriter
     /**
      * Build the raw booking insert rows for one event's confirmed import guests.
      */
-    public function rows(int $eventId, array $guests): array
+    public function rows(int $eventId, array $guests, ?string $createdByName = null): array
     {
         $now = now();
         $rows = [];
@@ -18,6 +18,7 @@ class ImportBookingWriter
                     'type' => 'admin',
                     'event_id' => $eventId,
                     'user_id' => null,
+                    'created_by_name' => $createdByName,
                     'seat_id' => $seatId,
                     'name' => $guest['guest_name'],
                     'comment' => $guest['comment'] ?? null,

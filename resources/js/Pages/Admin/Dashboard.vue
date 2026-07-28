@@ -9,6 +9,7 @@ import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
 import { fmt } from '@/lib/datetime'
+import CreatedByBadge from '@/Components/Admin/CreatedByBadge.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -189,7 +190,8 @@ const getSeatInfo = (booking) => {
                   <td class="p-2">
                     <div class="text-sm font-medium">{{ getBookingDisplayName(booking) }}</div>
                     <div class="text-xs text-muted-foreground flex items-center gap-1">
-                      {{ getBookerType(booking) }}
+                      <CreatedByBadge v-if="booking.created_by_name" :name="booking.created_by_name" :label="getBookerType(booking)" />
+                      <span v-else>{{ getBookerType(booking) }}</span>
                       <span v-if="booking.booking_code" class="font-mono bg-gray-100 px-1 rounded">{{ booking.booking_code }}</span>
                     </div>
                   </td>

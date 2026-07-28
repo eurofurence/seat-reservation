@@ -51,6 +51,7 @@ class ManualBookingController extends Controller
                 'type' => 'admin',
                 'event_id' => $id,
                 'user_id' => null,
+                'created_by_name' => auth()->user()->name,
                 'seat_id' => $seatId,
                 'name' => $request->guest_name,
                 'comment' => $request->comment,

@@ -15,6 +15,7 @@ class Booking extends Model
 
     protected $fillable = [
         'user_id',
+        'created_by_name',
         'event_id',
         'seat_id',
         'type',

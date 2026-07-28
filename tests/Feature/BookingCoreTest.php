@@ -77,6 +77,7 @@ class BookingCoreTest extends TestCase
             'comment' => 'VIP guest',
             'type' => 'admin',
             'user_id' => null,
+            'created_by_name' => $user->name,
         ]);
 
         $this->assertEquals(2, Booking::where('event_id', $event->id)->count());

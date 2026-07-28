@@ -3,6 +3,7 @@ import {Head, router, useForm} from '@inertiajs/vue3'
 import {ref, computed, nextTick, watch} from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import SeatLayout from '@/Components/SeatLayout.vue'
+import CreatedByBadge from '@/Components/Admin/CreatedByBadge.vue'
 import { Card } from '@/Components/ui/card'
 import { CardHeader } from '@/Components/ui/card'
 import { CardTitle } from '@/Components/ui/card'
@@ -278,13 +279,6 @@ const getBookingDisplayName = (booking) => {
     return 'Unknown'
 }
 
-// Get booker information (user name or "Admin Booking")
-const getBookerInfo = (booking) => {
-    if (booking.user && booking.user.name) {
-        return booking.user.name
-    }
-    return 'Admin Booking'
-}
 
 // Handle search with Inertia GET request (adds search as URL parameter)
 const handleSearch = () => {
@@ -602,7 +596,9 @@ const navigateToPage = (linkUrl) => {
                                     <td class="p-2">
                                         <div class="text-sm font-medium">{{ getBookingDisplayName(booking) }}</div>
                                         <div class="text-xs text-muted-foreground flex items-center gap-1">
-                                            {{ getBookerInfo(booking) }}
+                                            <span v-if="booking.user && booking.user.name">{{ booking.user.name }}</span>
+                                            <CreatedByBadge v-else-if="booking.created_by_name" :name="booking.created_by_name" label="Admin Booking" />
+                                            <span v-else>Admin Booking</span>
                                             <Popover v-if="booking.comment">
                                                 <PopoverTrigger>
                                                     <Info class="h-3 w-3 text-blue-500 hover:text-blue-700 cursor-pointer" />

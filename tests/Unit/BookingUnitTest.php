@@ -13,6 +13,7 @@ class BookingUnitTest extends TestCase
         $booking = new Booking;
         $expected = [
             'user_id',
+            'created_by_name',
             'event_id',
             'seat_id',
             'type',
