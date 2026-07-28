@@ -13,6 +13,7 @@ import type {
   PropBlock, PropStageBlock, PropMarkerBlock,
   FormBlock, FormStageBlock, FormMarkerBlock, FormRow
 } from '@/types/layout'
+import { span, blockRect as pureBlockRect, canPlace as pureCanPlace, rectUnobstructed as pureRectUnobstructed, rectsOverlap, clampSpan, type Rect as PureRect } from '@/lib/layoutGrid'
 
 defineOptions({ layout: AdminLayout })
 
@@ -51,8 +52,6 @@ const isPlaced = (block: { position_x: number, position_y: number }) => block.po
 const CELL_BASE = 'w-full h-full border rounded cursor-pointer flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow'
 
 const pos = (value: number | null | undefined) => (value != null ? value : -1)
-
-const span = (value: number | null | undefined) => (value != null && value >= 1 ? value : 1)
 
 const stageFromProp = (block: PropStageBlock): FormStageBlock => ({
   id: block.id,
@@ -255,29 +254,44 @@ const selectBlock = (block: SelectedBlock, type: SelectedType) => {
   selectedBlockType.value = type
 }
 
-interface Rect { id: BlockId, x: number, y: number, w: number, h: number }
+type Rect = PureRect
 
-const rectsOverlap = (a: Rect, b: Rect) =>
-  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+const blockRect = (b: SelectedBlock, x = b.position_x, y = b.position_y): Rect => pureBlockRect(b, x, y)
 
-const blockRect = (b: SelectedBlock, x = b.position_x, y = b.position_y): Rect =>
-  ({ id: b.id, x, y, w: span(b.colspan), h: span(b.rowspan) })
-
-const rectOnGrid = (r: Rect) => inGrid(r.x, r.y) && inGrid(r.x + r.w - 1, r.y + r.h - 1)
+const entranceBand = (marker: FormMarkerBlock, orientation: Orientation, index: number): Rect =>
+  orientation === 'column'
+    ? { id: marker.id, x: index, y: 0, w: 1, h: GRID_ROWS }
+    : { id: marker.id, x: 0, y: index, w: GRID_COLS, h: 1 }
 
 const solidBlocks = () =>
   [...form.stageBlocks, ...form.blocks, ...form.markerBlocks.filter(m => m.type === 'comment')]
 
-const rectUnobstructed = (rect: Rect) =>
-  solidBlocks()
-    .filter(isPlaced)
-    .filter(block => block.id !== rect.id)
-    .every(block => !rectsOverlap(rect, blockRect(block)))
+// Placed entrances as rects, so stage/seating/comment placement can't land on an entrance's
+// row/column. Optionally narrowed to one orientation for the entrance-vs-entrance check below
+// (row and column entrances are allowed to cross, so that check must ignore the other axis).
+const entranceRects = (orientation?: Orientation, excludeId?: BlockId) =>
+  form.markerBlocks
+    .filter((m): m is FormMarkerBlock => m.type === 'entrance' && m.id !== excludeId && isPlaced(m) && (orientation === undefined || m.orientation === orientation))
+    .map(m => entranceBand(m, m.orientation ?? 'row', m.orientation === 'column' ? m.position_x : m.position_y))
 
-const canPlace = (rect: Rect) => rectOnGrid(rect) && rectUnobstructed(rect)
+const obstacles = () => [
+  ...solidBlocks().filter(isPlaced).map(block => blockRect(block)),
+  ...entranceRects(),
+]
 
-const clampSpan = (value: string | number, max: number) =>
-  Math.min(max, Math.max(1, Math.floor(Number(value)) || 1))
+const canPlace = (rect: Rect) => pureCanPlace(rect, GRID_COLS, GRID_ROWS, obstacles().filter(o => o.id !== rect.id))
+
+// Entrances only collide with solid blocks and with another entrance on the same axis/index
+// (mirrors the pre-colspan duplicate check) - not routed through obstacles()/canPlace() since
+// those now include entrances of both orientations, which would wrongly reject a row entrance
+// crossing a column entrance.
+const canPlaceEntrance = (marker: FormMarkerBlock, orientation: Orientation, index: number) => {
+  const rect = entranceBand(marker, orientation, index)
+  const blockObstacles = solidBlocks().filter(isPlaced).map(block => blockRect(block))
+  if (!pureRectUnobstructed(rect, blockObstacles)) return false
+
+  return !entranceRects(orientation, marker.id).some(other => rectsOverlap(rect, other))
+}
 
 const commitSpan = (block: SelectedBlock, axis: 'colspan' | 'rowspan', value: string | number, max: number) => {
   const previous = span(block[axis])
@@ -304,11 +318,6 @@ const handleCellClick = (rowIndex: number, colIndex: number) => {
   }
 }
 
-const entranceBand = (marker: FormMarkerBlock, orientation: Orientation, index: number): Rect =>
-  orientation === 'column'
-    ? { id: marker.id, x: index, y: 0, w: 1, h: GRID_ROWS }
-    : { id: marker.id, x: 0, y: index, w: GRID_COLS, h: 1 }
-
 const placeMarker = (markerIndex: number, rowIndex: number, colIndex: number) => {
   const marker = form.markerBlocks[markerIndex]
   if (!marker) return
@@ -318,11 +327,11 @@ const placeMarker = (markerIndex: number, rowIndex: number, colIndex: number) =>
       Object.assign(marker, { position_x: colIndex, position_y: rowIndex })
     }
   } else if (marker.orientation === 'column') {
-    if (rectUnobstructed(entranceBand(marker, 'column', colIndex))) {
+    if (canPlaceEntrance(marker, 'column', colIndex)) {
       Object.assign(marker, { position_x: colIndex, position_y: -1 })
     }
   } else {
-    if (rectUnobstructed(entranceBand(marker, 'row', rowIndex))) {
+    if (canPlaceEntrance(marker, 'row', rowIndex)) {
       Object.assign(marker, { position_x: -1, position_y: rowIndex })
     }
   }
@@ -663,7 +672,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                   </Button>
                 </div>
 
-                <div class="flex gap-4 mt-2" @click.stop>
+                <div class="flex gap-4" @click.stop>
                   <div class="flex items-center gap-2">
                     <Label class="text-xs">Cols</Label>
                     <Input :model-value="stageBlock.colspan" @update:model-value="commitSpan(stageBlock, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
