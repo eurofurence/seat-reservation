@@ -672,13 +672,14 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                   </Button>
                 </div>
 
+                <p class="text-xs text-gray-400 mt-2 mb-1">Grid cells this block occupies (width × height)</p>
                 <div class="flex gap-4" @click.stop>
                   <div class="flex items-center gap-2">
-                    <Label class="text-xs">Cols</Label>
+                    <Label class="text-xs">Width</Label>
                     <Input :model-value="stageBlock.colspan" @update:model-value="commitSpan(stageBlock, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
                   </div>
                   <div class="flex items-center gap-2">
-                    <Label class="text-xs">Rows</Label>
+                    <Label class="text-xs">Height</Label>
                     <Input :model-value="stageBlock.rowspan" @update:model-value="commitSpan(stageBlock, 'rowspan', $event, GRID_ROWS)" type="number" min="1" max="8" class="text-xs h-7 w-16" />
                   </div>
                 </div>
@@ -815,13 +816,14 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                   </Button>
                 </div>
 
+                <p class="text-xs text-gray-400 mb-1">Grid cells this block occupies (width × height)</p>
                 <div class="flex gap-4 mb-2" @click.stop>
                   <div class="flex items-center gap-2">
-                    <Label class="text-xs">Cols</Label>
+                    <Label class="text-xs">Width</Label>
                     <Input :model-value="marker.colspan" @update:model-value="commitSpan(marker, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
                   </div>
                   <div class="flex items-center gap-2">
-                    <Label class="text-xs">Rows</Label>
+                    <Label class="text-xs">Height</Label>
                     <Input :model-value="marker.rowspan" @update:model-value="commitSpan(marker, 'rowspan', $event, GRID_ROWS)" type="number" min="1" max="8" class="text-xs h-7 w-16" />
                   </div>
                 </div>
@@ -908,17 +910,19 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
               </div>
 
               <div v-if="isBlockExpanded(block.id)" class="border-t bg-gray-50 p-3">
+                <p class="text-xs text-gray-400 mb-1">Grid cells this block occupies (width × height)</p>
                 <div class="flex gap-4 mb-3">
                   <div class="flex items-center gap-2">
-                    <Label class="text-xs">Cols</Label>
+                    <Label class="text-xs">Width</Label>
                     <Input :model-value="block.colspan" @update:model-value="commitSpan(block, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
                   </div>
                   <div class="flex items-center gap-2">
-                    <Label class="text-xs">Rows</Label>
+                    <Label class="text-xs">Height</Label>
                     <Input :model-value="block.rowspan" @update:model-value="commitSpan(block, 'rowspan', $event, GRID_ROWS)" type="number" min="1" max="8" class="text-xs h-7 w-16" />
                   </div>
                 </div>
 
+                <p class="text-xs text-gray-400 mb-1">Number of seats per row, and how they're aligned within the block</p>
                 <div class="flex justify-between items-center mb-2">
                   <Label class="text-xs">Row Configuration ({{ block.rows.length }} rows)</Label>
                   <div class="flex gap-1">
