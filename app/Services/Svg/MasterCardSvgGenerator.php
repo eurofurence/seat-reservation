@@ -74,7 +74,7 @@ class MasterCardSvgGenerator
             $svg .= match ($c['type']) {
                 'stage' => $this->stageCell($c, $bx, $by, $cw, $ch, $mpdf),
                 'comment' => $this->commentCell($c, $bx, $by, $cw, $ch, $mpdf),
-                default => $this->seatingCell($c, $bx, $by, $bookedSeatIds, $mpdf),
+                default => $this->seatingCell($c, $bx, $by, $cw, $ch, $bookedSeatIds, $mpdf),
             };
         }
 
@@ -92,15 +92,21 @@ class MasterCardSvgGenerator
     {
         $placed = fn ($b) => $b->position_x !== null && $b->position_y !== null && $b->position_x >= 0 && $b->position_y >= 0;
 
+        $span = fn ($b, string $key) => max((int) ($b->{$key} ?? 1), 1);
+
         $cells = [];
         foreach ($stageBlocks as $sb) {
             if ($placed($sb)) {
-                $cells[] = ['x' => $sb->position_x, 'y' => $sb->position_y, 'type' => 'stage', 'block' => $sb, 'w' => self::STAGE_SIZE, 'h' => self::STAGE_SIZE, 'colSpan' => 1, 'rowSpan' => 1];
+                $colSpan = $span($sb, 'colspan');
+                $rowSpan = $span($sb, 'rowspan');
+                $cells[] = ['x' => $sb->position_x, 'y' => $sb->position_y, 'type' => 'stage', 'block' => $sb, 'w' => self::STAGE_SIZE * $colSpan, 'h' => self::STAGE_SIZE * $rowSpan, 'colSpan' => $colSpan, 'rowSpan' => $rowSpan];
             }
         }
         foreach ($markerBlocks as $mb) {
             if ($mb->type === 'comment' && $placed($mb)) {
-                $cells[] = ['x' => $mb->position_x, 'y' => $mb->position_y, 'type' => 'comment', 'block' => $mb, 'w' => self::STAGE_SIZE, 'h' => self::STAGE_SIZE, 'colSpan' => 1, 'rowSpan' => 1];
+                $colSpan = $span($mb, 'colspan');
+                $rowSpan = $span($mb, 'rowspan');
+                $cells[] = ['x' => $mb->position_x, 'y' => $mb->position_y, 'type' => 'comment', 'block' => $mb, 'w' => self::STAGE_SIZE * $colSpan, 'h' => self::STAGE_SIZE * $rowSpan, 'colSpan' => $colSpan, 'rowSpan' => $rowSpan];
             }
         }
         foreach ($blocks as $b) {
@@ -121,64 +127,11 @@ class MasterCardSvgGenerator
                 'gridCols' => $gridCols, 'gridRows' => $gridRows,
                 'w' => self::IN_PAD * 2 + $gridCols * self::PITCH,
                 'h' => self::HEADER + self::IN_PAD + $gridRows * self::PITCH,
-                'colSpan' => 1, 'rowSpan' => 1,
+                'colSpan' => $span($b, 'colspan'), 'rowSpan' => $span($b, 'rowspan'),
             ];
         }
 
-        $this->mergeAdjacentCells($cells, 'stage');
-        $this->mergeAdjacentCells($cells, 'comment');
-
         return $cells;
-    }
-
-    /**
-     * @param  array<int,array<string,mixed>>  $cells
-     */
-    private function mergeAdjacentCells(array &$cells, string $type): void
-    {
-        $grid = [];
-        foreach ($cells as $i => $c) {
-            if ($c['type'] === $type) {
-                $grid[$c['y']][$c['x']] = $i;
-            }
-        }
-        ksort($grid);
-
-        $covered = [];
-        $match = fn (int $y, int $x, string $name) => isset($grid[$y][$x]) && ! isset($covered[$grid[$y][$x]]) && $cells[$grid[$y][$x]]['block']->name === $name;
-
-        foreach ($grid as $y => $row) {
-            ksort($row);
-            foreach ($row as $x => $i) {
-                if (isset($covered[$i])) {
-                    continue;
-                }
-
-                $name = $cells[$i]['block']->name;
-                $colSpan = 1;
-                while ($match($y, $x + $colSpan, $name)) {
-                    $colSpan++;
-                }
-
-                $rowSpan = 1;
-                while (! in_array(false, array_map(fn ($dc) => $match($y + $rowSpan, $x + $dc, $name), range(0, $colSpan - 1)))) {
-                    $rowSpan++;
-                }
-
-                $cells[$i]['colSpan'] = $colSpan;
-                $cells[$i]['rowSpan'] = $rowSpan;
-
-                for ($dr = 0; $dr < $rowSpan; $dr++) {
-                    for ($dc = 0; $dc < $colSpan; $dc++) {
-                        if ($dr || $dc) {
-                            $covered[$grid[$y + $dr][$x + $dc]] = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        $cells = array_values(array_filter($cells, fn ($i) => ! isset($covered[$i]), ARRAY_FILTER_USE_KEY));
     }
 
     /**
@@ -333,12 +286,12 @@ class MasterCardSvgGenerator
         return $svg;
     }
 
-    private function seatingCell(array $c, float $bx, float $by, array $bookedSeatIds, Mpdf $mpdf): string
+    private function seatingCell(array $c, float $bx, float $by, float $cw, float $ch, array $bookedSeatIds, Mpdf $mpdf): string
     {
-        $cxMid = $bx + $c['w'] / 2;
+        $cxMid = $bx + $cw / 2;
 
-        return $this->svg->rect($bx, $by, $c['w'], $c['h'], 'none', 3, 10)
-            .$this->svg->centeredLabelX($mpdf, $c['block']->name, SvgUtilities::SIZE_BLOCK_LABEL, '#000000', $cxMid, $by + 22, $c['w'] - 12)
+        return $this->svg->rect($bx, $by, $cw, $ch, 'none', 3, 10)
+            .$this->svg->centeredLabelX($mpdf, $c['block']->name, SvgUtilities::SIZE_BLOCK_LABEL, '#000000', $cxMid, $by + 22, $cw - 12)
             .$this->seatDots($c, $cxMid, $by, $bookedSeatIds);
     }
 

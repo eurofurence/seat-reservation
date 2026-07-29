@@ -7,12 +7,13 @@ import { Card } from '@/Components/ui/card'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { useToast } from '@/Components/ui/toast'
-import { Trash2, RotateCw, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, TriangleAlert } from 'lucide-vue-next'
+import { Trash2, RotateCw, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, TriangleAlert, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import type {
   BlockId, Orientation, MarkerType,
   PropBlock, PropStageBlock, PropMarkerBlock,
   FormBlock, FormStageBlock, FormMarkerBlock, FormRow
 } from '@/types/layout'
+import { span, blockRect as pureBlockRect, canPlace as pureCanPlace, rectUnobstructed as pureRectUnobstructed, rectsOverlap, clampSpan, type Rect as PureRect } from '@/lib/layoutGrid'
 
 defineOptions({ layout: AdminLayout })
 
@@ -56,7 +57,9 @@ const stageFromProp = (block: PropStageBlock): FormStageBlock => ({
   id: block.id,
   name: block.name,
   position_x: pos(block.position_x),
-  position_y: pos(block.position_y)
+  position_y: pos(block.position_y),
+  colspan: span(block.colspan),
+  rowspan: span(block.rowspan)
 })
 
 const markerFromProp = (block: PropMarkerBlock): FormMarkerBlock => {
@@ -72,7 +75,15 @@ const markerFromProp = (block: PropMarkerBlock): FormMarkerBlock => {
       orientation = y === -1 ? 'column' : 'row'
     }
   }
-  return { id: block.id, type: block.type, name: block.name, position_x: x, position_y: y, orientation, rotation: block.rotation || 0 }
+  return {
+    id: block.id,
+    type: block.type,
+    name: block.name,
+    position_x: x, position_y: y,
+    orientation,
+    rotation: block.rotation || 0,
+    colspan: span(block.colspan), rowspan: span(block.rowspan)
+  }
 }
 
 const rowsFromBlock = (block: PropBlock | null): FormRow[] => {
@@ -94,6 +105,8 @@ const blockFromProp = (block: PropBlock): FormBlock => ({
   position_x: pos(block.position_x),
   position_y: pos(block.position_y),
   rotation: block.rotation || 0,
+  colspan: span(block.colspan),
+  rowspan: span(block.rowspan),
   rows: rowsFromBlock(block)
 })
 
@@ -104,9 +117,50 @@ const form = useForm({
 })
 
 type SelectedType = 'stage' | 'seating' | 'marker'
-const selectedBlock = ref<any>(null)
+
+type CellType = 'stage' | 'seating' | 'comment' | 'entrance'
+
+interface Positioned {
+  id: BlockId
+  position_x: number
+  position_y: number
+}
+
+interface SelectedBlock extends Positioned {
+  type?: CellType
+  colspan?: number
+  rowspan?: number
+  rotation?: number
+  markerIndex?: number
+}
+
+type PlacementCell = SelectedBlock & {
+  type: CellType
+  name: string
+  rotation?: number
+  rows?: FormRow[]
+  orientation?: Orientation
+  gridColSpan?: number
+  gridRowSpan?: number
+}
+
+type GridCell =
+  | null
+  | PlacementCell
+  | { type: 'covered', id: BlockId }
+
+const selectedBlock = ref<SelectedBlock | null>(null)
 const selectedBlockType = ref<SelectedType | null>(null)
 const expandedBlocks = ref<Set<BlockId>>(new Set())
+
+type PanelKey = 'stage' | 'entrances' | 'comments' | 'seating'
+const collapsedPanels = ref<Set<PanelKey>>(new Set())
+const togglePanel = (panel: PanelKey) => {
+  collapsedPanels.value.has(panel)
+    ? collapsedPanels.value.delete(panel)
+    : collapsedPanels.value.add(panel)
+}
+const isPanelCollapsed = (panel: PanelKey) => collapsedPanels.value.has(panel)
 const showNewBlockDialog = ref(false)
 const newBlockName = ref('')
 
@@ -129,28 +183,41 @@ const markerOrientation = (marker: FormMarkerBlock): Orientation => (marker.posi
 
 const markerCells = (marker: FormMarkerBlock): Array<[number, number]> => {
   const { position_x: x, position_y: y } = marker
-  if (marker.type === 'comment') return [[y, x]]
   if (markerOrientation(marker) === 'column') {
     return Array.from({ length: GRID_ROWS }, (_, r) => [r, x])
   }
   return Array.from({ length: GRID_COLS }, (_, c) => [y, c])
 }
 
-const layoutGrid = computed(() => {
-  const grid = Array(GRID_ROWS).fill(null).map(() => Array(GRID_COLS).fill(null))
+const placeSpanned = (grid: GridCell[][], cell: PlacementCell) => {
+  const { position_x: x, position_y: y } = cell
+  if (!inGrid(x, y)) return
+  const colSpan = span(cell.colspan)
+  const rowSpan = span(cell.rowspan)
+  for (let dr = 0; dr < rowSpan; dr++) {
+    for (let dc = 0; dc < colSpan; dc++) {
+      // Persisted block positions/spans are expected to be validated (grid bounds + overlap)
+      // server-side before reaching this computed; a skipped cell here means legacy/inconsistent data.
+      if (!inGrid(x + dc, y + dr)) continue
+      grid[y + dr][x + dc] = (dr === 0 && dc === 0)
+        ? { ...cell, gridColSpan: colSpan, gridRowSpan: rowSpan }
+        : { type: 'covered', id: cell.id }
+    }
+  }
+}
 
-  form.stageBlocks.forEach(stageBlock => {
-    const { position_x: x, position_y: y } = stageBlock
-    if (inGrid(x, y)) grid[y][x] = { type: 'stage', ...stageBlock }
-  })
+const layoutGrid = computed<GridCell[][]>(() => {
+  const grid: GridCell[][] = Array.from({ length: GRID_ROWS }, () => Array.from({ length: GRID_COLS }, (): GridCell => null))
 
-  form.blocks.forEach(block => {
-    const { position_x: x, position_y: y } = block
-    if (inGrid(x, y)) grid[y][x] = { type: 'seating', ...block }
-  })
+  form.stageBlocks.forEach(stageBlock => placeSpanned(grid, { type: 'stage', ...stageBlock }))
+  form.blocks.forEach(block => placeSpanned(grid, { type: 'seating', ...block }))
 
   form.markerBlocks.forEach((marker, index) => {
     const cell = { ...marker, markerIndex: index, orientation: markerOrientation(marker) }
+    if (marker.type === 'comment') {
+      placeSpanned(grid, cell)
+      return
+    }
     for (const [y, x] of markerCells(marker)) {
       if (grid[y]?.[x] === null) grid[y][x] = cell
     }
@@ -159,10 +226,8 @@ const layoutGrid = computed(() => {
   return grid
 })
 
-const getTotalSeats = (block: FormBlock) => {
-  if (!block.rows || block.rows.length === 0) return 0
-  return block.rows.reduce((total, row) => total + (row.seatCount || 0), 0)
-}
+const getTotalSeats = (rows: FormRow[] = []) =>
+  rows.reduce((total, row) => total + (row.seatCount || 0), 0)
 
 const getOrientationArrow = (rotation: number | undefined) => {
   const arrows: Record<number, typeof ArrowUp> = {
@@ -186,9 +251,61 @@ const isBlockExpanded = (blockId: BlockId) => {
   return expandedBlocks.value.has(blockId)
 }
 
-const selectBlock = (block: any, type: SelectedType) => {
+const selectBlock = (block: SelectedBlock, type: SelectedType) => {
   selectedBlock.value = block
   selectedBlockType.value = type
+}
+
+type Rect = PureRect
+
+const blockRect = (b: SelectedBlock, x = b.position_x, y = b.position_y): Rect => pureBlockRect(b, x, y)
+
+const entranceBand = (marker: FormMarkerBlock, orientation: Orientation, index: number): Rect =>
+  orientation === 'column'
+    ? { id: marker.id, x: index, y: 0, w: 1, h: GRID_ROWS }
+    : { id: marker.id, x: 0, y: index, w: GRID_COLS, h: 1 }
+
+const solidBlocks = () =>
+  [...form.stageBlocks, ...form.blocks, ...form.markerBlocks.filter(m => m.type === 'comment')]
+
+// Placed entrances as rects, so stage/seating/comment placement can't land on an entrance's
+// row/column. Optionally narrowed to one orientation for the entrance-vs-entrance check below
+// (row and column entrances are allowed to cross, so that check must ignore the other axis).
+const entranceRects = (orientation?: Orientation, excludeId?: BlockId) =>
+  form.markerBlocks
+    .filter((m): m is FormMarkerBlock => m.type === 'entrance' && m.id !== excludeId && isPlaced(m) && (orientation === undefined || m.orientation === orientation))
+    .map(m => entranceBand(m, m.orientation ?? 'row', m.orientation === 'column' ? m.position_x : m.position_y))
+
+const obstacles = () => [
+  ...solidBlocks().filter(isPlaced).map(block => blockRect(block)),
+  ...entranceRects(),
+]
+
+const canPlace = (rect: Rect) => pureCanPlace(rect, GRID_COLS, GRID_ROWS, obstacles().filter(o => o.id !== rect.id))
+
+// Entrances only collide with solid blocks and with another entrance on the same axis/index
+// (mirrors the pre-colspan duplicate check) - not routed through obstacles()/canPlace() since
+// those now include entrances of both orientations, which would wrongly reject a row entrance
+// crossing a column entrance.
+const canPlaceEntrance = (marker: FormMarkerBlock, orientation: Orientation, index: number) => {
+  const rect = entranceBand(marker, orientation, index)
+  const blockObstacles = solidBlocks().filter(isPlaced).map(block => blockRect(block))
+  if (!pureRectUnobstructed(rect, blockObstacles)) return false
+
+  return !entranceRects(orientation, marker.id).some(other => rectsOverlap(rect, other))
+}
+
+const commitSpan = (block: SelectedBlock, axis: 'colspan' | 'rowspan', value: string | number, max: number) => {
+  const previous = span(block[axis])
+  block[axis] = clampSpan(value, max)
+
+  const resizeCollides = isPlaced(block) && !canPlace(blockRect(block))
+  if (resizeCollides) block[axis] = previous
+}
+
+const setPosition = (list: Positioned[], id: BlockId, x: number, y: number) => {
+  const target = list.find(b => b.id === id)
+  if (target) Object.assign(target, { position_x: x, position_y: y })
 }
 
 const handleCellClick = (rowIndex: number, colIndex: number) => {
@@ -196,35 +313,37 @@ const handleCellClick = (rowIndex: number, colIndex: number) => {
   const type = selectedBlockType.value
   if (!block || !type) return
 
-  if (type === 'marker' && block.type === 'entrance') {
-    return placeMarker(block.markerIndex, rowIndex, colIndex)
+  if (type === 'marker') {
+    if (block.markerIndex !== undefined) placeMarker(block.markerIndex, rowIndex, colIndex)
+    return
   }
-  if (layoutGrid.value[rowIndex][colIndex] !== null) return
 
-  if (type === 'stage') setPosition(form.stageBlocks, block.id, colIndex, rowIndex)
-  else if (type === 'marker') placeMarker(block.markerIndex, rowIndex, colIndex)
-  else setPosition(form.blocks, block.id, colIndex, rowIndex)
-}
-
-const setPosition = (list: Array<{ id: BlockId, position_x: number, position_y: number }>, id: BlockId, x: number, y: number) => {
-  const target = list.find(b => b.id === id)
-  if (target) Object.assign(target, { position_x: x, position_y: y })
+  // selectedBlock may be a snapshot (e.g. selected via a grid cell) whose span is stale
+  // relative to live edits made through the side panel since selection - re-fetch by id
+  // so validation uses the block's current colspan/rowspan.
+  const list = type === 'stage' ? form.stageBlocks : form.blocks
+  const current = list.find(b => b.id === block.id)
+  if (current && canPlace(blockRect(current, colIndex, rowIndex))) {
+    setPosition(list, current.id, colIndex, rowIndex)
+  }
 }
 
 const placeMarker = (markerIndex: number, rowIndex: number, colIndex: number) => {
   const marker = form.markerBlocks[markerIndex]
   if (!marker) return
+
   if (marker.type === 'comment') {
-    Object.assign(marker, { position_x: colIndex, position_y: rowIndex })
-    return
-  }
-  const others = form.markerBlocks.filter((_, i) => i !== markerIndex)
-  if (marker.orientation === 'column') {
-    if (others.some(m => m.orientation === 'column' && m.position_x === colIndex)) return
-    Object.assign(marker, { position_x: colIndex, position_y: -1 })
+    if (canPlace(blockRect(marker, colIndex, rowIndex))) {
+      Object.assign(marker, { position_x: colIndex, position_y: rowIndex })
+    }
+  } else if (marker.orientation === 'column') {
+    if (canPlaceEntrance(marker, 'column', colIndex)) {
+      Object.assign(marker, { position_x: colIndex, position_y: -1 })
+    }
   } else {
-    if (others.some(m => m.orientation === 'row' && m.position_y === rowIndex)) return
-    Object.assign(marker, { position_x: -1, position_y: rowIndex })
+    if (canPlaceEntrance(marker, 'row', rowIndex)) {
+      Object.assign(marker, { position_x: -1, position_y: rowIndex })
+    }
   }
 }
 
@@ -237,6 +356,8 @@ const addStageBlock = () => {
   form.stageBlocks.push({
     id: nextTempKey(),
     name: `Stage ${form.stageBlocks.length + 1}`,
+    colspan: 1,
+    rowspan: 1,
     ...UNPLACED
   })
 }
@@ -248,14 +369,14 @@ const removeStageBlock = (index: number) => {
 }
 
 const ENTRANCE_DIRECTIONS: Record<Orientation, number[]> = {
-  row: [180, 0],
+  row: [0, 180],
   column: [90, 270]
 }
 
 const addMarker = (type: MarkerType) => {
   const id = nextTempKey()
   if (type === 'comment') {
-    form.markerBlocks.push({ id, type, name: 'Note', ...UNPLACED })
+    form.markerBlocks.push({ id, type, name: 'Note', colspan: 1, rowspan: 1, ...UNPLACED })
     return
   }
   const count = form.markerBlocks.filter(m => m.type === 'entrance').length
@@ -265,6 +386,8 @@ const addMarker = (type: MarkerType) => {
     name: count === 0 ? 'Entrance' : `Entrance ${count + 1}`,
     orientation: 'row',
     rotation: ENTRANCE_DIRECTIONS.row[0],
+    colspan: 1,
+    rowspan: 1,
     ...UNPLACED
   })
 }
@@ -335,7 +458,9 @@ const toStagePayload = (s: FormStageBlock) => ({
   id: s.id,
   name: s.name,
   position_x: s.position_x,
-  position_y: s.position_y
+  position_y: s.position_y,
+  colspan: s.colspan,
+  rowspan: s.rowspan
 })
 
 const toMarkerPayload = (m: FormMarkerBlock) => ({
@@ -344,7 +469,9 @@ const toMarkerPayload = (m: FormMarkerBlock) => ({
   name: m.name,
   position_x: m.position_x,
   position_y: m.position_y,
-  rotation: m.rotation ?? 0
+  rotation: m.rotation ?? 0,
+  colspan: m.colspan,
+  rowspan: m.rowspan
 })
 
 const toRowPayload = (r: FormRow) => ({
@@ -360,6 +487,8 @@ interface BlockPayload {
   position_x: number
   position_y: number
   rotation: number
+  colspan: number
+  rowspan: number
   rowsData: ReturnType<typeof toRowPayload>[] // always >= 1 row; seeded on load, guarded on removal
 }
 
@@ -369,6 +498,8 @@ const toBlockPayload = (b: FormBlock): BlockPayload => ({
   position_x: b.position_x,
   position_y: b.position_y,
   rotation: b.rotation,
+  colspan: b.colspan,
+  rowspan: b.rowspan,
   rowsData: b.rows.map(toRowPayload)
 })
 
@@ -448,6 +579,8 @@ const createNewBlock = () => {
     position_x: x,
     position_y: y,
     rotation: 0,
+    colspan: 1,
+    rowspan: 1,
     rows: rowsFromBlock(null)
   })
 
@@ -511,14 +644,17 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
       <div class="lg:col-span-2 space-y-4">
 
         <Card class="p-4 gap-0">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold">Stage Blocks</h3>
+          <div class="flex justify-between items-center" :class="{ 'mb-2': !isPanelCollapsed('stage') }">
+            <button type="button" :aria-expanded="!isPanelCollapsed('stage')" @click="togglePanel('stage')" class="flex items-center gap-1 font-semibold">
+              <component :is="isPanelCollapsed('stage') ? ChevronRight : ChevronDown" class="w-4 h-4" />
+              Stage Blocks
+            </button>
             <Button size="sm" variant="outline" class="text-xs" @click="addStageBlock">
               + Add Stage
             </Button>
           </div>
 
-          <div class="space-y-2 max-h-96 overflow-y-auto">
+          <div v-show="!isPanelCollapsed('stage')" class="space-y-2 max-h-96 overflow-y-auto">
             <div
               v-for="(stageBlock, index) in form.stageBlocks"
               :key="stageBlock.id"
@@ -546,6 +682,18 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                   </Button>
                 </div>
 
+                <p class="text-xs text-gray-400 mt-2 mb-1">Grid cells this block occupies (width × height)</p>
+                <div class="flex gap-4" @click.stop>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Width</Label>
+                    <Input :model-value="stageBlock.colspan" @update:model-value="commitSpan(stageBlock, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Height</Label>
+                    <Input :model-value="stageBlock.rowspan" @update:model-value="commitSpan(stageBlock, 'rowspan', $event, GRID_ROWS)" type="number" min="1" max="8" class="text-xs h-7 w-16" />
+                  </div>
+                </div>
+
                 <div class="text-xs text-gray-500 mt-2">
                   <span v-if="isPlaced(stageBlock)" class="text-green-600">• Placed ({{ stageBlock.position_y }}, {{ stageBlock.position_x }})</span>
                   <span v-else class="text-orange-600">• Not placed</span>
@@ -555,103 +703,166 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
           </div>
         </Card>
 
-        <!-- Marker Blocks Management -->
+        <!-- Entrance Management -->
         <Card class="p-4 gap-0">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold">Markers</h3>
-            <div class="flex gap-1">
-              <Button size="sm" variant="outline" class="text-xs" @click="addMarker('entrance')">
-                + Entrance
-              </Button>
-              <Button size="sm" variant="outline" class="text-xs" @click="addMarker('comment')">
-                + Comment
-              </Button>
-            </div>
+          <div class="flex justify-between items-center" :class="{ 'mb-2': !isPanelCollapsed('entrances') }">
+            <button type="button" :aria-expanded="!isPanelCollapsed('entrances')" @click="togglePanel('entrances')" class="flex items-center gap-1 font-semibold">
+              <component :is="isPanelCollapsed('entrances') ? ChevronRight : ChevronDown" class="w-4 h-4" />
+              Entrances
+            </button>
+            <Button size="sm" variant="outline" class="text-xs" @click="addMarker('entrance')">
+              + Entrance
+            </Button>
           </div>
 
-          <div class="space-y-2 max-h-96 overflow-y-auto">
-            <div
-              v-for="(marker, index) in form.markerBlocks"
-              :key="marker.id"
-              class="border border-gray-200 rounded-lg p-3"
-              :class="{ 'ring-2 ring-inset ring-amber-500': selectedBlockType === 'marker' && selectedBlock?.markerIndex === index }"
-              @click="selectBlock({ ...marker, markerIndex: index }, 'marker')"
-            >
-              <div class="flex items-end justify-between mb-2">
-                <div class="flex-1">
-                  <Label class="text-xs">
-                    {{ marker.type === 'entrance' ? 'Entrance label' : 'Comment text' }}
-                  </Label>
-                  <Input
-                    v-model="marker.name"
-                    class="text-sm mt-1"
-                    @click.stop
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  @click.stop="removeMarkerBlock(index)"
-                  class="text-xs px-2 py-1 ml-2"
-                  title="Remove marker"
-                >
-                  <Trash2 class="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div v-if="marker.type === 'entrance'" class="space-y-2 mb-2">
-                <div class="flex items-center gap-2">
-                  <Label class="text-xs w-16">Spans</Label>
-                  <select
-                    :value="marker.orientation"
-                    @click.stop
-                    @change="setEntranceOrientation(marker, ($event.target as HTMLSelectElement).value as Orientation)"
-                    class="text-xs h-7 border border-gray-300 rounded px-2 flex-1"
-                  >
-                    <option value="row">Full row (horizontal)</option>
-                    <option value="column">Full column (vertical)</option>
-                  </select>
-                </div>
-                <div class="flex items-center gap-2">
-                  <Label class="text-xs w-16">Direction</Label>
-                  <component :is="getOrientationArrow(marker.rotation)" class="w-5 h-5" />
+          <div v-show="!isPanelCollapsed('entrances')" class="space-y-2 max-h-96 overflow-y-auto">
+            <template v-for="(marker, index) in form.markerBlocks" :key="marker.id">
+              <div
+                v-if="marker.type === 'entrance'"
+                class="border border-gray-200 rounded-lg p-3"
+                :class="{ 'ring-2 ring-inset ring-amber-500': selectedBlockType === 'marker' && selectedBlock?.markerIndex === index }"
+                @click="selectBlock({ ...marker, markerIndex: index }, 'marker')"
+              >
+                <div class="flex items-end justify-between mb-2">
+                  <div class="flex-1">
+                    <Label class="text-xs">Entrance label</Label>
+                    <Input
+                      v-model="marker.name"
+                      class="text-sm mt-1"
+                      @click.stop
+                    />
+                  </div>
                   <Button
                     size="sm"
-                    variant="outline"
-                    @click.stop="rotateEntrance(marker)"
-                    class="text-xs px-2 py-1"
-                    title="Rotate direction"
+                    variant="destructive"
+                    @click.stop="removeMarkerBlock(index)"
+                    class="text-xs px-2 py-1 ml-2"
+                    title="Remove entrance"
                   >
-                    <RotateCw class="w-4 h-4" />
+                    <Trash2 class="w-4 h-4" />
                   </Button>
                 </div>
-              </div>
 
-              <div class="text-xs text-gray-500">
-                <span v-if="getMarkerPlacementStatus(marker)" class="text-green-600">
-                  <template v-if="marker.type === 'comment'">• Placed ({{ marker.position_y }}, {{ marker.position_x }})</template>
-                  <template v-else-if="marker.orientation === 'column'">• Column {{ marker.position_x }}</template>
-                  <template v-else>• Row {{ marker.position_y }}</template>
-                </span>
-                <span v-else class="text-orange-600">• Not placed</span>
+                <div class="space-y-2 mb-2">
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs w-16">Spans</Label>
+                    <select
+                      :value="marker.orientation"
+                      @click.stop
+                      @change="setEntranceOrientation(marker, ($event.target as HTMLSelectElement).value as Orientation)"
+                      class="text-xs h-7 border border-gray-300 rounded px-2 flex-1"
+                    >
+                      <option value="row">Full row (horizontal)</option>
+                      <option value="column">Full column (vertical)</option>
+                    </select>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs w-16">Direction</Label>
+                    <component :is="getOrientationArrow(marker.rotation)" class="w-5 h-5" />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      @click.stop="rotateEntrance(marker)"
+                      class="text-xs px-2 py-1"
+                      title="Rotate direction"
+                    >
+                      <RotateCw class="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div class="text-xs text-gray-500">
+                  <span v-if="getMarkerPlacementStatus(marker)" class="text-green-600">
+                    <template v-if="marker.orientation === 'column'">• Column {{ marker.position_x }}</template>
+                    <template v-else>• Row {{ marker.position_y }}</template>
+                  </span>
+                  <span v-else class="text-orange-600">• Not placed</span>
+                </div>
               </div>
-            </div>
-            <p v-if="form.markerBlocks.length === 0" class="text-xs text-gray-400">
-              No markers yet. Add an entrance row/column or a comment note.
+            </template>
+            <p v-if="!form.markerBlocks.some(m => m.type === 'entrance')" class="text-xs text-gray-400">
+              No entrances yet. Add an entrance row or column.
+            </p>
+          </div>
+        </Card>
+
+        <!-- Comment Management -->
+        <Card class="p-4 gap-0">
+          <div class="flex justify-between items-center" :class="{ 'mb-2': !isPanelCollapsed('comments') }">
+            <button type="button" :aria-expanded="!isPanelCollapsed('comments')" @click="togglePanel('comments')" class="flex items-center gap-1 font-semibold">
+              <component :is="isPanelCollapsed('comments') ? ChevronRight : ChevronDown" class="w-4 h-4" />
+              Comments
+            </button>
+            <Button size="sm" variant="outline" class="text-xs" @click="addMarker('comment')">
+              + Comment
+            </Button>
+          </div>
+
+          <div v-show="!isPanelCollapsed('comments')" class="space-y-2 max-h-96 overflow-y-auto">
+            <template v-for="(marker, index) in form.markerBlocks" :key="marker.id">
+              <div
+                v-if="marker.type === 'comment'"
+                class="border border-gray-200 rounded-lg p-3"
+                :class="{ 'ring-2 ring-inset ring-amber-500': selectedBlockType === 'marker' && selectedBlock?.markerIndex === index }"
+                @click="selectBlock({ ...marker, markerIndex: index }, 'marker')"
+              >
+                <div class="flex items-end justify-between mb-2">
+                  <div class="flex-1">
+                    <Label class="text-xs">Comment text</Label>
+                    <Input
+                      v-model="marker.name"
+                      class="text-sm mt-1"
+                      @click.stop
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    @click.stop="removeMarkerBlock(index)"
+                    class="text-xs px-2 py-1 ml-2"
+                    title="Remove comment"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <p class="text-xs text-gray-400 mb-1">Grid cells this block occupies (width × height)</p>
+                <div class="flex gap-4 mb-2" @click.stop>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Width</Label>
+                    <Input :model-value="marker.colspan" @update:model-value="commitSpan(marker, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Height</Label>
+                    <Input :model-value="marker.rowspan" @update:model-value="commitSpan(marker, 'rowspan', $event, GRID_ROWS)" type="number" min="1" max="8" class="text-xs h-7 w-16" />
+                  </div>
+                </div>
+
+                <div class="text-xs text-gray-500">
+                  <span v-if="getMarkerPlacementStatus(marker)" class="text-green-600">• Placed ({{ marker.position_y }}, {{ marker.position_x }})</span>
+                  <span v-else class="text-orange-600">• Not placed</span>
+                </div>
+              </div>
+            </template>
+            <p v-if="!form.markerBlocks.some(m => m.type === 'comment')" class="text-xs text-gray-400">
+              No comments yet. Add a comment note.
             </p>
           </div>
         </Card>
 
         <!-- Seating Blocks Management -->
         <Card class="p-4 gap-0">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold">Seating Blocks</h3>
+          <div class="flex justify-between items-center" :class="{ 'mb-2': !isPanelCollapsed('seating') }">
+            <button type="button" :aria-expanded="!isPanelCollapsed('seating')" @click="togglePanel('seating')" class="flex items-center gap-1 font-semibold">
+              <component :is="isPanelCollapsed('seating') ? ChevronRight : ChevronDown" class="w-4 h-4" />
+              Seating Blocks
+            </button>
             <Button size="sm" variant="outline" class="text-xs" @click="openNewBlockDialog">
               + Add Block
             </Button>
           </div>
 
-          <div class="space-y-2 overflow-y-auto">
+          <div v-show="!isPanelCollapsed('seating')" class="space-y-2 overflow-y-auto">
             <div
               v-for="block in form.blocks"
               :key="block.id"
@@ -679,7 +890,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                       @click.stop
                     />
                     <div class="text-xs text-gray-500 mt-1">
-                      {{ getTotalSeats(block) }} seats • {{ block.rows.length }} rows
+                      {{ getTotalSeats(block.rows) }} seats • {{ block.rows.length }} rows
                       <span v-if="isPlaced(block)" class="text-green-600">• Placed ({{ block.position_y }}, {{ block.position_x }})</span>
                       <span v-else class="text-orange-600">• Not placed</span>
                     </div>
@@ -709,6 +920,19 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
               </div>
 
               <div v-if="isBlockExpanded(block.id)" class="border-t bg-gray-50 p-3">
+                <p class="text-xs text-gray-400 mb-1">Grid cells this block occupies (width × height)</p>
+                <div class="flex gap-4 mb-3">
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Width</Label>
+                    <Input :model-value="block.colspan" @update:model-value="commitSpan(block, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Label class="text-xs">Height</Label>
+                    <Input :model-value="block.rowspan" @update:model-value="commitSpan(block, 'rowspan', $event, GRID_ROWS)" type="number" min="1" max="8" class="text-xs h-7 w-16" />
+                  </div>
+                </div>
+
+                <p class="text-xs text-gray-400 mb-1">Number of seats per row, and how they're aligned within the block</p>
                 <div class="flex justify-between items-center mb-2">
                   <Label class="text-xs">Row Configuration ({{ block.rows.length }} rows)</Label>
                   <div class="flex gap-1">
@@ -794,11 +1018,13 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
           <div class="overflow-auto">
             <table class="layout-table w-full border-collapse border border-gray-300">
               <tbody>
-                <tr v-for="(row, rowIndex) in layoutGrid" :key="rowIndex">
+                <tr v-for="(row, rowIndex) in layoutGrid" :key="rowIndex" class="layout-row">
+                  <template v-for="(cell, colIndex) in row" :key="colIndex">
                   <td
-                    v-for="(cell, colIndex) in row"
-                    :key="colIndex"
-                    class="layout-cell border border-gray-300 w-24 h-24 p-1 relative"
+                    v-if="cell?.type !== 'covered'"
+                    :colspan="cell?.gridColSpan || 1"
+                    :rowspan="cell?.gridRowSpan || 1"
+                    class="layout-cell border border-gray-300 w-24 p-1 relative"
                     :class="{
                       'bg-gray-50': cell === null,
                       'bg-red-100': cell?.type === 'stage',
@@ -829,7 +1055,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
 
                       <component :is="getOrientationArrow(cell.rotation)" class="w-5 h-5 mb-1" />
 
-                      <div class="text-xs text-gray-600">{{ getTotalSeats(cell) }} seats</div>
+                      <div class="text-xs text-gray-600">{{ getTotalSeats(cell.rows) }} seats</div>
                       <div class="text-xs text-gray-500">{{ cell.rows?.length || 0 }} rows</div>
                     </div>
 
@@ -850,6 +1076,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                       <div class="text-xs whitespace-normal break-words">{{ cell.name }}</div>
                     </div>
                   </td>
+                  </template>
                 </tr>
               </tbody>
             </table>
@@ -971,24 +1198,35 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
   min-width: 800px;
 }
 
+.layout-row {
+  height: 96px;
+}
+
 .layout-cell {
   min-width: 96px;
-  min-height: 96px;
+  height: 96px;
   position: relative;
   transition: background-color 0.2s ease;
+}
+
+.layout-cell > div {
+  position: absolute;
+  inset: 4px;
+  width: auto;
+  height: auto;
 }
 
 .layout-cell:hover {
   background-color: #f0f9ff !important;
 }
 
-.layout-cell .bg-white {
-  transition: all 0.2s ease;
+.layout-cell > div.cursor-pointer {
+  transition: inset 0.15s ease;
 }
 
-.layout-cell .bg-white:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.layout-cell > div.cursor-pointer:hover {
+  inset: 2px;
+  z-index: 10;
 }
 
 .text-lg {
@@ -1001,16 +1239,24 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
     min-width: 600px;
   }
 
+  .layout-row {
+    height: 80px;
+  }
+
   .layout-cell {
     min-width: 80px;
-    min-height: 80px;
+    height: 80px;
   }
 }
 
 @media (max-width: 768px) {
+  .layout-row {
+    height: 60px;
+  }
+
   .layout-cell {
     min-width: 60px;
-    min-height: 60px;
+    height: 60px;
   }
 
   .layout-cell .text-xs {

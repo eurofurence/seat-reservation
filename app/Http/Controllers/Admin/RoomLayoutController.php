@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class RoomLayoutController extends Controller
@@ -84,12 +85,29 @@ class RoomLayoutController extends Controller
             }
         };
 
+        $spanFits = function (string $_attribute, $value, $fail) {
+            $x = isset($value['position_x']) ? (int) $value['position_x'] : null;
+            $y = isset($value['position_y']) ? (int) $value['position_y'] : null;
+            $colspan = isset($value['colspan']) ? (int) $value['colspan'] : 1;
+            $rowspan = isset($value['rowspan']) ? (int) $value['rowspan'] : 1;
+
+            if ($x !== null && $x !== -1 && $x + $colspan > 12) {
+                $fail('The block extends past the right edge of the grid.');
+            }
+            if ($y !== null && $y !== -1 && $y + $rowspan > 8) {
+                $fail('The block extends past the bottom edge of the grid.');
+            }
+        };
+
         $request->validate([
             'stageBlocks' => 'sometimes|array',
             'stageBlocks.*.id' => ['nullable', $ownedId($room->stageBlocks(), 'The selected stage block id is invalid for this room.')],
             'stageBlocks.*.name' => 'required|string|max:255',
             'stageBlocks.*.position_x' => 'required|integer|min:-1|max:11',
             'stageBlocks.*.position_y' => 'required|integer|min:-1|max:7',
+            'stageBlocks.*.colspan' => 'nullable|integer|min:1|max:12',
+            'stageBlocks.*.rowspan' => 'nullable|integer|min:1|max:8',
+            'stageBlocks.*' => [$spanFits],
             'markerBlocks' => 'sometimes|array',
             'markerBlocks.*.id' => ['nullable', $ownedId($room->markerBlocks(), 'The selected marker block id is invalid for this room.')],
             'markerBlocks.*.type' => 'required|string|in:entrance,comment',
@@ -97,7 +115,10 @@ class RoomLayoutController extends Controller
             'markerBlocks.*.position_x' => 'required|integer|min:-1|max:11',
             'markerBlocks.*.position_y' => 'required|integer|min:-1|max:7',
             'markerBlocks.*.rotation' => 'nullable|integer|in:0,90,180,270',
+            'markerBlocks.*.colspan' => 'nullable|integer|min:1|max:12',
+            'markerBlocks.*.rowspan' => 'nullable|integer|min:1|max:8',
             'markerBlocks.*' => [
+                $spanFits,
                 function (string $_attribute, $value, $fail) {
                     $type = $value['type'] ?? null;
                     $x = isset($value['position_x']) ? (int) $value['position_x'] : null;
@@ -116,12 +137,17 @@ class RoomLayoutController extends Controller
             'blocks.*.position_x' => 'required|integer|min:-1|max:11',
             'blocks.*.position_y' => 'required|integer|min:-1|max:7',
             'blocks.*.rotation' => 'required|integer|in:0,90,180,270',
+            'blocks.*.colspan' => 'nullable|integer|min:1|max:12',
+            'blocks.*.rowspan' => 'nullable|integer|min:1|max:8',
+            'blocks.*' => [$spanFits],
             'blocks.*.rowsData' => 'nullable|array',
             'blocks.*.rowsData.*.rowNumber' => 'integer|min:1|max:50',
             'blocks.*.rowsData.*.seatCount' => 'integer|min:1|max:100',
             'blocks.*.rowsData.*.isCustom' => 'nullable|boolean',
             'blocks.*.rowsData.*.alignment' => 'nullable|string|in:left,center,right',
         ]);
+
+        $this->validateNoOverlaps($request);
 
         $blockIdMap = [];
 
@@ -134,6 +160,8 @@ class RoomLayoutController extends Controller
                         'position_x' => $data['position_x'],
                         'position_y' => $data['position_y'],
                         'rotation' => 0,
+                        'colspan' => $data['colspan'] ?? 1,
+                        'rowspan' => $data['rowspan'] ?? 1,
                         'order' => $index,
                     ];
                 }, $blockIdMap);
@@ -147,6 +175,8 @@ class RoomLayoutController extends Controller
                         'position_x' => $data['position_x'],
                         'position_y' => $data['position_y'],
                         'rotation' => $data['rotation'] ?? 0,
+                        'colspan' => $data['colspan'] ?? 1,
+                        'rowspan' => $data['rowspan'] ?? 1,
                         'order' => $index,
                     ];
                 }, $blockIdMap);
@@ -165,6 +195,8 @@ class RoomLayoutController extends Controller
                         'position_x' => $blockData['position_x'],
                         'position_y' => $blockData['position_y'],
                         'rotation' => $blockData['rotation'],
+                        'colspan' => $blockData['colspan'] ?? 1,
+                        'rowspan' => $blockData['rowspan'] ?? 1,
                         'order' => $nextBlockOrder++,
                     ]);
                     $blockIdMap[$blockData['id']] = $block->id;
@@ -179,6 +211,8 @@ class RoomLayoutController extends Controller
                         'position_x' => $blockData['position_x'],
                         'position_y' => $blockData['position_y'],
                         'rotation' => $blockData['rotation'],
+                        'colspan' => $blockData['colspan'] ?? 1,
+                        'rowspan' => $blockData['rowspan'] ?? 1,
                     ]);
 
                     // If rowsData is provided, update the block structure
@@ -217,6 +251,53 @@ class RoomLayoutController extends Controller
         return back()
             ->with('success', 'Room layout updated successfully!')
             ->with('blockIdMap', $blockIdMap);
+    }
+
+    // Checks placed footprints (stage/marker/seating blocks) for overlaps after field validation has
+    // passed. Items with an unplaced axis (position_x or position_y === -1) are skipped, mirroring the
+    // $spanFits bounds check above: unplaced blocks and axis-band entrance markers have no footprint
+    // to compare here.
+    private function validateNoOverlaps(Request $request): void
+    {
+        $rects = [];
+
+        foreach (['stageBlocks', 'markerBlocks', 'blocks'] as $collection) {
+            foreach ($request->input($collection, []) as $index => $item) {
+                $x = isset($item['position_x']) ? (int) $item['position_x'] : -1;
+                $y = isset($item['position_y']) ? (int) $item['position_y'] : -1;
+                if ($x === -1 || $y === -1) {
+                    continue;
+                }
+
+                $colspan = isset($item['colspan']) ? (int) $item['colspan'] : 1;
+                $rowspan = isset($item['rowspan']) ? (int) $item['rowspan'] : 1;
+
+                $rects[] = [
+                    'attribute' => "{$collection}.{$index}.position_x",
+                    'x1' => $x,
+                    'y1' => $y,
+                    'x2' => $x + $colspan - 1,
+                    'y2' => $y + $rowspan - 1,
+                ];
+            }
+        }
+
+        $errors = [];
+        for ($i = 0; $i < count($rects); $i++) {
+            for ($j = $i + 1; $j < count($rects); $j++) {
+                $a = $rects[$i];
+                $b = $rects[$j];
+                $overlaps = $a['x1'] <= $b['x2'] && $a['x2'] >= $b['x1'] && $a['y1'] <= $b['y2'] && $a['y2'] >= $b['y1'];
+                if ($overlaps) {
+                    $errors[$a['attribute']] = 'This block overlaps another block.';
+                    $errors[$b['attribute']] = 'This block overlaps another block.';
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     public function createBlock(Request $request, Room $room)
