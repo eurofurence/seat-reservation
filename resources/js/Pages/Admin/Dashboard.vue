@@ -175,6 +175,7 @@ const getSeatInfo = (booking) => {
               <thead>
                 <tr class="border-b">
                   <th class="text-left p-2 text-xs font-medium text-muted-foreground">Name</th>
+                  <th class="text-left p-2 text-xs font-medium text-muted-foreground">Code</th>
                   <th class="text-left p-2 text-xs font-medium text-muted-foreground">Event</th>
                   <th class="text-left p-2 text-xs font-medium text-muted-foreground">Time</th>
                   <th class="text-left p-2 text-xs font-medium text-muted-foreground">Status</th>
@@ -192,8 +193,11 @@ const getSeatInfo = (booking) => {
                     <div class="text-xs text-muted-foreground flex items-center gap-1">
                       <CreatedByBadge v-if="booking.created_by_name" :name="booking.created_by_name" :label="getBookerType(booking)" />
                       <span v-else>{{ getBookerType(booking) }}</span>
-                      <span v-if="booking.booking_code" class="font-mono bg-gray-100 px-1 rounded">{{ booking.booking_code }}</span>
                     </div>
+                  </td>
+                  <td class="p-2">
+                    <span v-if="booking.booking_code" class="text-sm font-mono bg-gray-100 px-1.5 py-0.5 rounded">{{ booking.booking_code }}</span>
+                    <span v-else class="text-xs text-muted-foreground">—</span>
                   </td>
                   <td class="p-2">
                     <div class="text-sm">{{ booking.event.name }}</div>

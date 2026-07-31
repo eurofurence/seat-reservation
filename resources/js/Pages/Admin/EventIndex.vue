@@ -5,6 +5,7 @@ import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Table } from '@/Components/ui/table'
+import { Badge } from '@/Components/ui/badge'
 import { Plus, Edit, Trash2, Calendar, Clock, MapPin, Users, Download, Upload } from 'lucide-vue-next'
 import dayjs, { fmt } from '@/lib/datetime'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog'
@@ -188,12 +189,9 @@ const getEventStatus = (event) => {
                 </div>
               </td>
               <td class="p-4">
-                <span 
-                  class="px-2 py-1 text-xs rounded-full"
-                  :class="getEventStatus(event).class"
-                >
+                <Badge :class="getEventStatus(event).class">
                   {{ getEventStatus(event).text }}
-                </span>
+                </Badge>
               </td>
               <td class="p-4">
                 <div class="flex gap-2">
