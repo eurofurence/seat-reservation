@@ -72,11 +72,11 @@ column is `Name` will be rejected for missing `Guest Name`. Always use the exact
 `Guest Name`.
 
 The `Guest Name` value is stored on the booking's `name` field — the same field an admin
-manual booking fills in. Imported bookings have **no linked user account** (`type: admin`, no
-user, no booking code), so in the **CSV export** they show `N/A` under the `Name` column (which
-reflects the linked user's account name) while your imported value appears under the export's
-separate `Guest Name` column. In short: `Name` (export) = user-account name; `Guest Name`
-(import and export) = the free-text name you supplied.
+manual booking fills in. Imported bookings have **no linked user account** (`type: admin`), so
+in the **CSV export** they show `N/A` under the `Name` column (which reflects the linked
+user's account name) while your imported value appears under the export's separate
+`Guest Name` column. In short: `Name` (export) = user-account name; `Guest Name` (import and
+export) = the free-text name you supplied.
 
 Each data row must be **one of four shapes**:
 
@@ -185,7 +185,8 @@ see the oldest-first FCFS ordering in action.
 8. When everything looks right, click **Confirm Import** — disabled while ANY guest is still
    under their requested count. **The import can never book fewer seats than a guest's CSV
    quantity requested**, though booking more is allowed. This creates the bookings (same as
-   an admin manual booking: no user account, no booking code, type `admin`).
+   an admin manual booking: no user account, type `admin`, one booking code shared by all of
+   that guest's seats).
 
 ### If someone else books a seat while you're reviewing
 

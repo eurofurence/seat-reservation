@@ -80,6 +80,11 @@ class BookingCoreTest extends TestCase
         ]);
 
         $this->assertEquals(2, Booking::where('event_id', $event->id)->count());
+
+        // Both seats booked in one submission should share a single booking code.
+        $codes = Booking::where('event_id', $event->id)->pluck('booking_code')->unique();
+        $this->assertCount(1, $codes);
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}$/', $codes->first());
     }
 
     /** @test */
