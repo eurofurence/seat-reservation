@@ -9,7 +9,8 @@ import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
 import { fmt } from '@/lib/datetime'
-import CreatedByBadge from '@/Components/Admin/CreatedByBadge.vue'
+import BookingIdentityCell from '@/Components/Admin/BookingIdentityCell.vue'
+import { getSeatInfo } from '@/lib/bookingDisplay'
 
 defineOptions({ layout: AdminLayout })
 
@@ -49,25 +50,6 @@ usePoll(5000, {
   keepAlive: true
 })
 
-// Helper functions for recent bookings display
-const getBookingDisplayName = (booking) => {
-  if (booking.user) {
-    return booking.user.name
-  }
-  return booking.name || 'Unknown'
-}
-
-const getBookerType = (booking) => {
-  if (booking.user) {
-    return 'User'
-  }
-  return booking.type === 'admin' ? 'Admin' : 'Manual'
-}
-
-const getSeatInfo = (booking) => {
-  if (!booking.seat) return 'N/A'
-  return `${booking.seat.row.block.name} - ${booking.seat.row.name} - ${booking.seat.label}`
-}
 </script>
 
 <template>
@@ -189,11 +171,7 @@ const getSeatInfo = (booking) => {
                   class="border-b hover:bg-gray-50 transition-colors"
                 >
                   <td class="p-2">
-                    <div class="text-sm font-medium">{{ getBookingDisplayName(booking) }}</div>
-                    <div class="text-xs text-muted-foreground flex items-center gap-1">
-                      <CreatedByBadge v-if="booking.created_by_name" :name="booking.created_by_name" :label="getBookerType(booking)" />
-                      <span v-else>{{ getBookerType(booking) }}</span>
-                    </div>
+                    <BookingIdentityCell :booking="booking" />
                   </td>
                   <td class="p-2">
                     <span v-if="booking.booking_code" class="text-sm font-mono bg-gray-100 px-1.5 py-0.5 rounded">{{ booking.booking_code }}</span>

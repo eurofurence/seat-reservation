@@ -6,6 +6,7 @@ import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
 import { Clock, MapPin, User, Plus, Search, LogOut, CheckCircle, AlertCircle, Info, Settings } from 'lucide-vue-next'
 import dayjs, { fmt } from "@/lib/datetime"
+import { getSeatInfo } from "@/lib/bookingDisplay"
 
 defineOptions({layout: Layout})
 
@@ -14,10 +15,6 @@ defineProps({
 })
 
 const formatDateTime = (dateTime) => fmt(dateTime, 'MMM D, HH:mm')
-
-const getSeatInfo = (booking) => {
-  return `${booking.seat.row.block.name} - Row ${booking.seat.row.name} - Seat ${booking.seat.label}`
-}
 
 const getBookingStatus = (booking) => {
   const now = dayjs()

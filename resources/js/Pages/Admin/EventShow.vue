@@ -3,7 +3,7 @@ import {Head, router, useForm} from '@inertiajs/vue3'
 import {ref, computed, nextTick, watch} from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import SeatLayout from '@/Components/SeatLayout.vue'
-import CreatedByBadge from '@/Components/Admin/CreatedByBadge.vue'
+import BookingIdentityCell from '@/Components/Admin/BookingIdentityCell.vue'
 import { Card } from '@/Components/ui/card'
 import { CardHeader } from '@/Components/ui/card'
 import { CardTitle } from '@/Components/ui/card'
@@ -22,6 +22,7 @@ import ImportDialog from '@/Components/Admin/ImportDialog.vue'
 import EditBookingDialog from '@/Components/Admin/EditBookingDialog.vue'
 import DeleteBookingDialog from '@/Components/Admin/DeleteBookingDialog.vue'
 import { useCsvDownload } from '@/composables/useCsvDownload'
+import { getGuestName, getSeatInfo } from '@/lib/bookingDisplay'
 
 defineOptions({layout: AdminLayout})
 
@@ -266,20 +267,6 @@ const openDeleteModal = (booking) => {
     deleteOpen.value = true
 }
 
-// Get display name for booking (guest name from the booking)
-const getBookingDisplayName = (booking) => {
-    // First priority: the name field on the booking (guest name)
-    if (booking.name) {
-        return booking.name
-    }
-    // Fallback: user name if no guest name is set
-    if (booking.user && booking.user.name) {
-        return booking.user.name
-    }
-    return 'Unknown'
-}
-
-
 // Handle search with Inertia GET request (adds search as URL parameter)
 const handleSearch = () => {
     const params = {}
@@ -346,11 +333,6 @@ const printSeatCards = () => {
 
 // Bulk booking import (dialog UI lives in ImportDialog)
 const importOpen = ref(false)
-
-const getSeatInfo = (booking) => {
-    if (!booking.seat) return 'N/A'
-    return `${booking.seat.row.block.name} - ${booking.seat.row.name} - Seat ${booking.seat.label}`
-}
 
 // Watch for selected_seats prop changes (when navigating back from validation)
 watch(() => props.selected_seats, (newSelectedSeats) => {
@@ -577,6 +559,7 @@ const navigateToPage = (linkUrl) => {
                                 <thead class="sticky top-0 bg-white">
                                 <tr class="border-b">
                                     <th class="text-left p-2 text-xs">Name</th>
+                                    <th class="text-left p-2 text-xs">Code</th>
                                     <th class="text-left p-2 text-xs">Seat</th>
                                     <th class="text-left p-2 text-xs">Time</th>
                                     <th class="text-left p-2 text-xs">Picked Up</th>
@@ -594,11 +577,7 @@ const navigateToPage = (linkUrl) => {
                                     ]"
                                 >
                                     <td class="p-2">
-                                        <div class="text-sm font-medium">{{ getBookingDisplayName(booking) }}</div>
-                                        <div class="text-xs text-muted-foreground flex items-center gap-1">
-                                            <span v-if="booking.user && booking.user.name">{{ booking.user.name }}</span>
-                                            <CreatedByBadge v-else-if="booking.created_by_name" :name="booking.created_by_name" label="Admin Booking" />
-                                            <span v-else>Admin Booking</span>
+                                        <BookingIdentityCell :booking="booking">
                                             <Popover v-if="booking.comment">
                                                 <PopoverTrigger>
                                                     <Info class="h-3 w-3 text-blue-500 hover:text-blue-700 cursor-pointer" />
@@ -610,7 +589,11 @@ const navigateToPage = (linkUrl) => {
                                                     </div>
                                                 </PopoverContent>
                                             </Popover>
-                                        </div>
+                                        </BookingIdentityCell>
+                                    </td>
+                                    <td class="p-2">
+                                        <span v-if="booking.booking_code" class="text-sm font-mono bg-gray-100 px-1.5 py-0.5 rounded">{{ booking.booking_code }}</span>
+                                        <span v-else class="text-xs text-muted-foreground">—</span>
                                     </td>
                                     <td class="p-2">
                                         <div class="text-sm">{{ getSeatInfo(booking) }}</div>
@@ -649,7 +632,7 @@ const navigateToPage = (linkUrl) => {
                                     </td>
                                 </tr>
                                 <tr v-if="(bookings.data || bookings).length === 0">
-                                    <td colspan="5" class="text-center p-4 text-muted-foreground text-sm">
+                                    <td colspan="6" class="text-center p-4 text-muted-foreground text-sm">
                                         {{ searchQuery.trim() ? 'No bookings match your search' : 'No bookings yet' }}
                                     </td>
                                 </tr>
@@ -692,7 +675,7 @@ const navigateToPage = (linkUrl) => {
             v-model:open="deleteOpen"
             :event-id="event.id"
             :booking="deletingBooking"
-            :display-name="deletingBooking ? getBookingDisplayName(deletingBooking) : ''"
+            :display-name="deletingBooking ? getGuestName(deletingBooking) : ''"
             :seat-info="deletingBooking ? getSeatInfo(deletingBooking) : ''"
         />
 
