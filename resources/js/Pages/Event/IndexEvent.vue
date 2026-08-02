@@ -110,8 +110,8 @@ function goBack() {
                 class="p-4 lg:p-6 hover:shadow-md lg:hover:shadow-lg transition-shadow cursor-pointer h-full"
                 :class="{ 'opacity-75': !event.is_booking_open }"
               >
-                <div class="relative flex items-start justify-between lg:flex-col lg:space-y-4">
-                  <div class="flex-1 min-w-0 lg:w-full">
+                <div class="flex flex-col space-y-4">
+                  <div class="flex-1 min-w-0 w-full">
                     <h3 class="text-lg lg:text-xl font-semibold text-gray-900 mb-2 lg:mb-3">{{ event.name }}</h3>
 
                     <div class="space-y-2 lg:space-y-3 text-sm lg:text-base text-gray-600">
@@ -130,10 +130,10 @@ function goBack() {
                     </div>
                   </div>
 
-                  <div class="absolute top-0 right-0 flex flex-col items-end space-y-2 lg:static lg:ml-0 lg:w-full lg:items-start lg:pt-4 lg:border-t">
+                  <div class="flex flex-col items-start space-y-2 w-full pt-4 border-t">
                     <span
                       :class="[
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border lg:w-full lg:justify-center',
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border w-full justify-center',
                         getTicketAvailabilityStatus(event).color
                       ]"
                     >
@@ -141,7 +141,7 @@ function goBack() {
                       {{ getTicketBadgeText(event) }}
                     </span>
 
-                    <span class="text-xs text-gray-500 text-right lg:w-full lg:text-center">
+                    <span class="text-xs text-gray-500 w-full text-center">
                       {{ getTicketAvailabilityStatus(event).text }}
                     </span>
                   </div>
