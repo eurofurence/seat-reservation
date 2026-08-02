@@ -4,7 +4,7 @@
 // slot for page-specific extras (e.g. EventShow's comment popover).
 import { getGuestName, getBookerType, getBookerName } from '@/lib/bookingDisplay'
 import { computed } from 'vue'
-import type { Booking } from '@/types/layout'
+import type { Booking } from '@/types/booking'
 
 const props = defineProps<{
   booking: Booking

@@ -4,15 +4,6 @@ export type MarkerType = 'entrance' | 'comment'
 export type BlockId = number | string
 export type Alignment = 'left' | 'center' | 'right'
 
-// Fields getGuestName/getBookerType/getBookerName/getSeatInfo (resources/js/lib/bookingDisplay.ts) read.
-export interface Booking {
-  name?: string | null
-  type?: string
-  created_by_name?: string | null
-  user?: { name: string } | null
-  seat?: { label: string; row: { name: string; block: { name: string } } } | null
-}
-
 export interface Seat {
   id: number
   label: string

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Head, useForm, usePoll } from '@inertiajs/vue3'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card'
@@ -9,27 +9,31 @@ import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
 import { fmt } from '@/lib/datetime'
+import { router } from '@inertiajs/vue3'
 import BookingIdentityCell from '@/Components/Admin/BookingIdentityCell.vue'
 import { getSeatInfo } from '@/lib/bookingDisplay'
+import type { Booking } from '@/types/booking'
 
 defineOptions({ layout: AdminLayout })
 
-defineProps({
-  stats: {
-    type: Object,
-    default: () => ({
-      totalEvents: 0,
-      upcomingEvents: 0,
-      totalBookings: 0,
-      totalRooms: 0,
-    }),
-  },
-  recentBookings: {
-    type: Array,
-    default: () => [],
-  },
-  title: String,
-  breadcrumbs: Array,
+withDefaults(defineProps<{
+  stats?: {
+    totalEvents: number
+    upcomingEvents: number
+    totalBookings: number
+    totalRooms: number
+  }
+  recentBookings?: Booking[]
+  title?: string
+  breadcrumbs?: { title: string; url?: string }[]
+}>(), {
+  stats: () => ({
+    totalEvents: 0,
+    upcomingEvents: 0,
+    totalBookings: 0,
+    totalRooms: 0,
+  }),
+  recentBookings: () => [],
 })
 
 const bookingCodeForm = useForm({
@@ -45,8 +49,12 @@ const lookupBookingCode = () => {
   })
 }
 
+const openBooking = (booking: Booking) => {
+  router.visit(route('admin.events.show', { event: booking.event_id, booking_id: booking.id }))
+}
+
 // Auto-refresh dashboard every 5 seconds
-usePoll(5000, {
+usePoll(5000, {}, {
   keepAlive: true
 })
 
@@ -178,7 +186,7 @@ usePoll(5000, {
                     <span v-else class="text-xs text-muted-foreground">—</span>
                   </td>
                   <td class="p-2">
-                    <div class="text-sm">{{ booking.event.name }}</div>
+                    <div class="text-sm">{{ booking.event?.name }}</div>
                     <div class="text-xs text-muted-foreground">{{ getSeatInfo(booking) }}</div>
                   </td>
                   <td class="p-2">
@@ -199,7 +207,7 @@ usePoll(5000, {
                       variant="ghost"
                       size="sm"
                       class="h-7 px-2"
-                      @click="$inertia.visit(route('admin.events.show', { event: booking.event_id, booking_id: booking.id }))"
+                      @click="openBooking(booking)"
                     >
                       <ExternalLink class="h-3 w-3" />
                     </Button>

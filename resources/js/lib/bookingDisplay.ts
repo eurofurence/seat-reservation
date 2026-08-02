@@ -1,5 +1,5 @@
 // Shared display helpers for admin booking rows (Dashboard "Recent Bookings" + EventShow booking table).
-import type { Booking } from '@/types/layout'
+import type { Booking } from '@/types/booking'
 
 // Name of the guest the seat/ticket is for (not necessarily who made the booking).
 export function getGuestName(booking: Booking): string {

@@ -3,10 +3,11 @@ import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog'
 import { Button } from '@/Components/ui/button'
+import type { Booking } from '@/types/booking'
 
 const props = defineProps<{
     eventId: number | string
-    booking: Record<string, any> | null
+    booking: Booking | null
     displayName: string
     seatInfo: string
 }>()

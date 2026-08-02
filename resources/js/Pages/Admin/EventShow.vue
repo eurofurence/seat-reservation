@@ -32,7 +32,7 @@ const props = defineProps({
     blocks: Array,
     stageBlocks: Array,
     markerBlocks: { type: Array, default: () => [] },
-    bookings: Array,
+    bookings: Object, // Laravel paginator: { data: Booking[], total, links, ... }
     bookedSeats: Array,
     seatBookingMap: Object,
     search: String,
