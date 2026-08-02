@@ -1,7 +1,7 @@
 // Runnable regression check for bookingDisplay (no test framework in this repo — plain asserts).
-// Run: node resources/js/lib/bookingDisplay.check.js
+// Run: node --experimental-strip-types resources/js/lib/bookingDisplay.check.ts
 import assert from "node:assert/strict"
-import { getGuestName, getBookerType, getBookerName, getSeatInfo } from "./bookingDisplay.js"
+import { getGuestName, getBookerType, getBookerName, getSeatInfo } from "./bookingDisplay.ts"
 
 // getGuestName: booking.name wins when present.
 assert.equal(getGuestName({ name: "Alice" }), "Alice")
