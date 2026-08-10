@@ -5,7 +5,7 @@ import type { Booking } from '@/types/booking'
 export function getGuestName(booking: Booking): string {
   if (booking.name) return booking.name
   if (booking.user && booking.user.name) return booking.user.name
-  return 'Unknown'
+  return '[Unknown]'
 }
 
 // 'User', 'Admin', or the raw booking.type - who/what created the booking.

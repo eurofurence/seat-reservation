@@ -9,8 +9,8 @@ assert.equal(getGuestName({ name: "Alice" }), "Alice")
 // getGuestName: falls back to booking.user.name when no name.
 assert.equal(getGuestName({ name: null, user: { name: "Bob" } }), "Bob")
 
-// getGuestName: falls back to 'Unknown' when neither is present.
-assert.equal(getGuestName({}), "Unknown")
+// getGuestName: falls back to '[Unknown]' when neither is present.
+assert.equal(getGuestName({}), "[Unknown]")
 
 // getBookerType: a user booking is 'User', regardless of type.
 assert.equal(getBookerType({ user: { name: "Bob" }, type: "admin" }), "User")
