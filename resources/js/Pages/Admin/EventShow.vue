@@ -58,6 +58,8 @@ const props = defineProps<{
     bookingcode?: string
     booking_id?: string | number
     selected_seats?: string // Comma-separated seat IDs
+    title?: string
+    breadcrumbs?: Array<{ title: string, url: string | null }>
 }>()
 
 type QueryParams = Record<string, string | number>

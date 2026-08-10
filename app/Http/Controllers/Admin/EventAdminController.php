@@ -26,6 +26,8 @@ class EventAdminController extends Controller
         return Inertia::render('Admin/EventIndex', [
             'events' => $events,
             'rooms' => $rooms,
+            'title' => 'Events',
+            'breadcrumbs' => [],
         ]);
     }
 
@@ -181,6 +183,11 @@ class EventAdminController extends Controller
             'bookingcode' => $request->get('bookingcode', ''),
             'booking_id' => $request->get('booking_id'),
             'selected_seats' => $this->getSelectedSeatsParameter($request),
+            'title' => $event->name,
+            'breadcrumbs' => [
+                ['title' => 'Events', 'url' => route('admin.events.index')],
+                ['title' => $event->name, 'url' => null],
+            ],
         ]);
     }
 

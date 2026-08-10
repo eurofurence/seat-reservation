@@ -35,6 +35,8 @@ interface EventItem {
 const props = defineProps<{
   events: EventItem[]
   rooms: Room[]
+  title?: string
+  breadcrumbs?: Array<{ title: string, url: string | null }>
 }>()
 
 const createDialogOpen = ref(false)

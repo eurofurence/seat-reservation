@@ -12,8 +12,8 @@ interface Event {
   name: string
   room_id: string | number
   starts_at: string
-  reservation_ends_at: string
-  booking_starts_at: string
+  reservation_ends_at: string | null
+  booking_starts_at: string | null
   max_tickets: string | number
   bookings_count?: number
 }
