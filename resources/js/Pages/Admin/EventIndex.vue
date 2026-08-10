@@ -35,8 +35,6 @@ interface EventItem {
 const props = defineProps<{
   events: EventItem[]
   rooms: Room[]
-  title?: string
-  breadcrumbs?: { title: string; url?: string }[]
 }>()
 
 const createDialogOpen = ref(false)
@@ -105,7 +103,7 @@ const getEventStatus = (event: EventItem) => {
 </script>
 
 <template>
-  <Head :title="title" />
+  <Head title="Events" />
   
   <div>
     <div class="flex justify-end items-center gap-2 mb-6">

@@ -36,9 +36,7 @@ class AdminControllerTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('Admin/Dashboard')
-            ->where('title', 'Dashboard')
             ->has('stats')
-            ->has('breadcrumbs')
         );
     }
 
@@ -196,19 +194,6 @@ class AdminControllerTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->where('stats.totalBookings', 5) // 2 + 3
-        );
-    }
-
-    /** @test */
-    public function dashboard_breadcrumbs_are_empty()
-    {
-        $this->actingAs($this->admin);
-
-        $response = $this->get(route('admin.dashboard'));
-
-        $response->assertOk();
-        $response->assertInertia(fn ($page) => $page
-            ->where('breadcrumbs', [])
         );
     }
 

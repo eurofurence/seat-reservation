@@ -58,8 +58,6 @@ const props = defineProps<{
     bookingcode?: string
     booking_id?: string | number
     selected_seats?: string // Comma-separated seat IDs
-    title?: string
-    breadcrumbs?: { title: string; url?: string | null }[]
 }>()
 
 type QueryParams = Record<string, string | number>
@@ -377,7 +375,7 @@ const navigateToPage = (linkUrl: string) => {
 </script>
 
 <template>
-    <Head :title="title"/>
+    <Head :title="event.name"/>
 
     <div>
         <!-- Registration Status -->

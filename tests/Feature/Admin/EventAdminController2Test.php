@@ -53,7 +53,6 @@ class EventAdminController2Test extends TestCase
             ->component('Admin/EventIndex')
             ->has('events', 2)
             ->has('rooms')
-            ->where('title', 'Events')
         );
     }
 

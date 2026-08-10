@@ -32,8 +32,6 @@ class AdminController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'stats' => $stats,
             'recentBookings' => $recentBookings,
-            'title' => 'Dashboard',
-            'breadcrumbs' => [],
         ]);
     }
 

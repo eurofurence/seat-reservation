@@ -24,8 +24,6 @@ withDefaults(defineProps<{
     totalRooms: number
   }
   recentBookings?: Booking[]
-  title?: string
-  breadcrumbs?: { title: string; url?: string }[]
 }>(), {
   stats: () => ({
     totalEvents: 0,
@@ -61,7 +59,7 @@ usePoll(5000, {}, {
 </script>
 
 <template>
-  <Head :title="title" />
+  <Head title="Dashboard" />
 
   <div>
     <!-- Stats Grid -->
