@@ -46,7 +46,10 @@ class ManualBookingController extends Controller
                 return false;
             }
 
-            // Create manual bookings for all selected seats (no user_id, no booking code)
+            // All seats booked in this submission share one code, same as a self-service booking.
+            $bookingCode = Booking::generateUniqueCode();
+
+            // Create manual bookings for all selected seats (no user_id)
             Booking::insert(collect($seatIds)->map(fn ($seatId) => [
                 'type' => 'admin',
                 'event_id' => $id,
@@ -54,6 +57,7 @@ class ManualBookingController extends Controller
                 'seat_id' => $seatId,
                 'name' => $request->guest_name,
                 'comment' => $request->comment,
+                'booking_code' => $bookingCode,
                 'created_at' => now(),
                 'updated_at' => now(),
             ])->all());

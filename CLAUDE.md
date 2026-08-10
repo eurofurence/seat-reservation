@@ -283,8 +283,8 @@ Room (stage_x, stage_y positioning)
 
 ### Architecture
 - 3-character alphanumeric booking codes (A-Z, 0-9) for easy ticket pickup
-- Generated for **ALL** user interface bookings (regular users and admins)
-- **NOT** generated for admin manual bookings (type: 'admin')
+- Generated for **ALL** bookings: user interface bookings, admin manual bookings (`ManualBookingController`), and CSV/global imports (`ImportBookingWriter`)
+- All seats booked in one submission share one code (per guest, for imports)
 - Session-unique codes with collision detection
 
 ### Implementation Patterns
@@ -304,7 +304,7 @@ public static function generateUniqueCode(): string
 }
 ```
 
-#### User Interface vs Admin Manual Bookings
+#### User Interface and Admin Manual Bookings
 ```php
 // User interface bookings (through BookingController) - GET booking codes
 $bookingCode = Booking::generateUniqueCode();
@@ -315,11 +315,13 @@ foreach ($data['seats'] as $seatData) {
     ]);
 }
 
-// Admin manual bookings (through ManualBookingController) - NO booking codes
+// Admin manual bookings (through ManualBookingController) - also get a code,
+// generated once per submission and shared across all its seats
+$bookingCode = Booking::generateUniqueCode();
 $bookings[] = [
     'type' => 'admin',    // Mark as admin booking
     'user_id' => null,    // No user association
-    'booking_code' => null // No booking code for manual bookings
+    'booking_code' => $bookingCode
 ];
 ```
 

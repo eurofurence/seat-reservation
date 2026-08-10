@@ -25,7 +25,7 @@ class BookingFactory extends Factory
             'event_id' => Event::factory(),
             'seat_id' => Seat::factory(),
             'type' => 'manual',
-            'booking_code' => null, // Only set for non-admin bookings
+            'booking_code' => null, // Override with a real code in tests that need one
             'name' => fake()->name(),
             'comment' => fake()->optional()->sentence(),
             'picked_up_at' => null,

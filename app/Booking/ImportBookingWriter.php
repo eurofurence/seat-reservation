@@ -2,6 +2,8 @@
 
 namespace App\Booking;
 
+use App\Models\Booking;
+
 class ImportBookingWriter
 {
     /**
@@ -11,8 +13,18 @@ class ImportBookingWriter
     {
         $now = now();
         $rows = [];
+        // Booking::generateUniqueCode() only checks already-committed rows, but every guest
+        // here is inserted in one batch after this loop finishes - track codes handed out
+        // within this call too, so two guests in the same import can't collide with each other.
+        $usedCodes = [];
 
         foreach ($guests as $guest) {
+            // All seats booked for one guest share one code, same as a self-service booking.
+            do {
+                $bookingCode = Booking::generateUniqueCode();
+            } while (in_array($bookingCode, $usedCodes, true));
+            $usedCodes[] = $bookingCode;
+
             foreach ($guest['seat_ids'] as $seatId) {
                 $rows[] = [
                     'type' => 'admin',
@@ -21,6 +33,7 @@ class ImportBookingWriter
                     'seat_id' => $seatId,
                     'name' => $guest['guest_name'],
                     'comment' => $guest['comment'] ?? null,
+                    'booking_code' => $bookingCode,
                     'picked_up_at' => null,
                     'created_at' => $now,
                     'updated_at' => $now,
