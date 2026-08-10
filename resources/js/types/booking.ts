@@ -22,6 +22,18 @@ export interface BookingEvent {
   id: number
   name: string
   starts_at?: string | null
+  reservation_ends_at?: string | null
+  room?: { name: string }
+}
+
+export interface Paginator<T> {
+  data: T[]
+  total?: number
+  current_page?: number
+  last_page?: number
+  prev_page_url?: string | null
+  next_page_url?: string | null
+  links?: { url: string | null; label: string; active: boolean }[]
 }
 
 export interface Booking {

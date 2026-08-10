@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {Head, router, useForm} from '@inertiajs/vue3'
 import {ref, computed, nextTick, watch} from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
@@ -23,28 +23,49 @@ import EditBookingDialog from '@/Components/Admin/EditBookingDialog.vue'
 import DeleteBookingDialog from '@/Components/Admin/DeleteBookingDialog.vue'
 import { useCsvDownload } from '@/composables/useCsvDownload'
 import { getGuestName, getSeatInfo } from '@/lib/bookingDisplay'
+import type { LayoutBlock, PropStageBlock, PropMarkerBlock, Seat } from '@/types/layout'
+import type { Booking, Paginator } from '@/types/booking'
 
 defineOptions({layout: AdminLayout})
 
-const props = defineProps({
-    event: Object,
-    room: Object,
-    blocks: Array,
-    stageBlocks: Array,
-    markerBlocks: { type: Array, default: () => [] },
-    bookings: Object, // Laravel paginator: { data: Booking[], total, links, ... }
-    bookedSeats: Array,
-    seatBookingMap: Object,
-    search: String,
-    bookingcode: String,
-    booking_id: [String, Number],
-    selected_seats: String, // Comma-separated seat IDs
-    title: String,
-    breadcrumbs: Array,
-})
+interface EventProp {
+    id: number
+    name: string
+    starts_at: string
+    reservation_ends_at: string | null
+    booking_starts_at: string | null
+    max_tickets: number | null
+    room_id: number
+}
+
+interface RoomProp {
+    id: number
+    name: string
+    stage_x?: number | null
+    stage_y?: number | null
+}
+
+const props = defineProps<{
+    event: EventProp
+    room: RoomProp
+    blocks?: LayoutBlock[]
+    stageBlocks?: PropStageBlock[]
+    markerBlocks?: PropMarkerBlock[]
+    bookings: Paginator<Booking>
+    bookedSeats?: number[]
+    seatBookingMap?: Record<number, number>
+    search?: string
+    bookingcode?: string
+    booking_id?: string | number
+    selected_seats?: string // Comma-separated seat IDs
+    title?: string
+    breadcrumbs?: { title: string; url?: string | null }[]
+}>()
+
+type QueryParams = Record<string, string | number>
 
 // Admin seat selection state - initialize from URL parameter
-const selectedSeats = ref(
+const selectedSeats = ref<number[]>(
     props.selected_seats
         ? props.selected_seats.split(',').map(id => parseInt(id)).filter(Boolean)
         : []
@@ -61,10 +82,10 @@ const manualBookingForm = ref({
 const searchQuery = ref(props.search || '')
 
 // Edit/Delete modal state (dialog UI lives in EditBookingDialog/DeleteBookingDialog)
-const editingBooking = ref(null)
+const editingBooking = ref<Booking | null>(null)
 const editOpen = ref(false)
 
-const deletingBooking = ref(null)
+const deletingBooking = ref<Booking | null>(null)
 const deleteOpen = ref(false)
 
 // Calculate seat statistics
@@ -95,11 +116,11 @@ const seatStats = computed(() => {
 })
 
 // Handle seat selection changes from layout
-const handleSeatsChanged = (newSelectedSeats) => {
+const handleSeatsChanged = (newSelectedSeats: number[]) => {
     selectedSeats.value = newSelectedSeats
 
     // Update URL with selected seats
-    const params = {}
+    const params: QueryParams = {}
     if (props.search) params.search = props.search
     if (props.booking_id) params.booking_id = props.booking_id
     if (newSelectedSeats.length > 0) {
@@ -114,12 +135,12 @@ const handleSeatsChanged = (newSelectedSeats) => {
 }
 
 // Handle clicking on booked seats to highlight booking in table
-const handleBookedSeatClick = (seat) => {
+const handleBookedSeatClick = (seat: Seat) => {
     // Find the booking ID for this seat using the mapping
-    const bookingId = props.seatBookingMap[seat.id]
+    const bookingId = props.seatBookingMap?.[seat.id]
     if (bookingId) {
         // Navigate with booking_id parameter to highlight the booking
-        const params = {}
+        const params: QueryParams = {}
         if (props.search) {
             params.search = props.search
         }
@@ -157,7 +178,7 @@ const registrationStatus = computed(() => {
 const selectedSeatInfo = computed(() => {
     if (selectedSeats.value.length === 0) return []
 
-    const seatDetails = []
+    const seatDetails: { id: number; label: string }[] = []
     props.blocks?.forEach(block => {
         block.rows?.forEach(row => {
             row.seats?.forEach(seat => {
@@ -201,7 +222,7 @@ const processManualBooking = () => {
             selectedSeats.value = []
 
             // Clear selected seats from URL by navigating without the selected_seats parameter
-            const params = {}
+            const params: QueryParams = {}
             if (props.search) params.search = props.search
             if (props.booking_id) params.booking_id = props.booking_id
 
@@ -222,7 +243,7 @@ const clearManualBooking = () => {
     selectedSeats.value = []
 
     // Clear selected seats from URL
-    const params = {}
+    const params: QueryParams = {}
     if (props.search) params.search = props.search
     if (props.booking_id) params.booking_id = props.booking_id
 
@@ -234,11 +255,12 @@ const clearManualBooking = () => {
 }
 
 // Handle pickup toggle
-const togglePickup = (booking, event) => {
+const togglePickup = (booking: Booking, event: Event) => {
     const isRevert = !!booking.picked_up_at
+    const checkbox = event.target as HTMLInputElement
 
     if (isRevert && !confirm('This ticket is already marked as picked up. Are you sure you want to revert it to unpicked?')) {
-        event.target.checked = true // undo the native checkbox toggle, :checked isn't a v-model
+        checkbox.checked = true // undo the native checkbox toggle, :checked isn't a v-model
         return
     }
 
@@ -250,26 +272,26 @@ const togglePickup = (booking, event) => {
         onError: () => {
             // Revert the checkbox to its previous state if the request failed - the flash
             // toast from AdminLayout will surface the error message.
-            event.target.checked = isRevert
+            checkbox.checked = isRevert
         },
     })
 }
 
 // Open edit modal
-const openEditModal = (booking) => {
+const openEditModal = (booking: Booking) => {
     editingBooking.value = booking
     editOpen.value = true
 }
 
 // Open delete modal
-const openDeleteModal = (booking) => {
+const openDeleteModal = (booking: Booking) => {
     deletingBooking.value = booking
     deleteOpen.value = true
 }
 
 // Handle search with Inertia GET request (adds search as URL parameter)
 const handleSearch = () => {
-    const params = {}
+    const params: QueryParams = {}
     if (searchQuery.value.trim()) {
         params.search = searchQuery.value.trim()
     }
@@ -290,7 +312,7 @@ const handleSearch = () => {
 }
 
 // Debounced search function
-let searchTimeout
+let searchTimeout: ReturnType<typeof setTimeout> | undefined
 const debouncedSearch = () => {
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(handleSearch, 300)
@@ -299,7 +321,7 @@ const debouncedSearch = () => {
 // Clear search, booking code filter, and booking highlight
 const clearSearch = () => {
     searchQuery.value = ''
-    const params = {}
+    const params: QueryParams = {}
     // Preserve selected seats when clearing search
     if (selectedSeats.value.length > 0) {
         params.selected_seats = selectedSeats.value.join(',')
@@ -344,9 +366,9 @@ watch(() => props.selected_seats, (newSelectedSeats) => {
     }
 }, { immediate: true })
 
-const navigateToPage = (linkUrl) => {
+const navigateToPage = (linkUrl: string) => {
     const pageParam = new URL(linkUrl).searchParams.get('page')
-    const params = {}
+    const params: QueryParams = {}
     if (props.search) params.search = props.search
     if (selectedSeats.value.length > 0) params.selected_seats = selectedSeats.value.join(',')
     if (pageParam) params.page = pageParam
@@ -395,7 +417,7 @@ const navigateToPage = (linkUrl) => {
                     </div>
                     <div class="flex items-center">
                         <Users class="h-4 w-4 mr-1"/>
-                        {{ bookings.total ?? bookings.length }} bookings
+                        {{ bookings.total }} bookings
                     </div>
                 </div>
                 <div class="flex flex-col items-end gap-1">
@@ -527,7 +549,7 @@ const navigateToPage = (linkUrl) => {
                         <!-- Bookings List -->
                         <div>
                             <div class="flex items-center justify-between mb-3">
-                                <h3 class="font-medium">Current Bookings ({{ (bookings.data || bookings).length }}{{ bookings.total && bookings.total !== (bookings.data || bookings).length ? ` of ${bookings.total}` : '' }})</h3>
+                                <h3 class="font-medium">Current Bookings ({{ bookings.data.length }}{{ bookings.total && bookings.total !== bookings.data.length ? ` of ${bookings.total}` : '' }})</h3>
                                 <div class="flex items-center gap-2">
                                     <!-- Show booking code filter indicator -->
                                     <div v-if="props.bookingcode" class="flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
@@ -568,12 +590,12 @@ const navigateToPage = (linkUrl) => {
                                 </thead>
                                 <tbody>
                                 <tr
-                                    v-for="booking in (bookings.data || bookings)"
+                                    v-for="booking in bookings.data"
                                     :key="booking.id"
                                     :id="`booking-${booking.id}`"
                                     :class="[
                                         'border-b hover:bg-gray-50 transition-colors',
-                                        { 'bg-blue-100 border-blue-300': props.booking_id && parseInt(props.booking_id) === booking.id }
+                                        { 'bg-blue-100 border-blue-300': props.booking_id && parseInt(String(props.booking_id)) === booking.id }
                                     ]"
                                 >
                                     <td class="p-2">
@@ -631,7 +653,7 @@ const navigateToPage = (linkUrl) => {
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-if="(bookings.data || bookings).length === 0">
+                                <tr v-if="bookings.data.length === 0">
                                     <td colspan="6" class="text-center p-4 text-muted-foreground text-sm">
                                         {{ searchQuery.trim() ? 'No bookings match your search' : 'No bookings yet' }}
                                     </td>
@@ -668,7 +690,7 @@ const navigateToPage = (linkUrl) => {
         <EditBookingDialog
             v-model:open="editOpen"
             :event-id="event.id"
-            :booking="editingBooking"
+            :booking="editingBooking ?? undefined"
         />
 
         <DeleteBookingDialog
