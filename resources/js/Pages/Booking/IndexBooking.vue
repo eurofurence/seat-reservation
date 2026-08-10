@@ -113,7 +113,7 @@ const getBookingStatus = (booking: Booking): BookingStatus => {
 
       <!-- PAT Pickup Warning -->
       <Alert
-        v-if="bookings.data && bookings.data.some(booking => !booking.picked_up_at && dayjs().isBefore(dayjs(booking.event?.reservation_ends_at)))"
+        v-if="bookings.data && bookings.data.some(booking => !booking.picked_up_at && booking.event?.reservation_ends_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at)))"
         class="mb-6 border-amber-200 bg-amber-50"
       >
         <AlertCircle class="h-4 w-4" />
@@ -177,7 +177,7 @@ const getBookingStatus = (booking: Booking): BookingStatus => {
 
                 <!-- PAT Pickup Warning for individual booking -->
                 <div
-                  v-if="!booking.picked_up_at && dayjs().isBefore(dayjs(booking.event?.reservation_ends_at))"
+                  v-if="!booking.picked_up_at && booking.event?.reservation_ends_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at))"
                   class="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-md"
                 >
                   <div class="flex items-center text-amber-800">

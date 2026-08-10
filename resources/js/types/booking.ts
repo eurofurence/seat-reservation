@@ -28,7 +28,7 @@ export interface BookingEvent {
 
 export interface Paginator<T> {
   data: T[]
-  total?: number
+  total: number
   current_page?: number
   last_page?: number
   prev_page_url?: string | null
