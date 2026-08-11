@@ -12,15 +12,21 @@ function uniqueName(label: string) {
 }
 
 // Each DateTimePicker.vue renders <div><label>{label}</label><div class="flex
-// gap-2">[date button][time input]</div>...</div> - scope to that wrapper via
-// its exact label text so fields stay addressable by name regardless of
-// picking order (the date button's own accessible name/text changes from
-// "Pick a date" to a formatted date once a value is picked, so filtering by
-// that text - and later re-deriving nth() from the shrinking match set -
-// silently shifts which field subsequent picks land on).
+// gap-2">[date button][reka-ui TimeField]</div>...</div> - scope to that
+// wrapper via its exact label text so fields stay addressable by name
+// regardless of picking order (the date button's own accessible name/text
+// changes from "Pick a date" to a formatted date once a value is picked, so
+// filtering by that text - and later re-deriving nth() from the shrinking
+// match set - silently shifts which field subsequent picks land on). The
+// time field is a segmented reka-ui TimeFieldRoot (contenteditable
+// spinbutton segments), not a native input[type="time"], so it's filled by
+// clicking the hour segment and typing digits rather than .fill().
 function dateTimeField(dialog: Locator, label: string) {
   const group = dialog.getByText(label, { exact: true }).locator('..')
-  return { dateButton: group.getByRole('button').first(), timeInput: group.locator('input[type="time"]') }
+  return {
+    dateButton: group.getByRole('button').first(),
+    hourSegment: group.locator('[data-reka-time-field-segment="hour"]'),
+  }
 }
 
 // Selects a day in the shadcn/reka-ui Calendar popover opened by `trigger`,
@@ -41,9 +47,10 @@ async function pickDate(page: Page, trigger: Locator, daysFromNow: number) {
 }
 
 async function setDateTime(page: Page, dialog: Locator, label: string, daysFromNow: number) {
-  const { dateButton, timeInput } = dateTimeField(dialog, label)
+  const { dateButton, hourSegment } = dateTimeField(dialog, label)
   await pickDate(page, dateButton, daysFromNow)
-  await timeInput.fill('10:00')
+  await hourSegment.click()
+  await page.keyboard.type('1000') // 10:00 - typing 2 digits auto-advances hour -> minute segment
 }
 
 const cases: Array<{ label: string; setup: (dialog: Locator, page: Page) => Promise<void>; errorText: RegExp }> = [
