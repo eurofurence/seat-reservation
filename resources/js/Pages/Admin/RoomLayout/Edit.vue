@@ -304,6 +304,10 @@ const commitSpan = (block: SelectedBlock, axis: 'colspan' | 'rowspan', value: st
   if (resizeCollides) block[axis] = previous
 }
 
+const commitSeatCount = (row: FormRow, value: string | number) => {
+  row.seatCount = clampSpan(value, ROW_SEAT_COUNT_MAX)
+}
+
 const setPosition = (list: Positioned[], id: BlockId, x: number, y: number) => {
   const target = list.find(b => b.id === id)
   if (target) Object.assign(target, { position_x: x, position_y: y })
@@ -971,7 +975,8 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                     <span class="font-medium w-12">Row {{ row.rowNumber }}</span>
 
                     <Input
-                      v-model.number="row.seatCount"
+                      :model-value="row.seatCount"
+                      @update:model-value="(value) => commitSeatCount(row, value)"
                       type="number"
                       :min="ROW_SEAT_COUNT_MIN"
                       :max="ROW_SEAT_COUNT_MAX"

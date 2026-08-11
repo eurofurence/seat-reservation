@@ -44,7 +44,21 @@ const form = useForm({
 
 const isEditMode = computed(() => !!props.event?.id)
 
+const validateMaxTickets = () => {
+  if (form.max_tickets !== '' && form.max_tickets !== null && Number(form.max_tickets) < MAX_TICKETS_MIN) {
+    form.setError('max_tickets', `Max tickets must be at least ${MAX_TICKETS_MIN} or empty.`)
+    return false
+  }
+
+  form.clearErrors('max_tickets')
+  return true
+}
+
 const submitForm = () => {
+  if (!validateMaxTickets()) {
+    return
+  }
+
   form.transform((data) => ({
     ...data,
     starts_at: data.starts_at || null,
@@ -128,6 +142,7 @@ const cancel = () => {
         :min="MAX_TICKETS_MIN"
         placeholder="Leave empty for unlimited"
         :class="{ 'border-red-500': form.errors.max_tickets }"
+        @change="validateMaxTickets"
       />
       <span v-if="form.errors.max_tickets" class="text-sm text-red-500">{{ form.errors.max_tickets }}</span>
     </div>
