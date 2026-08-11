@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Booking\EventMatcher;
 use App\Booking\ImportCsvParser;
 use App\Booking\ImportProposalBuilder;
+use App\Booking\ImportSessionStore;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -17,7 +18,7 @@ use Illuminate\Http\Request;
  */
 class GlobalProposeImportController extends Controller
 {
-    public function __invoke(Request $request, ImportCsvParser $parser, EventMatcher $matcher, ImportProposalBuilder $proposals)
+    public function __invoke(Request $request, ImportCsvParser $parser, EventMatcher $matcher, ImportProposalBuilder $proposals, ImportSessionStore $importSession)
     {
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:2048',
@@ -54,15 +55,15 @@ class GlobalProposeImportController extends Controller
             return back()->with('error', $result['error']);
         }
 
-        session()->put("import_proposal:{$first['event']->id}", $result['guests']);
-        session()->put('global_import_queue', array_map(
+        $importSession->put("import_proposal:{$first['event']->id}", $result['guests']);
+        $importSession->put('global_import_queue', array_map(
             fn ($entry) => ['event_id' => $entry['event']->id, 'rows' => $entry['rows']],
             $queue
         ));
-        session()->put('global_import_total', count($queue) + 1);
-        session()->put('global_import_done', 1);
+        $importSession->put('global_import_total', count($queue) + 1);
+        $importSession->put('global_import_done', 1);
         // Start staging from scratch - drop anything left over from an abandoned prior run.
-        session()->forget('staged_import');
+        $importSession->forget('staged_import');
 
         return redirect()->route('admin.events.import-bookings.preview', $first['event']->id);
     }

@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Booking\EventMatcher;
 use App\Booking\ImportCsvParser;
 use App\Booking\ImportProposalBuilder;
+use App\Booking\ImportSessionStore;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use Illuminate\Http\Request;
 
 class ProposeImportController extends Controller
 {
-    public function __invoke(Request $request, $id, ImportCsvParser $parser, ImportProposalBuilder $proposals, EventMatcher $matcher)
+    public function __invoke(Request $request, $id, ImportCsvParser $parser, ImportProposalBuilder $proposals, EventMatcher $matcher, ImportSessionStore $importSession)
     {
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:2048',
@@ -54,9 +55,9 @@ class ProposeImportController extends Controller
         // A single-event import writes immediately on confirm, so make sure no leftover
         // global-import state from an abandoned cross-event run is still around - otherwise
         // confirmImport would mistake this for a global import and stage instead of book.
-        session()->forget(['global_import_queue', 'global_import_total', 'global_import_done', 'staged_import']);
+        $importSession->forget(['global_import_queue', 'global_import_total', 'global_import_done', 'staged_import']);
 
-        session()->put("import_proposal:{$id}", $result['guests']);
+        $importSession->put("import_proposal:{$id}", $result['guests']);
 
         $redirect = redirect()->route('admin.events.import-bookings.preview', $id);
 

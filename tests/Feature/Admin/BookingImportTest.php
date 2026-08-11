@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Booking\ImportSessionStore;
 use App\Models\Block;
 use App\Models\Booking;
 use App\Models\Event;
@@ -1430,7 +1431,7 @@ class BookingImportTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('error');
 
-        $this->assertNull(session()->get("import_proposal:{$event->id}"));
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$event->id}"));
     }
 
     /** @test */
@@ -1488,7 +1489,7 @@ class BookingImportTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('error', fn ($error) => str_contains($error, 'Number of Seats'));
-        $response->assertSessionMissing("import_proposal:{$event->id}");
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$event->id}"));
         $this->assertDatabaseCount('bookings', 0);
     }
 
@@ -1512,7 +1513,7 @@ class BookingImportTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('error', fn ($error) => str_contains($error, 'Not enough available seats'));
-        $response->assertSessionMissing("import_proposal:{$event->id}");
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$event->id}"));
         $this->assertDatabaseCount('bookings', 0);
     }
 
@@ -1712,10 +1713,10 @@ class BookingImportTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('error');
         $this->assertDatabaseCount('bookings', 0);
-        $this->assertNull(session('global_import_queue'));
+        $this->assertNull(app(ImportSessionStore::class)->get('global_import_queue'));
         // Event One's own row was fine, but the later bad row aborts the whole upload upfront -
         // the admin must never see Event One's proposal staged.
-        $response->assertSessionMissing("import_proposal:{$eventOne->id}");
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$eventOne->id}"));
     }
 
     /** @test */
@@ -2163,7 +2164,7 @@ class BookingImportTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('error', fn ($error) => str_contains($error, 'Not enough available seats'));
-        $response->assertSessionMissing("import_proposal:{$event->id}");
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$event->id}"));
         $this->assertDatabaseCount('bookings', 0);
     }
 

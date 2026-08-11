@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Booking\ImportSessionStore;
 use App\Booking\RoomLayoutLoader;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
@@ -9,13 +10,13 @@ use Inertia\Inertia;
 
 class ImportPreviewController extends Controller
 {
-    public function __invoke($id, RoomLayoutLoader $layout)
+    public function __invoke($id, RoomLayoutLoader $layout, ImportSessionStore $importSession)
     {
         $event = Event::select('id', 'name', 'room_id')
             ->with('room:id,name,stage_x,stage_y')
             ->findOrFail($id);
 
-        $proposal = session()->get("import_proposal:{$id}");
+        $proposal = $importSession->get("import_proposal:{$id}");
 
         if (! $proposal) {
             return redirect()->route('admin.events.show', $id)
@@ -27,10 +28,10 @@ class ImportPreviewController extends Controller
         // When this preview is part of a cross-event "global import", surface how far along
         // the queue we are so the admin can see how many events are left to click through.
         $progress = null;
-        if (session()->has('global_import_total')) {
+        if ($importSession->has('global_import_total')) {
             $progress = [
-                'done' => session()->get('global_import_done', 1),
-                'total' => session()->get('global_import_total'),
+                'done' => $importSession->get('global_import_done', 1),
+                'total' => $importSession->get('global_import_total'),
             ];
         }
 
