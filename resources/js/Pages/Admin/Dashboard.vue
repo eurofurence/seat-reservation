@@ -9,6 +9,7 @@ import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
 import { fmt } from '@/lib/datetime'
+import { BOOKING_CODE_LENGTH } from '@/lib/validation'
 import { router } from '@inertiajs/vue3'
 import BookingIdentityCell from '@/Components/Admin/BookingIdentityCell.vue'
 import { getSeatInfo } from '@/lib/bookingDisplay'
@@ -129,11 +130,11 @@ usePoll(5000, {}, {
                   v-model="bookingCodeForm.booking_code"
                   type="text"
                   placeholder="e.g. A7B"
-                  maxlength="3"
+                  :maxlength="BOOKING_CODE_LENGTH"
                   class="uppercase font-mono text-lg"
                   :class="{ 'border-red-500': bookingCodeForm.errors.booking_code }"
                 />
-                <Button type="submit" :disabled="bookingCodeForm.processing || bookingCodeForm.booking_code.length !== 3">
+                <Button type="submit" :disabled="bookingCodeForm.processing || bookingCodeForm.booking_code.length !== BOOKING_CODE_LENGTH">
                   <Search class="h-4 w-4 mr-1" />
                   Lookup
                 </Button>
