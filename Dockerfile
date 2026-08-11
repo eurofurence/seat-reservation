@@ -12,12 +12,6 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 ######################################################
-# PHP config - the frankenphp base image ships with NO php.ini at all, so start
-# from the official production template, then layer our own overrides on top.
-######################################################
-RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
-COPY php.ini "$PHP_INI_DIR/conf.d/99-app.ini"
-######################################################
 # Configure Credentials & Hosts for external Git (optional)
 ######################################################
 COPY composer.json composer.lock /app/
