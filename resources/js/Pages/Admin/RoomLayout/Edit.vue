@@ -7,6 +7,7 @@ import { Card } from '@/Components/ui/card'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { useToast } from '@/Components/ui/toast'
+import { BLOCK_NAME_MAX, ROW_SEAT_COUNT_MIN, ROW_SEAT_COUNT_MAX } from '@/lib/validation'
 import { Trash2, RotateCw, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, TriangleAlert, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import type {
   BlockId, Orientation, MarkerType,
@@ -667,6 +668,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                     <Label class="text-xs">Stage Name</Label>
                     <Input
                       v-model="stageBlock.name"
+                      :maxlength="BLOCK_NAME_MAX"
                       class="text-sm mt-1"
                       @click.stop
                     />
@@ -686,11 +688,11 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                 <div class="flex gap-4" @click.stop>
                   <div class="flex items-center gap-2">
                     <Label class="text-xs">Width</Label>
-                    <Input :model-value="stageBlock.colspan" @update:model-value="commitSpan(stageBlock, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                    <Input :model-value="stageBlock.colspan" @update:model-value="commitSpan(stageBlock, 'colspan', $event, GRID_COLS)" type="number" min="1" :max="GRID_COLS" class="text-xs h-7 w-16" />
                   </div>
                   <div class="flex items-center gap-2">
                     <Label class="text-xs">Height</Label>
-                    <Input :model-value="stageBlock.rowspan" @update:model-value="commitSpan(stageBlock, 'rowspan', $event, GRID_ROWS)" type="number" min="1" max="8" class="text-xs h-7 w-16" />
+                    <Input :model-value="stageBlock.rowspan" @update:model-value="commitSpan(stageBlock, 'rowspan', $event, GRID_ROWS)" type="number" min="1" :max="GRID_ROWS" class="text-xs h-7 w-16" />
                   </div>
                 </div>
 
@@ -728,6 +730,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                     <Label class="text-xs">Entrance label</Label>
                     <Input
                       v-model="marker.name"
+                      :maxlength="BLOCK_NAME_MAX"
                       class="text-sm mt-1"
                       @click.stop
                     />
@@ -811,6 +814,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                     <Label class="text-xs">Comment text</Label>
                     <Input
                       v-model="marker.name"
+                      :maxlength="BLOCK_NAME_MAX"
                       class="text-sm mt-1"
                       @click.stop
                     />
@@ -830,11 +834,11 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                 <div class="flex gap-4 mb-2" @click.stop>
                   <div class="flex items-center gap-2">
                     <Label class="text-xs">Width</Label>
-                    <Input :model-value="marker.colspan" @update:model-value="commitSpan(marker, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                    <Input :model-value="marker.colspan" @update:model-value="commitSpan(marker, 'colspan', $event, GRID_COLS)" type="number" min="1" :max="GRID_COLS" class="text-xs h-7 w-16" />
                   </div>
                   <div class="flex items-center gap-2">
                     <Label class="text-xs">Height</Label>
-                    <Input :model-value="marker.rowspan" @update:model-value="commitSpan(marker, 'rowspan', $event, GRID_ROWS)" type="number" min="1" max="8" class="text-xs h-7 w-16" />
+                    <Input :model-value="marker.rowspan" @update:model-value="commitSpan(marker, 'rowspan', $event, GRID_ROWS)" type="number" min="1" :max="GRID_ROWS" class="text-xs h-7 w-16" />
                   </div>
                 </div>
 
@@ -886,6 +890,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                     <Label class="text-xs">Block Name</Label>
                     <Input
                       v-model="block.name"
+                      :maxlength="BLOCK_NAME_MAX"
                       class="text-sm mt-1"
                       @click.stop
                     />
@@ -924,11 +929,11 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                 <div class="flex gap-4 mb-3">
                   <div class="flex items-center gap-2">
                     <Label class="text-xs">Width</Label>
-                    <Input :model-value="block.colspan" @update:model-value="commitSpan(block, 'colspan', $event, GRID_COLS)" type="number" min="1" max="12" class="text-xs h-7 w-16" />
+                    <Input :model-value="block.colspan" @update:model-value="commitSpan(block, 'colspan', $event, GRID_COLS)" type="number" min="1" :max="GRID_COLS" class="text-xs h-7 w-16" />
                   </div>
                   <div class="flex items-center gap-2">
                     <Label class="text-xs">Height</Label>
-                    <Input :model-value="block.rowspan" @update:model-value="commitSpan(block, 'rowspan', $event, GRID_ROWS)" type="number" min="1" max="8" class="text-xs h-7 w-16" />
+                    <Input :model-value="block.rowspan" @update:model-value="commitSpan(block, 'rowspan', $event, GRID_ROWS)" type="number" min="1" :max="GRID_ROWS" class="text-xs h-7 w-16" />
                   </div>
                 </div>
 
@@ -968,8 +973,8 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
                     <Input
                       v-model.number="row.seatCount"
                       type="number"
-                      min="1"
-                      max="100"
+                      :min="ROW_SEAT_COUNT_MIN"
+                      :max="ROW_SEAT_COUNT_MAX"
                       class="text-xs h-7 w-16"
                     />
 
@@ -1163,6 +1168,7 @@ const removeSpecificRow = (block: FormBlock, rowNumber: number) => {
           v-model="newBlockName"
           type="text"
           placeholder="Enter block name..."
+          :maxlength="BLOCK_NAME_MAX"
           class="mt-1"
           @keyup.enter="createNewBlock"
         />

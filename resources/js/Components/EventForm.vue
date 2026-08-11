@@ -2,6 +2,7 @@
 import { useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { Input } from '@/Components/ui/input'
+import { EVENT_NAME_MAX, MAX_TICKETS_MIN } from '@/lib/validation'
 import { Button } from '@/Components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import DateTimePicker from '@/Components/DateTimePicker.vue'
@@ -73,6 +74,7 @@ const cancel = () => {
       <Input
         v-model="form.name"
         placeholder="Enter event name"
+        :maxlength="EVENT_NAME_MAX"
         :class="{ 'border-red-500': form.errors.name }"
       />
       <span v-if="form.errors.name" class="text-sm text-red-500">{{ form.errors.name }}</span>
@@ -123,6 +125,7 @@ const cancel = () => {
       <Input
         v-model="form.max_tickets"
         type="number"
+        :min="MAX_TICKETS_MIN"
         placeholder="Leave empty for unlimited"
         :class="{ 'border-red-500': form.errors.max_tickets }"
       />

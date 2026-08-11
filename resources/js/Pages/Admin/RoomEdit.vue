@@ -7,6 +7,7 @@ import { CardTitle } from '@/Components/ui/card'
 import { CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
+import { ROOM_NAME_MAX } from '@/lib/validation'
 import { ArrowLeft } from 'lucide-vue-next'
 import { router } from '@inertiajs/vue3'
 
@@ -33,14 +34,14 @@ const submit = () => {
 
 <template>
   <Head :title="title" />
-  
+
   <div class="max-w-2xl">
     <div class="flex items-center mb-6">
       <Button variant="ghost" size="sm" @click="router.visit('/admin/rooms')" class="mr-4">
         <ArrowLeft class="h-4 w-4" />
       </Button>
     </div>
-    
+
     <Card>
       <CardHeader>
         <CardTitle>Room Details</CardTitle>
@@ -52,13 +53,14 @@ const submit = () => {
             <Input
               v-model="form.name"
               placeholder="Enter room name"
+              :maxlength="ROOM_NAME_MAX"
               :disabled="form.processing"
             />
             <div v-if="form.errors.name" class="text-red-500 text-sm mt-1">
               {{ form.errors.name }}
             </div>
           </div>
-          
+
           <div class="flex justify-end gap-2">
             <Button
               type="button"

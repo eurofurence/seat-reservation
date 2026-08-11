@@ -23,6 +23,7 @@ import EditBookingDialog from '@/Components/Admin/EditBookingDialog.vue'
 import DeleteBookingDialog from '@/Components/Admin/DeleteBookingDialog.vue'
 import { useCsvDownload } from '@/composables/useCsvDownload'
 import { getGuestName, getSeatInfo } from '@/lib/bookingDisplay'
+import { GUEST_NAME_MAX, ADMIN_COMMENT_MAX } from '@/lib/validation'
 import type { LayoutBlock, PropStageBlock, PropMarkerBlock, Seat } from '@/types/layout'
 import type { Booking, Paginator } from '@/types/booking'
 
@@ -511,6 +512,7 @@ const navigateToPage = (linkUrl: string) => {
                                         id="guestName"
                                         v-model="manualBookingForm.guestName"
                                         placeholder="Name or team"
+                                        :maxlength="GUEST_NAME_MAX"
                                         class="mt-1"
                                     />
                                 </div>
@@ -520,6 +522,7 @@ const navigateToPage = (linkUrl: string) => {
                                         id="comment"
                                         v-model="manualBookingForm.comment"
                                         placeholder="Any additional notes..."
+                                        :maxlength="ADMIN_COMMENT_MAX"
                                         class="mt-1"
                                     />
                                 </div>

@@ -26,6 +26,7 @@ import {
   Settings
 } from 'lucide-vue-next'
 import dayjs, { fmt } from "@/lib/datetime"
+import { ATTENDEE_NAME_MAX, BOOKING_COMMENT_MAX } from "@/lib/validation"
 
 defineOptions({layout: Layout})
 
@@ -311,6 +312,7 @@ function updateBooking() {
                                 :disabled="!canModify || form.processing"
                                 placeholder="Enter name for reservation"
                                 class="mt-2"
+                                :maxlength="ATTENDEE_NAME_MAX"
                                 required
                             />
                             <div v-if="form.errors.name" class="text-red-600 text-sm mt-1">{{ form.errors.name }}</div>
@@ -324,6 +326,7 @@ function updateBooking() {
                                 :disabled="!canModify || form.processing"
                                 placeholder="Any special notes or requirements (optional)"
                                 class="mt-2"
+                                :maxlength="BOOKING_COMMENT_MAX"
                                 rows="3"
                             />
                             <div v-if="form.errors.comment" class="text-red-600 text-sm mt-1">{{ form.errors.comment }}</div>
