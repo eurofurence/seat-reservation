@@ -39,9 +39,23 @@ class ImportSessionStore
         Cache::put($this->key($key), $value, now()->addMinutes((int) config('session.lifetime')));
     }
 
+    /**
+     * Reads renew the entry's expiry (sliding window) so a key merely being viewed - e.g. a
+     * preview page left open without submitting - doesn't expire out from under an admin who
+     * is still within their session lifetime.
+     */
     public function get(string $key, mixed $default = null): mixed
     {
-        return Cache::get($this->key($key), $default);
+        $fullKey = $this->key($key);
+        $value = Cache::get($fullKey);
+
+        if ($value === null) {
+            return $default;
+        }
+
+        Cache::put($fullKey, $value, now()->addMinutes((int) config('session.lifetime')));
+
+        return $value;
     }
 
     public function has(string $key): bool

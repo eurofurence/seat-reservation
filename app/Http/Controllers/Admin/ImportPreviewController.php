@@ -29,6 +29,12 @@ class ImportPreviewController extends Controller
         // the queue we are so the admin can see how many events are left to click through.
         $progress = null;
         if ($importSession->has('global_import_total')) {
+            // Touch every workflow key for this global import, not just the ones this page
+            // happens to display - otherwise the queue/staged bookings could expire from the
+            // cache while the admin is still reading a later step's preview.
+            $importSession->get('global_import_queue');
+            $importSession->get('staged_import');
+
             $progress = [
                 'done' => $importSession->get('global_import_done', 1),
                 'total' => $importSession->get('global_import_total'),
