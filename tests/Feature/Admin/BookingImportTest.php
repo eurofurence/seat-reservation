@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Booking\ImportSessionStore;
 use App\Models\Block;
 use App\Models\Booking;
 use App\Models\Event;
@@ -1430,7 +1431,7 @@ class BookingImportTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('error');
 
-        $this->assertNull(session()->get("import_proposal:{$event->id}"));
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$event->id}"));
     }
 
     /** @test */
@@ -1488,7 +1489,7 @@ class BookingImportTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('error', fn ($error) => str_contains($error, 'Number of Seats'));
-        $response->assertSessionMissing("import_proposal:{$event->id}");
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$event->id}"));
         $this->assertDatabaseCount('bookings', 0);
     }
 
@@ -1512,7 +1513,7 @@ class BookingImportTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('error', fn ($error) => str_contains($error, 'Not enough available seats'));
-        $response->assertSessionMissing("import_proposal:{$event->id}");
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$event->id}"));
         $this->assertDatabaseCount('bookings', 0);
     }
 
@@ -1607,6 +1608,76 @@ class BookingImportTest extends TestCase
         // Only now, at the final flush, are BOTH events' bookings written.
         $this->assertDatabaseHas('bookings', ['event_id' => $event1->id, 'seat_id' => $seat1A1->id, 'name' => 'Alice', 'created_by_name' => $admin->name]);
         $this->assertDatabaseHas('bookings', ['event_id' => $event2->id, 'seat_id' => $seat2A1->id, 'name' => 'Bob', 'created_by_name' => $admin->name]);
+        $this->assertDatabaseCount('bookings', 2);
+    }
+
+    /** @test */
+    public function import_state_survives_a_slow_admin_who_only_views_pages_past_one_cache_lifetime()
+    {
+        $admin = $this->actingAsAdmin();
+        [$room1, , , , $seat1A1] = $this->createRoomWithSeats();
+        [$room2, , , , $seat2A1] = $this->createRoomWithSeats();
+
+        $event1 = Event::create([
+            'name' => 'Event One',
+            'room_id' => $room1->id,
+            'starts_at' => Carbon::now()->addDays(1),
+            'reservation_ends_at' => Carbon::now()->addHours(1),
+            'max_tickets' => 50,
+        ]);
+        $event2 = Event::create([
+            'name' => 'Event Two',
+            'room_id' => $room2->id,
+            'starts_at' => Carbon::now()->addDays(1),
+            'reservation_ends_at' => Carbon::now()->addHours(1),
+            'max_tickets' => 50,
+        ]);
+
+        $csv = "Event,Guest Name,Comment,Block,Row,Seat\n".
+            "Event One,Alice,,A,1,1\n".
+            "Event Two,Bob,,A,1,1\n";
+
+        $this->post(route('admin.import-bookings.propose'), [
+            'file' => $this->csvFile($csv),
+        ])->assertRedirect(route('admin.events.import-bookings.preview', $event1->id));
+
+        // Admin leaves the first preview page open, checking back on it every so often
+        // without ever submitting - each view is a read-only request (no ->put calls). The
+        // gaps between views are individually well under one cache lifetime, but they add up
+        // to more than a full lifetime overall: without renewing the TTL on read, the staged
+        // proposal/queue would expire partway through even though the admin was still active.
+        $lifetimeMinutes = (int) config('session.lifetime');
+        $this->travel($lifetimeMinutes - 10)->minutes();
+        $this->previewProps($event1->id);
+        $this->travel($lifetimeMinutes - 10)->minutes();
+        $props = $this->previewProps($event1->id);
+        $this->assertCount(1, $props['proposal']);
+        $this->assertEquals('Alice', $props['proposal'][0]['guest_name']);
+
+        // Confirm event 1, then again keep checking event 2's preview well past a combined
+        // lifetime before confirming - the queue/total/staged data must still be there.
+        $this->post(route('admin.events.import-bookings.confirm', $event1->id), [
+            'guests' => [
+                ['guest_name' => 'Alice', 'comment' => null, 'seat_ids' => [$seat1A1->id]],
+            ],
+        ])->assertRedirect(route('admin.events.import-bookings.preview', $event2->id));
+
+        $this->travel($lifetimeMinutes - 10)->minutes();
+        $this->previewProps($event2->id);
+        $this->travel($lifetimeMinutes - 10)->minutes();
+        $props = $this->previewProps($event2->id);
+        $this->assertCount(1, $props['proposal']);
+        $this->assertEquals('Bob', $props['proposal'][0]['guest_name']);
+        $this->assertEquals(['done' => 2, 'total' => 2], $props['progress']);
+
+        $this->post(route('admin.events.import-bookings.confirm', $event2->id), [
+            'guests' => [
+                ['guest_name' => 'Bob', 'comment' => null, 'seat_ids' => [$seat2A1->id]],
+            ],
+        ])->assertRedirect(route('admin.events.index'));
+
+        $this->assertDatabaseHas('bookings', ['event_id' => $event1->id, 'name' => 'Alice', 'created_by_name' => $admin->name]);
+        $this->assertDatabaseHas('bookings', ['event_id' => $event2->id, 'name' => 'Bob', 'created_by_name' => $admin->name]);
         $this->assertDatabaseCount('bookings', 2);
     }
 
@@ -1712,10 +1783,10 @@ class BookingImportTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('error');
         $this->assertDatabaseCount('bookings', 0);
-        $this->assertNull(session('global_import_queue'));
+        $this->assertNull(app(ImportSessionStore::class)->get('global_import_queue'));
         // Event One's own row was fine, but the later bad row aborts the whole upload upfront -
         // the admin must never see Event One's proposal staged.
-        $response->assertSessionMissing("import_proposal:{$eventOne->id}");
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$eventOne->id}"));
     }
 
     /** @test */
@@ -2163,7 +2234,7 @@ class BookingImportTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('error', fn ($error) => str_contains($error, 'Not enough available seats'));
-        $response->assertSessionMissing("import_proposal:{$event->id}");
+        $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$event->id}"));
         $this->assertDatabaseCount('bookings', 0);
     }
 

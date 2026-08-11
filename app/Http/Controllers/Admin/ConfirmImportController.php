@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Booking\GlobalImportSession;
 use App\Booking\ImportBookingWriter;
+use App\Booking\ImportSessionStore;
 use App\Booking\SeatAssigner;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 
 class ConfirmImportController extends Controller
 {
-    public function __invoke(Request $request, $id, ImportBookingWriter $writer, SeatAssigner $seats, GlobalImportSession $global)
+    public function __invoke(Request $request, $id, ImportBookingWriter $writer, SeatAssigner $seats, GlobalImportSession $global, ImportSessionStore $importSession)
     {
         $data = $request->validate([
             'guests' => 'required|array|min:1',
@@ -34,7 +35,7 @@ class ConfirmImportController extends Controller
         // Gate against booking fewer seats than the CSV requested for any guest. The
         // required minimum comes from the session's canonical proposal (not the client's
         // payload) so it can't be tampered with by editing the posted request.
-        $sessionProposal = session()->get("import_proposal:{$id}");
+        $sessionProposal = $importSession->get("import_proposal:{$id}");
 
         // Reject confirmations without a pending proposal - otherwise a client that has lost
         // (or never had) session state can POST directly and skip the whole quota/alignment
@@ -175,7 +176,7 @@ class ConfirmImportController extends Controller
         // instead STAGES each confirmed event in the session and writes everything in one
         // atomic transaction only when the whole queue is done (see GlobalImportSession) - so
         // abandoning a global import half-way leaves nothing booked at all.
-        $isGlobal = session()->has('global_import_queue');
+        $isGlobal = $importSession->has('global_import_queue');
         $createdByName = auth()->user()->name;
 
         DB::transaction(function () use ($id, $bookableGuests, $allSeatIds, $isGlobal, $writer, $pendingRenames, $removedBookingIds, $createdByName, &$conflictSeatIds) {
@@ -200,7 +201,7 @@ class ConfirmImportController extends Controller
         });
 
         if (empty($conflictSeatIds)) {
-            session()->forget("import_proposal:{$id}");
+            $importSession->forget("import_proposal:{$id}");
 
             $alreadyBookedNote = '';
             if ($alreadyBookedCount > 0) {
@@ -224,14 +225,14 @@ class ConfirmImportController extends Controller
                 // - stage the rename/delete instructions alongside the bookable guests so
                 // GlobalImportSession::flushStaged() can apply them atomically with everyone
                 // else's bookings (see the transaction above for the non-global equivalent).
-                $staged = session()->get('staged_import', []);
+                $staged = $importSession->get('staged_import', []);
                 $staged[$id] = [
                     'guests' => $bookableGuests,
                     'renames' => $pendingRenames,
                     'deletes' => $removedBookingIds,
                     'created_by_name' => $createdByName,
                 ];
-                session()->put('staged_import', $staged);
+                $importSession->put('staged_import', $staged);
 
                 $summary = 'Staged '.count($allSeatIds).' booking(s) for '.count($bookableGuests).' guest(s).'.$alreadyBookedNote;
             } else {
@@ -289,7 +290,7 @@ class ConfirmImportController extends Controller
         }
         unset($guest);
 
-        session()->put("import_proposal:{$id}", $guests);
+        $importSession->put("import_proposal:{$id}", $guests);
 
         $names = implode(', ', $affectedNames);
 

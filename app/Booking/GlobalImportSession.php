@@ -13,12 +13,13 @@ class GlobalImportSession
         private ImportProposalBuilder $proposals,
         private ImportBookingWriter $writer,
         private SeatAssigner $seats,
+        private ImportSessionStore $importSession,
     ) {}
 
     /** Drop every session key that tracks an in-progress global import. */
     private function forgetQueue(): void
     {
-        session()->forget(['global_import_queue', 'global_import_total', 'global_import_done', 'staged_import']);
+        $this->importSession->forget(['global_import_queue', 'global_import_total', 'global_import_done', 'staged_import']);
     }
 
     /**
@@ -28,15 +29,15 @@ class GlobalImportSession
      */
     public function advanceQueue(int $justConfirmedEventId, string $summary)
     {
-        $queue = session()->get('global_import_queue');
+        $queue = $this->importSession->get('global_import_queue');
 
         if ($queue === null) {
             return redirect()->route('admin.events.show', $justConfirmedEventId)
                 ->with('success', $summary);
         }
 
-        $total = session()->get('global_import_total', count($queue) + 1);
-        $done = session()->get('global_import_done', 1);
+        $total = $this->importSession->get('global_import_total', count($queue) + 1);
+        $done = $this->importSession->get('global_import_done', 1);
 
         if (empty($queue)) {
             // Whole queue confirmed - write every staged event's bookings atomically.
@@ -62,9 +63,9 @@ class GlobalImportSession
                 ->with('warning', "The import was cancelled and nothing was booked. Stopped at '{$nextEvent->name}': {$result['error']}");
         }
 
-        session()->put("import_proposal:{$nextEvent->id}", $result['guests']);
-        session()->put('global_import_queue', $queue);
-        session()->put('global_import_done', $done + 1);
+        $this->importSession->put("import_proposal:{$nextEvent->id}", $result['guests']);
+        $this->importSession->put('global_import_queue', $queue);
+        $this->importSession->put('global_import_done', $done + 1);
 
         return redirect()->route('admin.events.import-bookings.preview', $nextEvent->id)
             ->with('success', "{$summary} Continuing with '{$nextEvent->name}' (".($done + 1)." of {$total}).");
@@ -78,7 +79,7 @@ class GlobalImportSession
      */
     private function flushStaged(int $total)
     {
-        $staged = session()->get('staged_import', []);
+        $staged = $this->importSession->get('staged_import', []);
 
         if (empty($staged)) {
             $this->forgetQueue();
