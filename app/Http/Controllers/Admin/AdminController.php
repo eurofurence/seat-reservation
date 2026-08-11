@@ -24,7 +24,7 @@ class AdminController extends Controller
         // Get recent bookings with event and seat information
         $recentBookings = Booking::withSeatDetails()
             ->with(['event:id,name,starts_at', 'user:id,name'])
-            ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'booking_code', 'type', 'picked_up_at', 'created_at')
+            ->select('id', 'event_id', 'user_id', 'created_by_name', 'seat_id', 'name', 'booking_code', 'type', 'picked_up_at', 'created_at')
             ->latest()
             ->take(10)
             ->get();
@@ -32,8 +32,6 @@ class AdminController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'stats' => $stats,
             'recentBookings' => $recentBookings,
-            'title' => 'Dashboard',
-            'breadcrumbs' => [],
         ]);
     }
 

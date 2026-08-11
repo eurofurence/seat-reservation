@@ -1,10 +1,11 @@
-<script setup>
+<script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Table } from '@/Components/ui/table'
+import { Badge } from '@/Components/ui/badge'
 import { Plus, Edit, Trash2, Calendar, Clock, MapPin, Users, Download, Upload } from 'lucide-vue-next'
 import dayjs, { fmt } from '@/lib/datetime'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/Components/ui/dialog'
@@ -14,23 +15,40 @@ import { useCsvDownload } from '@/composables/useCsvDownload'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-  events: Array,
-  rooms: Array,
-  title: String,
-  breadcrumbs: Array,
-})
+interface Room {
+  id: number
+  name: string
+}
+
+interface EventItem {
+  id: number
+  name: string
+  room?: Room
+  room_id: number
+  starts_at: string
+  reservation_ends_at: string | null
+  booking_starts_at: string | null
+  max_tickets: string | number
+  bookings_count?: number
+}
+
+const props = defineProps<{
+  events: EventItem[]
+  rooms: Room[]
+  title?: string
+  breadcrumbs?: Array<{ title: string, url: string | null }>
+}>()
 
 const createDialogOpen = ref(false)
 const editDialogOpen = ref(false)
-const editingEvent = ref(null)
+const editingEvent = ref<EventItem | null>(null)
 
 const openCreateDialog = () => {
   editingEvent.value = null
   createDialogOpen.value = true
 }
 
-const openEditDialog = (event) => {
+const openEditDialog = (event: EventItem) => {
   editingEvent.value = event
   editDialogOpen.value = true
 }
@@ -50,13 +68,13 @@ const handleFormCancel = () => {
   editingEvent.value = null
 }
 
-const deleteEvent = (event) => {
+const deleteEvent = (event: EventItem) => {
   if (confirm(`Are you sure you want to delete "${event.name}"? This will also delete all bookings for this event.`)) {
     router.delete(route('admin.events.destroy', event.id))
   }
 }
 
-const viewEvent = (event) => {
+const viewEvent = (event: EventItem) => {
   router.visit(`/admin/events/${event.id}`)
 }
 
@@ -68,11 +86,11 @@ const exportAllBookings = () => {
   download(route('admin.events.export-all'), `bookings-all-events-${Date.now()}.csv`)
 }
 
-const getEventStatus = (event) => {
+const getEventStatus = (event: EventItem) => {
   const now = dayjs()
   const eventStart = dayjs(event.starts_at)
   const reservationEnd = dayjs(event.reservation_ends_at)
-  
+
   if (now.isAfter(eventStart)) {
     return { text: 'Completed', class: 'bg-gray-100 text-gray-800' }
   }
@@ -87,7 +105,7 @@ const getEventStatus = (event) => {
 </script>
 
 <template>
-  <Head :title="title" />
+  <Head title="Events" />
   
   <div>
     <div class="flex justify-end items-center gap-2 mb-6">
@@ -188,12 +206,9 @@ const getEventStatus = (event) => {
                 </div>
               </td>
               <td class="p-4">
-                <span 
-                  class="px-2 py-1 text-xs rounded-full"
-                  :class="getEventStatus(event).class"
-                >
+                <Badge :class="getEventStatus(event).class">
                   {{ getEventStatus(event).text }}
-                </span>
+                </Badge>
               </td>
               <td class="p-4">
                 <div class="flex gap-2">

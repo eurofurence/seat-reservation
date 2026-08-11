@@ -1,28 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import { Head, Link } from "@inertiajs/vue3"
+import type { Component } from "vue"
 import Layout from "@/Layouts/Layout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
 import { Clock, MapPin, User, Plus, Search, LogOut, CheckCircle, AlertCircle, Info, Settings } from 'lucide-vue-next'
 import dayjs, { fmt } from "@/lib/datetime"
+import { getSeatInfo } from "@/lib/bookingDisplay"
+import type { Booking, Paginator } from "@/types/booking"
 
 defineOptions({layout: Layout})
 
-defineProps({
-    bookings: Object
-})
+defineProps<{
+    bookings: Paginator<Booking>
+}>()
 
-const formatDateTime = (dateTime) => fmt(dateTime, 'MMM D, HH:mm')
+const formatDateTime = (dateTime?: string | null) => fmt(dateTime, 'MMM D, HH:mm')
 
-const getSeatInfo = (booking) => {
-  return `${booking.seat.row.block.name} - Row ${booking.seat.row.name} - Seat ${booking.seat.label}`
+interface BookingStatus {
+  status: string
+  color: string
+  text: string
+  icon: Component
 }
 
-const getBookingStatus = (booking) => {
+const getBookingStatus = (booking: Booking): BookingStatus => {
   const now = dayjs()
-  const eventStart = dayjs(booking.event.starts_at)
-  const reservationEnd = dayjs(booking.event.reservation_ends_at)
+  const eventStart = dayjs(booking.event?.starts_at)
+  const reservationEnd = dayjs(booking.event?.reservation_ends_at)
 
   if (booking.picked_up_at) {
     return {
@@ -71,7 +77,7 @@ const getBookingStatus = (booking) => {
           <h1 class="text-xl lg:text-2xl font-semibold">My Reservations</h1>
           <div class="flex items-center space-x-4">
             <!-- Admin button for admin users -->
-            <Link v-if="$page.props.auth.user?.is_admin" :href="route('admin.dashboard')" class="hidden lg:block">
+            <Link v-if="$page.props.auth?.user?.is_admin" :href="route('admin.dashboard')" class="hidden lg:block">
               <Button variant="outline">
                 <Settings class="mr-2 h-4 w-4" />
                 Switch to Admin
@@ -107,7 +113,7 @@ const getBookingStatus = (booking) => {
 
       <!-- PAT Pickup Warning -->
       <Alert
-        v-if="bookings.data && bookings.data.some(booking => !booking.picked_up_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at)))"
+        v-if="bookings.data && bookings.data.some(booking => !booking.picked_up_at && booking.event?.reservation_ends_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at)))"
         class="mb-6 border-amber-200 bg-amber-50"
       >
         <AlertCircle class="h-4 w-4" />
@@ -127,14 +133,14 @@ const getBookingStatus = (booking) => {
         <Link
           v-for="booking in bookings.data"
           :key="booking.id"
-          :href="route('bookings.show', {booking: booking.id, event: booking.event.id})"
+          :href="route('bookings.show', {booking: booking.id, event: booking.event?.id})"
           class="block"
         >
           <Card class="p-4 lg:p-6 hover:shadow-md lg:hover:shadow-lg transition-shadow cursor-pointer h-full">
             <div class="flex items-start justify-between lg:flex-col lg:space-y-4">
               <div class="flex-1 min-w-0 lg:w-full">
                 <div class="flex items-start justify-between mb-3">
-                  <h3 class="text-lg lg:text-xl font-semibold text-gray-900 lg:mb-2">{{ booking.event.name }}</h3>
+                  <h3 class="text-lg lg:text-xl font-semibold text-gray-900 lg:mb-2">{{ booking.event?.name }}</h3>
                   <span
                     :class="[
                       'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ml-4 lg:ml-0 lg:w-fit',
@@ -149,11 +155,11 @@ const getBookingStatus = (booking) => {
                 <div class="space-y-2 lg:space-y-3 text-sm lg:text-base text-gray-600 mb-3 lg:mb-4">
                   <div class="flex items-center">
                     <Clock class="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span>{{ formatDateTime(booking.event.starts_at) }}</span>
+                    <span>{{ formatDateTime(booking.event?.starts_at) }}</span>
                   </div>
                   <div class="flex items-center">
                     <MapPin class="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span>{{ booking.event.room.name }}</span>
+                    <span>{{ booking.event?.room?.name }}</span>
                   </div>
                   <div class="flex items-center">
                     <User class="h-4 w-4 mr-2 flex-shrink-0" />
@@ -171,7 +177,7 @@ const getBookingStatus = (booking) => {
 
                 <!-- PAT Pickup Warning for individual booking -->
                 <div
-                  v-if="!booking.picked_up_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at))"
+                  v-if="!booking.picked_up_at && booking.event?.reservation_ends_at && dayjs().isBefore(dayjs(booking.event.reservation_ends_at))"
                   class="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-md"
                 >
                   <div class="flex items-center text-amber-800">
@@ -179,7 +185,7 @@ const getBookingStatus = (booking) => {
                     <span class="text-xs font-medium">PAT pickup required</span>
                   </div>
                   <div class="text-xs text-amber-700 mt-1">
-                    Deadline: {{ formatDateTime(booking.event.reservation_ends_at) }}
+                    Deadline: {{ formatDateTime(booking.event?.reservation_ends_at) }}
                   </div>
                 </div>
               </div>

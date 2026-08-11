@@ -54,6 +54,7 @@ class EventAdminController2Test extends TestCase
             ->has('events', 2)
             ->has('rooms')
             ->where('title', 'Events')
+            ->has('breadcrumbs', 0)
         );
     }
 
@@ -190,6 +191,8 @@ class EventAdminController2Test extends TestCase
             ->has('stageBlocks')
             ->has('bookings')
             ->has('bookedSeats', 2) // Should show 2 booked seats
+            ->where('title', $event->name)
+            ->has('breadcrumbs', 2)
         );
     }
 

@@ -96,7 +96,7 @@ class BookingImportTest extends TestCase
     /** @test */
     public function exact_seat_rows_are_booked_after_confirm()
     {
-        $this->actingAsAdmin();
+        $admin = $this->actingAsAdmin();
         [$room, , , , $seatA1] = $this->createRoomWithSeats();
         $event = $this->createEvent($room);
 
@@ -126,6 +126,7 @@ class BookingImportTest extends TestCase
             'type' => 'admin',
             'user_id' => null,
             'booking_code' => null,
+            'created_by_name' => $admin->name,
         ]);
     }
 
@@ -1547,7 +1548,7 @@ class BookingImportTest extends TestCase
     /** @test */
     public function global_import_processes_multiple_events_one_at_a_time_then_completes()
     {
-        $this->actingAsAdmin();
+        $admin = $this->actingAsAdmin();
         [$room1, , , , $seat1A1] = $this->createRoomWithSeats();
         [$room2, , , , $seat2A1] = $this->createRoomWithSeats();
 
@@ -1604,8 +1605,8 @@ class BookingImportTest extends TestCase
         ])->assertRedirect(route('admin.events.index'));
 
         // Only now, at the final flush, are BOTH events' bookings written.
-        $this->assertDatabaseHas('bookings', ['event_id' => $event1->id, 'seat_id' => $seat1A1->id, 'name' => 'Alice']);
-        $this->assertDatabaseHas('bookings', ['event_id' => $event2->id, 'seat_id' => $seat2A1->id, 'name' => 'Bob']);
+        $this->assertDatabaseHas('bookings', ['event_id' => $event1->id, 'seat_id' => $seat1A1->id, 'name' => 'Alice', 'created_by_name' => $admin->name]);
+        $this->assertDatabaseHas('bookings', ['event_id' => $event2->id, 'seat_id' => $seat2A1->id, 'name' => 'Bob', 'created_by_name' => $admin->name]);
         $this->assertDatabaseCount('bookings', 2);
     }
 

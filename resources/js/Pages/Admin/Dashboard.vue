@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Head, useForm, usePoll } from '@inertiajs/vue3'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card'
@@ -9,25 +9,29 @@ import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
 import { fmt } from '@/lib/datetime'
+import { router } from '@inertiajs/vue3'
+import BookingIdentityCell from '@/Components/Admin/BookingIdentityCell.vue'
+import { getSeatInfo } from '@/lib/bookingDisplay'
+import type { Booking } from '@/types/booking'
 
 defineOptions({ layout: AdminLayout })
 
-defineProps({
-  stats: {
-    type: Object,
-    default: () => ({
-      totalEvents: 0,
-      upcomingEvents: 0,
-      totalBookings: 0,
-      totalRooms: 0,
-    }),
-  },
-  recentBookings: {
-    type: Array,
-    default: () => [],
-  },
-  title: String,
-  breadcrumbs: Array,
+withDefaults(defineProps<{
+  stats?: {
+    totalEvents: number
+    upcomingEvents: number
+    totalBookings: number
+    totalRooms: number
+  }
+  recentBookings?: Booking[]
+}>(), {
+  stats: () => ({
+    totalEvents: 0,
+    upcomingEvents: 0,
+    totalBookings: 0,
+    totalRooms: 0,
+  }),
+  recentBookings: () => [],
 })
 
 const bookingCodeForm = useForm({
@@ -43,34 +47,19 @@ const lookupBookingCode = () => {
   })
 }
 
+const openBooking = (booking: Booking) => {
+  router.visit(route('admin.events.show', { event: booking.event_id, booking_id: booking.id }))
+}
+
 // Auto-refresh dashboard every 5 seconds
-usePoll(5000, {
+usePoll(5000, {}, {
   keepAlive: true
 })
 
-// Helper functions for recent bookings display
-const getBookingDisplayName = (booking) => {
-  if (booking.user) {
-    return booking.user.name
-  }
-  return booking.name || 'Unknown'
-}
-
-const getBookerType = (booking) => {
-  if (booking.user) {
-    return 'User'
-  }
-  return booking.type === 'admin' ? 'Admin' : 'Manual'
-}
-
-const getSeatInfo = (booking) => {
-  if (!booking.seat) return 'N/A'
-  return `${booking.seat.row.block.name} - ${booking.seat.row.name} - ${booking.seat.label}`
-}
 </script>
 
 <template>
-  <Head :title="title" />
+  <Head title="Dashboard" />
 
   <div>
     <!-- Stats Grid -->
@@ -174,6 +163,7 @@ const getSeatInfo = (booking) => {
               <thead>
                 <tr class="border-b">
                   <th class="text-left p-2 text-xs font-medium text-muted-foreground">Name</th>
+                  <th class="text-left p-2 text-xs font-medium text-muted-foreground">Code</th>
                   <th class="text-left p-2 text-xs font-medium text-muted-foreground">Event</th>
                   <th class="text-left p-2 text-xs font-medium text-muted-foreground">Time</th>
                   <th class="text-left p-2 text-xs font-medium text-muted-foreground">Status</th>
@@ -187,14 +177,14 @@ const getSeatInfo = (booking) => {
                   class="border-b hover:bg-gray-50 transition-colors"
                 >
                   <td class="p-2">
-                    <div class="text-sm font-medium">{{ getBookingDisplayName(booking) }}</div>
-                    <div class="text-xs text-muted-foreground flex items-center gap-1">
-                      {{ getBookerType(booking) }}
-                      <span v-if="booking.booking_code" class="font-mono bg-gray-100 px-1 rounded">{{ booking.booking_code }}</span>
-                    </div>
+                    <BookingIdentityCell :booking="booking" />
                   </td>
                   <td class="p-2">
-                    <div class="text-sm">{{ booking.event.name }}</div>
+                    <span v-if="booking.booking_code" class="text-sm font-mono bg-gray-100 px-1.5 py-0.5 rounded">{{ booking.booking_code }}</span>
+                    <span v-else class="text-xs text-muted-foreground">—</span>
+                  </td>
+                  <td class="p-2">
+                    <div class="text-sm">{{ booking.event?.name }}</div>
                     <div class="text-xs text-muted-foreground">{{ getSeatInfo(booking) }}</div>
                   </td>
                   <td class="p-2">
@@ -215,7 +205,7 @@ const getSeatInfo = (booking) => {
                       variant="ghost"
                       size="sm"
                       class="h-7 px-2"
-                      @click="$inertia.visit(route('admin.events.show', { event: booking.event_id, booking_id: booking.id }))"
+                      @click="openBooking(booking)"
                     >
                       <ExternalLink class="h-3 w-3" />
                     </Button>

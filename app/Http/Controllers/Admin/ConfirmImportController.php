@@ -176,8 +176,9 @@ class ConfirmImportController extends Controller
         // atomic transaction only when the whole queue is done (see GlobalImportSession) - so
         // abandoning a global import half-way leaves nothing booked at all.
         $isGlobal = session()->has('global_import_queue');
+        $createdByName = auth()->user()->name;
 
-        DB::transaction(function () use ($id, $bookableGuests, $allSeatIds, $isGlobal, $writer, $pendingRenames, $removedBookingIds, &$conflictSeatIds) {
+        DB::transaction(function () use ($id, $bookableGuests, $allSeatIds, $isGlobal, $writer, $pendingRenames, $removedBookingIds, $createdByName, &$conflictSeatIds) {
             Seat::whereIn('id', $allSeatIds)->lockForUpdate()->get();
 
             $conflictSeatIds = Booking::where('event_id', $id)
@@ -194,7 +195,7 @@ class ConfirmImportController extends Controller
                     Booking::whereIn('id', $removedBookingIds)->delete();
                 }
 
-                Booking::insert($writer->rows($id, $bookableGuests));
+                Booking::insert($writer->rows($id, $bookableGuests, $createdByName));
             }
         });
 
@@ -228,6 +229,7 @@ class ConfirmImportController extends Controller
                     'guests' => $bookableGuests,
                     'renames' => $pendingRenames,
                     'deletes' => $removedBookingIds,
+                    'created_by_name' => $createdByName,
                 ];
                 session()->put('staged_import', $staged);
 

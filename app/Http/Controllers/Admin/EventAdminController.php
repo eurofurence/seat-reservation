@@ -128,7 +128,7 @@ class EventAdminController extends Controller
 
         // Build bookings query with search
         $bookingsQuery = Booking::where('event_id', $id)
-            ->select('id', 'event_id', 'user_id', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code')
+            ->select('id', 'event_id', 'user_id', 'created_by_name', 'seat_id', 'name', 'comment', 'picked_up_at', 'created_at', 'booking_code', 'type')
             ->withSeatDetails()
             ->with('user:id,name');
 

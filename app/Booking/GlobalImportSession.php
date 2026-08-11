@@ -152,7 +152,7 @@ class GlobalImportSession
                         Booking::whereIn('id', $entry['deletes'])->delete();
                     }
 
-                    Booking::insert($this->writer->rows($eventId, $guests));
+                    Booking::insert($this->writer->rows($eventId, $guests, $entry['created_by_name'] ?? null));
                     $totalBooked += count(collect($guests)->pluck('seat_ids')->flatten());
                 }
             });
