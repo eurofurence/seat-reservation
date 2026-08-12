@@ -25,6 +25,23 @@ Route::get('/up', function () {
 
 Route::redirect('/', '/auth/login')->name('welcome');
 Route::redirect('/login', '/auth/login')->name('login');
+
+// E2E-only login bypass for Playwright tests (tests/e2e/auth.setup.ts). Committed
+// and independent from any manual local-dev login shortcut — always available in
+// local, 404s everywhere else. Logs into the deterministic e2e-admin/e2e-user
+// accounts seeded by `php artisan e2e:seed` (SeedE2EData) — it does not create them.
+if (app()->environment('local')) {
+    Route::get('/e2e-login', function (\Illuminate\Http\Request $request) {
+        $asUser = $request->query('as') === 'user';
+
+        $user = \App\Models\User::where('remote_id', $asUser ? 'e2e-user' : 'e2e-admin')->firstOrFail();
+
+        \Illuminate\Support\Facades\Auth::login($user);
+
+        return redirect()->route($asUser ? 'dashboard' : 'admin.dashboard');
+    })->name('e2e.login');
+}
+
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'show'])->name('dashboard');
     Route::get('/events', [\App\Http\Controllers\EventController::class, 'index'])->name('events.index');

@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test'
 //
 // This is the only spec in the suite that completes a real booking on "E2E
 // Test Event" — the per-user cap there is 2 seats, and other tests reuse
-// this same dev-login user, so keep it that way rather than adding more
+// this same e2e-user account, so keep it that way rather than adding more
 // full bookings against this event elsewhere.
 
 test('user can browse events, pick a seat and complete a booking', async ({ page }) => {

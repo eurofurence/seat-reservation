@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\Room;
 use App\Models\Row;
 use App\Models\Seat;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -22,6 +23,18 @@ class SeedE2EData extends Command
 
     public function handle(): int
     {
+        // Deterministic accounts for the /e2e-login bypass route (see routes/web.php) —
+        // e2e-login only looks these up by remote_id, it no longer creates them itself.
+        User::firstOrCreate(
+            ['remote_id' => 'e2e-admin'],
+            ['name' => 'Dev Admin', 'is_admin' => true, 'avatar' => null]
+        );
+
+        User::firstOrCreate(
+            ['remote_id' => 'e2e-user'],
+            ['name' => 'Dev User', 'is_admin' => false, 'avatar' => null]
+        );
+
         Room::where('name', 'E2E Test Room')->get()->each->delete();
 
         $room = Room::create([
@@ -64,7 +77,7 @@ class SeedE2EData extends Command
 
         // Booking window open, event/deadline in the future -> the happy path. No filler
         // booking here: user/booking-flow.spec.ts and user/seat-selection.spec.ts each book
-        // and/or select real seats on this event (per-user cap is 2, shared dev-login user) -
+        // and/or select real seats on this event (per-user cap is 2, shared e2e-user account) -
         // keep it seat-collision-free for them. The seat-conflict-redirect spec uses
         // "Row 1-5" and admin/manual-booking.spec.ts's pickup-toggle test uses "Row 2-1",
         // which those specs don't touch either.

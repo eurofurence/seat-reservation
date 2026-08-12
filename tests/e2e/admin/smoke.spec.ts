@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 // Admin smoke checks — confirms the core admin surfaces render for an
-// authenticated admin session (via the dev-login bypass + storageState).
+// authenticated admin session (via the e2e-login bypass + storageState).
 
 test('admin dashboard loads', async ({ page }) => {
   await page.goto('/admin')

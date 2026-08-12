@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test'
  * we don't manage the webServer lifecycle here since Sail owns it.
  * Run `php artisan e2e:seed` before the suite to get deterministic fixtures.
  *
- * workers: 1 always, even locally. Every "user" spec shares ONE dev-login
+ * workers: 1 always, even locally. Every "user" spec shares ONE e2e-login
  * session/cookie (same for "admin"), and Laravel's session flash data is
  * read-and-cleared per request - concurrent requests under the same session
  * ID race on save and can silently drop each other's flash message. Verified
