@@ -18,12 +18,13 @@ docker compose exec laravel.test npx playwright install --with-deps chromium
 
 ## Before every run
 
-1. Paste the local-only `/dev-login` bypass route into `routes/web.php` (see
-   `auth.setup.ts` for the exact snippet/behavior). It's intentionally never
-   committed — remove it again before committing app changes.
-2. Seed deterministic fixtures: `docker compose exec laravel.test php artisan e2e:seed`
-   (also runs automatically via the `pretest:e2e` npm script, so step 3 alone
-   is enough in practice).
+Seed deterministic fixtures: `docker compose exec laravel.test php artisan e2e:seed`
+(also runs automatically via the `pretest:e2e` npm script, so running `npm run
+test:e2e` directly is enough in practice). This also creates the `e2e-admin`/
+`e2e-user` accounts that the committed `/e2e-login` route (routes/web.php,
+local-only, independent from the separate manual `/dev-login` local-dev
+shortcut) logs into — the route itself only looks them up, no manual
+paste-in step needed.
 
 ## Running
 
@@ -39,10 +40,11 @@ docker compose exec laravel.test npx playwright test --project=admin
 ```
 
 `workers: 1` is hardcoded in `playwright.config.ts` (even locally) - every
-"user" spec shares ONE dev-login session/cookie (same for "admin"), and
-Laravel's session-flash data is read-and-cleared per request, so concurrent
-requests under the same session ID can silently drop each other's flash
-message. Don't remove/raise it without re-verifying that isn't still true.
+"user" spec shares ONE `e2e-user` session/cookie (same for "admin" and
+`e2e-admin`), and Laravel's session-flash data is read-and-cleared per
+request, so concurrent requests under the same session ID can silently drop
+each other's flash message. Don't remove/raise it without re-verifying that
+isn't still true.
 
 On a slow machine, running the whole suite can take a minute or two - prefer
 scoping to a single file/project while iterating on one spec (see above).
@@ -79,7 +81,7 @@ it, each isolated from the others since booking limits are per-event:
 - **E2E Test Event** — booking window open, event/deadline in the future.
   Real POSTed bookings/selections against this event are spread across a few
   specs, each pinned to its own seat (see comments in `SeedE2EData.php` and
-  each spec) to avoid colliding with the shared dev-login user's 2-seat cap.
+  each spec) to avoid colliding with the shared `e2e-user` account's 2-seat cap.
 - **E2E Sold Out Event** — `max_tickets` already met by a filler booking.
 - **E2E Not Open Event** — `booking_starts_at` in the future. Has a filler
   booking, which must stay hidden while the window isn't open yet.

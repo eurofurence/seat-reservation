@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test'
 // "E2E Closed Reservation Event" / "E2E Sold Out Event" fixtures (see
 // app/Console/Commands/SeedE2EData.php). These specs only browse or get
 // redirected — none of them complete a real booking, so they don't touch
-// the shared dev-login user's 2-seat cap on "E2E Test Event"
+// the shared e2e-user account's 2-seat cap on "E2E Test Event"
 // (see user/booking-flow.spec.ts for the one spec that does).
 
 test('booking window not yet open: layout is browsable with a banner, booked seats hidden, and continue is blocked', async ({ page }) => {
