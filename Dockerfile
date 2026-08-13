@@ -44,7 +44,7 @@ COPY --from=vite /app/public/build ./public/build
 COPY composer.json composer.lock /app/
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-progress --no-interaction
 COPY . /app/
-RUN composer install \
+RUN composer install --no-dev \
     && rm -rf .env bootstrap/cache/*.php auth.json \
     && chown -R www-data:www-data /app /data /config
 
