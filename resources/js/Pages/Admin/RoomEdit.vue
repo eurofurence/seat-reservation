@@ -26,7 +26,7 @@ const form = useForm({
 const submit = () => {
   form.put(route('admin.rooms.update', props.room.id), {
     onSuccess: () => {
-      router.visit('/admin/rooms')
+      router.visit(route('admin.rooms.index'))
     },
   })
 }
@@ -37,7 +37,7 @@ const submit = () => {
 
   <div class="max-w-2xl">
     <div class="flex items-center mb-6">
-      <Button variant="ghost" size="sm" @click="router.visit('/admin/rooms')" class="mr-4">
+      <Button variant="ghost" size="sm" @click="router.visit(route('admin.rooms.index'))" class="mr-4">
         <ArrowLeft class="h-4 w-4" />
       </Button>
     </div>
@@ -65,7 +65,7 @@ const submit = () => {
             <Button
               type="button"
               variant="outline"
-              @click="router.visit('/admin/rooms')"
+              @click="router.visit(route('admin.rooms.index'))"
               :disabled="form.processing"
             >
               Cancel

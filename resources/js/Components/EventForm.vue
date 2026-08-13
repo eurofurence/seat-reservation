@@ -2,7 +2,7 @@
 import { useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { Input } from '@/Components/ui/input'
-import { EVENT_NAME_MAX, MAX_TICKETS_MIN } from '@/lib/validation'
+import { EVENT_NAME_MAX, MAX_TICKETS_MIN, isValidMaxTickets } from '@/lib/validation'
 import { Button } from '@/Components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import DateTimePicker from '@/Components/DateTimePicker.vue'
@@ -45,8 +45,8 @@ const form = useForm({
 const isEditMode = computed(() => !!props.event?.id)
 
 const validateMaxTickets = () => {
-  if (form.max_tickets !== '' && form.max_tickets !== null && Number(form.max_tickets) < MAX_TICKETS_MIN) {
-    form.setError('max_tickets', `Max tickets must be at least ${MAX_TICKETS_MIN} or empty.`)
+  if (!isValidMaxTickets(form.max_tickets)) {
+    form.setError('max_tickets', `Max tickets must be a whole number of at least ${MAX_TICKETS_MIN} or empty.`)
     return false
   }
 

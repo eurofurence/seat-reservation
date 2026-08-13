@@ -910,6 +910,15 @@ class BookingControllerTest extends TestCase
         ]);
 
         $this->actingAs($this->user)
+            ->put(route('bookings.update', [$this->event, $booking]), ['name' => $atLimit])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'name' => $atLimit,
+        ]);
+
+        $this->actingAs($this->user)
             ->put(route('bookings.update', [$this->event, $booking]), ['name' => $overLimit])
             ->assertSessionHasErrors(['name']);
     }

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Head, Link, useForm, router } from "@inertiajs/vue3"
 import { computed, ref } from 'vue'
 import Layout from "@/Layouts/Layout.vue"
@@ -27,27 +27,38 @@ import {
 } from 'lucide-vue-next'
 import dayjs, { fmt } from "@/lib/datetime"
 import { ATTENDEE_NAME_MAX, BOOKING_COMMENT_MAX } from "@/lib/validation"
+import type { Booking, BookingEvent } from '@/types/booking'
+import type { LayoutBlock, PropStageBlock } from '@/types/layout'
 
 defineOptions({layout: Layout})
 
-const props = defineProps({
-    booking: Object,
-    event: Object,
-    blocks: Array,
-    stageBlocks: Array,
-    bookedSeats: Array,
-    userBookedSeats: Array
-})
+// This page always loads its event/booking with room and seat details eager-loaded
+// (see BookingController::show), so both are guaranteed present here.
+interface PageEvent extends BookingEvent {
+    room: { name: string }
+}
+interface PageBooking extends Booking {
+    seat: NonNullable<Booking['seat']>
+}
+
+const props = defineProps<{
+    booking: PageBooking
+    event: PageEvent
+    blocks: LayoutBlock[]
+    stageBlocks: PropStageBlock[]
+    bookedSeats: number[]
+    userBookedSeats: number[]
+}>()
 
 const form = useForm({
-    comment: props.booking.comment,
-    name: props.booking.name || props.booking.guest_name
+    comment: props.booking.comment ?? '',
+    name: props.booking.name || props.booking.guest_name || ''
 })
 
 // Collapsible seat layout state
 const showRoomPlan = ref(false)
 
-const formatDateAtTime = (dateTime) => fmt(dateTime, 'MMMM D, YYYY [at] HH:mm')
+const formatDateAtTime = (dateTime: string | null | undefined) => fmt(dateTime, 'MMMM D, YYYY [at] HH:mm')
 
 // Check if user can modify booking
 const canModify = computed(() => {

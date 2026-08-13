@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog'
@@ -7,11 +7,12 @@ import { Input } from '@/Components/ui/input'
 import { Textarea } from '@/Components/ui/textarea'
 import { Label } from '@/Components/ui/label'
 import { GUEST_NAME_MAX, ADMIN_COMMENT_MAX } from '@/lib/validation'
+import type { Booking } from '@/types/booking'
 
-const props = defineProps({
-    eventId: [Number, String],
-    booking: Object,
-})
+const props = defineProps<{
+    eventId: number | string
+    booking?: Booking | null
+}>()
 
 const open = defineModel('open', { type: Boolean, default: false })
 
@@ -36,7 +37,7 @@ watch(() => props.booking, (booking) => {
 }, { immediate: true })
 
 const save = () => {
-    if (!form.name.trim()) return
+    if (!form.name.trim() || !props.booking) return
 
     form.put(route('admin.events.update-booking', [props.eventId, props.booking.id]), {
         onSuccess: () => {
