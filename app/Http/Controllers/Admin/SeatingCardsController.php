@@ -109,10 +109,7 @@ class SeatingCardsController extends Controller
 
             $pages = [];
 
-            $masterCardMaxheight = 110;
-            if (Str::length($event->name) > 19) { // fast hacky fix
-                $masterCardMaxheight = 90;
-            }
+            $masterCardMaxheight = self::masterCardMaxHeight($event->name);
 
             $pages[] = view('pdf.master-page', [
                 'event_name' => $event->name,
@@ -168,5 +165,12 @@ class SeatingCardsController extends Controller
 
             return back()->with('error', 'Failed to generate seating cards. Please try again or contact support.');
         }
+    }
+
+    // ponytail: 19-char cutoff is a rough heuristic, not measured PDF layout. Upgrade
+    // path: measure the actual rendered text width and size the master card from that.
+    public static function masterCardMaxHeight(string $eventName): int
+    {
+        return Str::length($eventName) > 19 ? 90 : 110;
     }
 }

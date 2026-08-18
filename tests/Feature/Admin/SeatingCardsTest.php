@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\Admin\SeatingCardsController;
 use App\Models\Block;
 use App\Models\Booking;
 use App\Models\Event;
@@ -15,6 +16,16 @@ use Tests\TestCase;
 class SeatingCardsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_master_card_max_height_for_19_character_event_name()
+    {
+        $this->assertSame(110, SeatingCardsController::masterCardMaxHeight(str_repeat('a', 19)));
+    }
+
+    public function test_master_card_max_height_for_20_character_event_name()
+    {
+        $this->assertSame(90, SeatingCardsController::masterCardMaxHeight(str_repeat('a', 20)));
+    }
 
     public function test_seating_cards_generates_pdf_download()
     {
