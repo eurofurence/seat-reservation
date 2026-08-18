@@ -27,6 +27,16 @@ class SeatingCardsTest extends TestCase
         $this->assertSame(90, SeatingCardsController::masterCardMaxHeight(str_repeat('a', 20)));
     }
 
+    public function test_master_card_max_height_for_19_character_multibyte_event_name()
+    {
+        $this->assertSame(110, SeatingCardsController::masterCardMaxHeight(str_repeat('é', 19)));
+    }
+
+    public function test_master_card_max_height_for_20_character_multibyte_event_name()
+    {
+        $this->assertSame(90, SeatingCardsController::masterCardMaxHeight(str_repeat('é', 20)));
+    }
+
     public function test_seating_cards_generates_pdf_download()
     {
         // Create a user with admin permissions
