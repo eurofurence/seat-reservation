@@ -110,7 +110,7 @@ class SeatingCardsController extends Controller
             $pages = [];
 
             $masterCardMaxheight = 110;
-            if (strlen($event->name) > 19) { // fast hacky fix
+            if (Str::length($event->name) > 19) { // fast hacky fix
                 $masterCardMaxheight = 90;
             }
 
