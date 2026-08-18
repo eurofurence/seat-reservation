@@ -1,5 +1,9 @@
 @extends('pdf.card-layout')
 
+@section('styles')
+    .card-name { font-size: 90pt; }
+@endsection
+
 @section('content')
     <div class="text-content">
         <div class="card-name">
