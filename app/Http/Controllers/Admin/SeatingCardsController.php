@@ -109,10 +109,15 @@ class SeatingCardsController extends Controller
 
             $pages = [];
 
+            $masterCardMaxheight = 110;
+            if (strlen($event->name) > 19) { // fast hacky fix
+                $masterCardMaxheight = 90;
+            }
+
             $pages[] = view('pdf.master-page', [
                 'event_name' => $event->name,
                 'room_name' => $room->name,
-                'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $masterMarkerBlocks, $bookedSeatIds, $mpdf),
+                'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $masterMarkerBlocks, $bookedSeatIds, $mpdf, $masterCardMaxheight),
             ])->render();
 
             $currentBlockId = null;
