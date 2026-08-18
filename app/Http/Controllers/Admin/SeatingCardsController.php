@@ -109,10 +109,12 @@ class SeatingCardsController extends Controller
 
             $pages = [];
 
+            $masterCardMaxheight = self::masterCardMaxHeight($event->name);
+
             $pages[] = view('pdf.master-page', [
                 'event_name' => $event->name,
                 'room_name' => $room->name,
-                'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $masterMarkerBlocks, $bookedSeatIds, $mpdf),
+                'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $masterMarkerBlocks, $bookedSeatIds, $mpdf, $masterCardMaxheight),
             ])->render();
 
             $currentBlockId = null;
@@ -163,5 +165,12 @@ class SeatingCardsController extends Controller
 
             return back()->with('error', 'Failed to generate seating cards. Please try again or contact support.');
         }
+    }
+
+    // ponytail: 19-char cutoff is a rough heuristic, not measured PDF layout. Upgrade
+    // path: measure the actual rendered text width and size the master card from that.
+    public static function masterCardMaxHeight(string $eventName): int
+    {
+        return Str::length($eventName) > 19 ? 90 : 110;
     }
 }

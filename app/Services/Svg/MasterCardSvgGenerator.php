@@ -33,7 +33,7 @@ class MasterCardSvgGenerator
      * @param  Collection  $markerBlocks  Entrance and comment marker blocks.
      * @param  array<int,bool>  $bookedSeatIds  Set of booked seat IDs.
      */
-    public function render(Collection $blocks, Collection $stageBlocks, Collection $markerBlocks, array $bookedSeatIds, Mpdf $mpdf): string
+    public function render(Collection $blocks, Collection $stageBlocks, Collection $markerBlocks, array $bookedSeatIds, Mpdf $mpdf, int $maxHeight = 110): string
     {
         $cells = $this->cells($blocks, $stageBlocks, $markerBlocks);
         if (empty($cells)) {
@@ -78,7 +78,7 @@ class MasterCardSvgGenerator
             };
         }
 
-        $scale = min(200 / $width, 110 / $height);
+        $scale = min(200 / $width, $maxHeight / $height);
 
         return $this->svg->document($width, $height, $width * $scale, $height * $scale, $svg.$entranceSvg);
     }
