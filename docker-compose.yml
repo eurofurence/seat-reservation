@@ -20,6 +20,7 @@ services:
           #  SUPERVISOR_PHP_COMMAND: "/usr/bin/php -d variables_order=EGPCS /var/www/html/artisan octane:start --admin-port=2019 --server=frankenphp --host=0.0.0.0 --port=80"
         volumes:
             - '.:/var/www/html:z'
+            - 'sail-playwright-browsers:/root/.cache/ms-playwright'
         networks:
             - sail
         depends_on:
@@ -54,3 +55,4 @@ networks:
 volumes:
     sail-mysql:
         driver: local
+    sail-playwright-browsers:
