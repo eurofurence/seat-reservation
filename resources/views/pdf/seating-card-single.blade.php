@@ -2,6 +2,20 @@
 
 @section('styles')
     .card-name { font-size: 90pt; }
+    .event-name {
+        position: fixed;
+        bottom: 20mm;
+        left: 0;
+        right: 0;
+        margin: 0;
+        width: 100%;
+        text-align: center;
+        font-size: 17pt;
+        line-height: 1;
+    }
+    .bigger {
+        font-size: 20pt;
+    }
 @endsection
 
 @section('content')
@@ -29,4 +43,9 @@
         </table>
     </div>
     @endif
+    <div class="event-name">
+        for
+        <br>
+        <span class="bigger">{{ $event->name }}</span>
+    </div>
 @endsection
