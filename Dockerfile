@@ -1,4 +1,4 @@
-FROM dunglas/frankenphp:1.9-php8.4-bookworm as base
+FROM dunglas/frankenphp:1.12-php8.4-bookworm as base
 WORKDIR /app
 
 ENV COMPOSER_MEMORY_LIMIT=-1
@@ -44,8 +44,10 @@ COPY --from=vite /app/public/build ./public/build
 COPY composer.json composer.lock /app/
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-progress --no-interaction
 COPY . /app/
-RUN chmod 777 -R bootstrap storage \
-    && composer install \
+RUN composer install --no-dev \
     && rm -rf .env bootstrap/cache/*.php auth.json \
-    && chown -R www-data:www-data /app
+    && chown -R www-data:www-data /app /data /config
+
+USER www-data
+
 CMD sh -c "php artisan octane:start --host=0.0.0.0 --port=80 --admin-port=2019 --server=frankenphp"
