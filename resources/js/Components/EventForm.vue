@@ -2,6 +2,7 @@
 import { useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { Input } from '@/Components/ui/input'
+import { EVENT_NAME_MAX, MAX_TICKETS_MIN, isValidMaxTickets } from '@/lib/validation'
 import { Button } from '@/Components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import DateTimePicker from '@/Components/DateTimePicker.vue'
@@ -43,7 +44,21 @@ const form = useForm({
 
 const isEditMode = computed(() => !!props.event?.id)
 
+const validateMaxTickets = () => {
+  if (!isValidMaxTickets(form.max_tickets)) {
+    form.setError('max_tickets', `Max tickets must be a whole number of at least ${MAX_TICKETS_MIN} or empty.`)
+    return false
+  }
+
+  form.clearErrors('max_tickets')
+  return true
+}
+
 const submitForm = () => {
+  if (!validateMaxTickets()) {
+    return
+  }
+
   form.transform((data) => ({
     ...data,
     starts_at: data.starts_at || null,
@@ -73,6 +88,7 @@ const cancel = () => {
       <Input
         v-model="form.name"
         placeholder="Enter event name"
+        :maxlength="EVENT_NAME_MAX"
         :class="{ 'border-red-500': form.errors.name }"
       />
       <span v-if="form.errors.name" class="text-sm text-red-500">{{ form.errors.name }}</span>
@@ -123,8 +139,10 @@ const cancel = () => {
       <Input
         v-model="form.max_tickets"
         type="number"
+        :min="MAX_TICKETS_MIN"
         placeholder="Leave empty for unlimited"
         :class="{ 'border-red-500': form.errors.max_tickets }"
+        @change="validateMaxTickets"
       />
       <span v-if="form.errors.max_tickets" class="text-sm text-red-500">{{ form.errors.max_tickets }}</span>
     </div>

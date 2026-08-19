@@ -297,7 +297,7 @@ class BookingController extends Controller
         }
 
         $data = $request->validate([
-            'name' => 'sometimes|string|max:255',
+            'name' => 'sometimes|string|max:24',
             'comment' => 'sometimes|nullable|string|max:255',
         ]);
 

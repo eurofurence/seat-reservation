@@ -885,6 +885,45 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
+    public function booking_name_is_capped_at_24_characters()
+    {
+        // Boundary check pinning the name cap the ATTENDEE_NAME_MAX frontend constant mirrors.
+        $atLimit = str_repeat('a', 24);
+        $overLimit = str_repeat('a', 25);
+
+        $this->actingAs($this->user)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => [['seat_id' => $this->seats[0]->id, 'name' => $overLimit, 'comment' => null]],
+            ])
+            ->assertSessionHasErrors(['seats.0.name']);
+
+        $this->actingAs($this->user)
+            ->post(route('bookings.store', $this->event), [
+                'seats' => [['seat_id' => $this->seats[0]->id, 'name' => $atLimit, 'comment' => null]],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $booking = Booking::factory()->create([
+            'user_id' => $this->user->id,
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[1]->id,
+        ]);
+
+        $this->actingAs($this->user)
+            ->put(route('bookings.update', [$this->event, $booking]), ['name' => $atLimit])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'name' => $atLimit,
+        ]);
+
+        $this->actingAs($this->user)
+            ->put(route('bookings.update', [$this->event, $booking]), ['name' => $overLimit])
+            ->assertSessionHasErrors(['name']);
+    }
+
+    /** @test */
     public function guests_cannot_access_booking_routes()
     {
         $booking = Booking::factory()->create([

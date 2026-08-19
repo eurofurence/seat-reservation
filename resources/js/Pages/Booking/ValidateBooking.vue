@@ -10,6 +10,7 @@ import { Textarea } from '@/Components/ui/textarea'
 import { Alert } from '@/Components/ui/alert'
 import { ArrowLeft, Calendar, MapPin, Clock, AlertCircle, Check } from 'lucide-vue-next'
 import { fmt } from "@/lib/datetime"
+import { ATTENDEE_NAME_MAX, BOOKING_COMMENT_MAX } from "@/lib/validation"
 import TimezoneNote from "@/Components/TimezoneNote.vue"
 
 defineOptions({layout: FullWidthLayout})
@@ -33,17 +34,17 @@ const submitting = ref(false)
 
 function submitBooking() {
     if (submitting.value) return
-    
+
     // Validate that all names are filled
     const allNamesProvided = form.seats.every(seat => seat.name && seat.name.trim())
-    
+
     if (!allNamesProvided) {
         alert('Please provide names for all seats')
         return
     }
-    
+
     submitting.value = true
-    
+
     form.post(route('bookings.store', { event: props.event.id }), {
         onSuccess: () => {
             submitting.value = false
@@ -59,14 +60,14 @@ function goBack() {
     const params = {
         seats: props.seatIds
     }
-    
+
     router.get(route('bookings.create', { event: props.event.id }), params)
 }
 </script>
 
 <template>
   <Head title="Confirm Booking Details" />
-  
+
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <div class="bg-white shadow-sm border-b">
@@ -117,13 +118,13 @@ function goBack() {
       <!-- Seat Details Form -->
       <div class="space-y-4">
         <h2 class="text-lg font-semibold">Enter Details for Each Seat</h2>
-        
+
         <Card v-for="(seat, index) in seats" :key="seat.id" class="p-4">
           <div class="space-y-4">
             <div class="font-medium text-sm text-gray-600">
               Seat: {{ seat.row.block.name }} - {{ seat.row.name }} - {{ seat.label }}
             </div>
-            
+
             <div class="space-y-2">
               <Label :for="`name-${index}`">
                 Name <span class="text-red-500">*</span>
@@ -132,13 +133,14 @@ function goBack() {
                 :id="`name-${index}`"
                 v-model="form.seats[index].name"
                 placeholder="Enter attendee name"
+                :maxlength="ATTENDEE_NAME_MAX"
                 :class="{ 'border-red-500': form.errors[`seats.${index}.name`] }"
               />
               <p v-if="form.errors[`seats.${index}.name`]" class="text-sm text-red-500">
                 {{ form.errors[`seats.${index}.name`] }}
               </p>
             </div>
-            
+
             <div class="space-y-2">
               <Label :for="`comment-${index}`">
                 Comment (Optional)
@@ -147,6 +149,7 @@ function goBack() {
                 :id="`comment-${index}`"
                 v-model="form.seats[index].comment"
                 placeholder="Optional comment"
+                :maxlength="BOOKING_COMMENT_MAX"
                 :rows="2"
               />
             </div>
@@ -174,7 +177,7 @@ function goBack() {
           <ArrowLeft class="mr-2 h-4 w-4" />
           Back to Seat Selection
         </Button>
-        
+
         <Button
           size="lg"
           @click="submitBooking"
