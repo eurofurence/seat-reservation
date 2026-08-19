@@ -110,10 +110,30 @@ class SeatingCardsController extends Controller
             $pages = [];
 
             $masterCardMaxheight = self::masterCardMaxHeight($event->name);
+            $orderCardMaxheight = self::orderCardMaxHeight($event->name);
+
+            $totalCards = 1;
+
+            $currentBlockId = null;
+            foreach ($bookings as $booking) {
+                $block = $booking->seat->row->block;
+
+                if ($block->id !== $currentBlockId) {
+                    $currentBlockId = $block->id;
+
+                    $totalCards++;
+                }
+
+                $totalCards++;
+            }
+
+            $currentCard = 1;
 
             $pages[] = view('pdf.master-page', [
+                'pagination' => ($currentCard++).'/'.$totalCards,
                 'event_name' => $event->name,
                 'room_name' => $room->name,
+                'total_bookings' => $bookings->count(),
                 'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $masterMarkerBlocks, $bookedSeatIds, $mpdf, $masterCardMaxheight),
             ])->render();
 
@@ -128,17 +148,19 @@ class SeatingCardsController extends Controller
                     $previewBlock = $previewBlocks->get($block->id);
 
                     $pages[] = view('pdf.order-card', [
+                        'pagination' => ($currentCard++).'/'.$totalCards,
                         'info' => (object) [
                             'event_name' => $event->name,
                             'block_name' => 'Block '.$block->name,
                         ],
                         'preview' => $previewBlock
-                            ? $orderCard->render($previewBlock, $bookedSeatIds, $mpdf)
+                            ? $orderCard->render($previewBlock, $bookedSeatIds, $mpdf, $orderCardMaxheight)
                             : null,
                     ])->render();
                 }
 
                 $pages[] = view('pdf.seating-card-single', [
+                    'pagination' => ($currentCard++).'/'.$totalCards,
                     'booking' => $booking,
                     'event' => $event,
                 ])->render();
@@ -172,5 +194,12 @@ class SeatingCardsController extends Controller
     public static function masterCardMaxHeight(string $eventName): int
     {
         return Str::length($eventName) > 19 ? 90 : 110;
+    }
+
+    // ponytail: 19-char cutoff is a rough heuristic, not measured PDF layout. Upgrade
+    // path: measure the actual rendered text width and size the order card from that.
+    public static function orderCardMaxHeight(string $eventName): int
+    {
+        return Str::length($eventName) > 19 ? 90 : 105;
     }
 }

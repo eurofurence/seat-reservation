@@ -118,13 +118,26 @@
             letter-spacing: 2px;
             background-color: #000;
             padding: 4mm 10mm;
+            padding-bottom: 3mm;
             white-space: nowrap;
         }
 
         .not-picked-up-wrapper {
             position: fixed;
-            bottom: 20mm;
+            top: 20mm;
             right: 20mm;
+        }
+
+        .pagination {
+            position: fixed;
+            top: 20mm;
+            left: 20mm;
+            width: 100mm;
+            margin: 0;
+            font-size: 17pt;
+            line-height: 1;
+            text-align: left;
+            white-space: nowrap;
         }
 
         @yield('styles')
@@ -135,5 +148,11 @@
         @yield('content')
     </div>
     @yield('overlay')
+
+    @if(!empty($pagination))
+    <div class="pagination">
+        {{ $pagination }}
+    </div>
+    @endif
 </body>
 </html>
