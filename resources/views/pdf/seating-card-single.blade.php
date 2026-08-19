@@ -12,6 +12,7 @@
         text-align: center;
         font-size: 17pt;
         line-height: 1;
+        color: #d2d2d2;
     }
     .bigger {
         font-size: 20pt;

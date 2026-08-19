@@ -138,6 +138,8 @@
             line-height: 1;
             text-align: left;
             white-space: nowrap;
+
+            color: #d2d2d2;
         }
 
         @yield('styles')
