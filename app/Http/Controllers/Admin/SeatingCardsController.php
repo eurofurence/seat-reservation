@@ -113,20 +113,7 @@ class SeatingCardsController extends Controller
             $masterCardMaxheight = self::masterCardMaxHeight($event->name);
             $orderCardMaxheight = self::orderCardMaxHeight($event->name);
 
-            $totalCards = 1;
-
-            $currentBlockId = null;
-            foreach ($bookings as $booking) {
-                $block = $booking->seat->row->block;
-
-                if ($block->id !== $currentBlockId) {
-                    $currentBlockId = $block->id;
-
-                    $totalCards++;
-                }
-
-                $totalCards++;
-            }
+            $totalCards = self::totalCardCount($bookings);
 
             $currentCard = 1;
 
@@ -202,5 +189,26 @@ class SeatingCardsController extends Controller
     public static function orderCardMaxHeight(string $eventName): int
     {
         return Str::length($eventName) > 19 ? 90 : 105;
+    }
+
+    // Master overview page + one order-card page per distinct block + one card per booking.
+    public static function totalCardCount(iterable $bookings): int
+    {
+        $total = 1;
+        $currentBlockId = null;
+
+        foreach ($bookings as $booking) {
+            $blockId = $booking->seat->row->block->id;
+
+            if ($blockId !== $currentBlockId) {
+                $currentBlockId = $blockId;
+
+                $total++;
+            }
+
+            $total++;
+        }
+
+        return $total;
     }
 }
