@@ -32,20 +32,7 @@ class SeatingCardsController extends Controller
             }
 
             // Wind seats by row order so placing the cards is easier and faster for the runners.
-            $bookings = $bookingsQuery->get()->sortBy(function ($booking) {
-                $block = $booking->seat->row->block;
-                $rowOrder = $booking->seat->row->order;
-                $seatNumber = $booking->seat->number;
-
-                $seatSort = $rowOrder % 2 === 1 ? $seatNumber : -$seatNumber;
-
-                return [
-                    $block->position_y,
-                    $block->position_x,
-                    $rowOrder,
-                    $seatSort,
-                ];
-            });
+            $bookings = self::sortBookingsForPrinting($bookingsQuery->get());
 
             if ($bookings->isEmpty()) {
                 return back()->with('error', 'No bookings found for this event to generate seating cards.');
@@ -209,5 +196,25 @@ class SeatingCardsController extends Controller
         }
 
         return $total;
+    }
+
+    // Order bookings by block position, then wind seats by row order (ascending on odd
+    // rows, descending on even) so placing the cards is faster for the runners.
+    public static function sortBookingsForPrinting($bookings)
+    {
+        return $bookings->sortBy(function ($booking) {
+            $block = $booking->seat->row->block;
+            $rowOrder = $booking->seat->row->order;
+            $seatNumber = $booking->seat->number;
+
+            $seatSort = $rowOrder % 2 === 1 ? $seatNumber : -$seatNumber;
+
+            return [
+                $block->position_y,
+                $block->position_x,
+                $rowOrder,
+                $seatSort,
+            ];
+        });
     }
 }

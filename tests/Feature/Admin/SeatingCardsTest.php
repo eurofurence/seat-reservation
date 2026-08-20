@@ -73,12 +73,48 @@ class SeatingCardsTest extends TestCase
         $this->assertSame(8, SeatingCardsController::totalCardCount($bookings));
     }
 
+    public function test_sort_bookings_for_printing_groups_blocks_and_winds_rows()
+    {
+        // Sorting orders bookings by block position, then winds seats:
+        // ascending on odd rows, descending on even rows.
+        $bookings = collect([
+            $this->makeSeatingBookingStub('B-r2-s1', blockId: 2, posX: 0, posY: 1, rowOrder: 2, seatNumber: 1),
+            $this->makeSeatingBookingStub('A-r1-s2', blockId: 1, posX: 0, posY: 0, rowOrder: 1, seatNumber: 2),
+            $this->makeSeatingBookingStub('B-r2-s2', blockId: 2, posX: 0, posY: 1, rowOrder: 2, seatNumber: 2),
+            $this->makeSeatingBookingStub('A-r1-s1', blockId: 1, posX: 0, posY: 0, rowOrder: 1, seatNumber: 1),
+        ]);
+
+        $sorted = SeatingCardsController::sortBookingsForPrinting($bookings);
+
+        $this->assertSame(
+            ['A-r1-s1', 'A-r1-s2', 'B-r2-s2', 'B-r2-s1'],
+            $sorted->pluck('label')->values()->all()
+        );
+
+        // master + 2 order cards + 4 bookings.
+        $this->assertSame(7, SeatingCardsController::totalCardCount($sorted));
+    }
+
     private function makeBookingStub(int $blockId): object
     {
         return (object) [
             'seat' => (object) [
                 'row' => (object) [
                     'block' => (object) ['id' => $blockId],
+                ],
+            ],
+        ];
+    }
+
+    private function makeSeatingBookingStub(string $label, int $blockId, int $posX, int $posY, int $rowOrder, int $seatNumber): object
+    {
+        return (object) [
+            'label' => $label,
+            'seat' => (object) [
+                'number' => $seatNumber,
+                'row' => (object) [
+                    'order' => $rowOrder,
+                    'block' => (object) ['id' => $blockId, 'position_x' => $posX, 'position_y' => $posY],
                 ],
             ],
         ];
@@ -309,6 +345,7 @@ class SeatingCardsTest extends TestCase
         $room = Room::factory()->create();
         $event = Event::factory()->create([
             'room_id' => $room->id,
+            'name' => 'Winter Gala 2026',
         ]);
         $block = Block::factory()->create(['room_id' => $room->id, 'name' => 'A', 'type' => 'seating']);
         $row = Row::factory()->create(['block_id' => $block->id, 'name' => '1']);
@@ -328,5 +365,6 @@ class SeatingCardsTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('Not Picked Up', $html);
+        $this->assertStringContainsString('Winter Gala 2026', $html);
     }
 }
