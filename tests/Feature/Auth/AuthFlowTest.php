@@ -2,10 +2,14 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AuthFlowTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_login_page_loads_without_redirect_loop()
     {
         $response = $this->get('/auth/login');
@@ -71,5 +75,28 @@ class AuthFlowTest extends TestCase
         // Should attempt to redirect to OAuth provider (will be an Inertia location response)
         $this->assertNotEquals(419, $response->getStatusCode());
         $this->assertNotEquals(500, $response->getStatusCode());
+    }
+
+    public function test_logout_clears_authenticated_session()
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->withHeader('X-Inertia', 'true')
+            ->post('/auth/logout');
+
+        // Inertia::location on a non-GET Inertia request returns a 409 with the target in the header.
+        $response->assertStatus(409);
+        $response->assertHeader('X-Inertia-Location', 'https://identity.eurofurence.org/oauth2/sessions/logout');
+        $this->assertGuest();
+    }
+
+    public function test_frontchannel_logout_callback_clears_authenticated_session()
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/auth/frontchannel-logout');
+
+        $this->assertGuest();
     }
 }
