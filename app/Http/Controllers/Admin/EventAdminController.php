@@ -137,7 +137,7 @@ class EventAdminController extends Controller
             $bookingsQuery->where('booking_code', strtoupper($bookingCode));
         }
         // Apply search filter if provided (but not if booking code is set)
-        elseif ($search = $request->get('search')) {
+        elseif (is_string($search = $request->get('search')) && $search !== '') {
             $bookingsQuery->where(function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('comment', 'like', "%{$search}%")

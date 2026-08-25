@@ -220,6 +220,75 @@ class EventAdminController2Test extends TestCase
     }
 
     /** @test */
+    public function booking_search_for_bare_row_does_not_match_via_row_name()
+    {
+        $this->actingAs($this->admin);
+        $event = Event::factory()->create(['room_id' => $this->room->id]);
+
+        $block = Block::factory()->seating()->create(['room_id' => $this->room->id, 'name' => 'Block A']);
+        $row = Row::factory()->create(['block_id' => $block->id, 'name' => 'Row 1']);
+        $seat = Seat::factory()->create(['row_id' => $row->id, 'label' => 'A1']);
+
+        Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat->id, 'name' => 'John Doe']);
+
+        $response = $this->get(route('admin.events.show', $event->id).'?search=Row');
+
+        $response->assertOk();
+
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertSame('Row', $props['search']);
+        $this->assertCount(0, $props['bookings']['data']);
+    }
+
+    /** @test */
+    public function booking_search_with_row_number_matches_the_row()
+    {
+        $this->actingAs($this->admin);
+        $event = Event::factory()->create(['room_id' => $this->room->id]);
+
+        $block = Block::factory()->seating()->create(['room_id' => $this->room->id, 'name' => 'Block A']);
+        $row1 = Row::factory()->create(['block_id' => $block->id, 'name' => 'Row 1']);
+        $row2 = Row::factory()->create(['block_id' => $block->id, 'name' => 'Row 2']);
+        $seat1 = Seat::factory()->create(['row_id' => $row1->id, 'label' => 'A1']);
+        $seat2 = Seat::factory()->create(['row_id' => $row2->id, 'label' => 'B1']);
+
+        Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat1->id, 'name' => 'John Doe']);
+        Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat2->id, 'name' => 'Jane Smith']);
+
+        $response = $this->get(route('admin.events.show', $event->id).'?search=Row 1');
+
+        $response->assertOk();
+
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertSame('Row 1', $props['search']);
+        $items = $props['bookings']['data'];
+        $this->assertCount(1, $items);
+        $this->assertSame('John Doe', $items[0]['name']);
+    }
+
+    /** @test */
+    public function booking_search_ignores_array_valued_input()
+    {
+        $this->actingAs($this->admin);
+        $event = Event::factory()->create(['room_id' => $this->room->id]);
+
+        $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
+        $row = Row::factory()->create(['block_id' => $block->id]);
+        $seat1 = Seat::factory()->create(['row_id' => $row->id, 'label' => 'A1']);
+        $seat2 = Seat::factory()->create(['row_id' => $row->id, 'label' => 'A2']);
+
+        Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat1->id, 'name' => 'John Doe']);
+        Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat2->id, 'name' => 'Jane Smith']);
+
+        $response = $this->get(route('admin.events.show', $event->id).'?search[]=John');
+
+        $response->assertOk();
+
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+        $this->assertCount(2, $props['bookings']['data']);
+    }
+
+    /** @test */
     public function admin_can_export_bookings_as_csv()
     {
         $this->actingAs($this->admin);
