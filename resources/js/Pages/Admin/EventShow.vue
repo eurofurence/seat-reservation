@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {Head, router, useForm} from '@inertiajs/vue3'
-import {ref, computed, nextTick, watch} from 'vue'
+import {ref, computed, nextTick, watch, onMounted, onBeforeUnmount} from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import SeatLayout from '@/Components/SeatLayout.vue'
 import BookingIdentityCell from '@/Components/Admin/BookingIdentityCell.vue'
@@ -374,6 +374,61 @@ const navigateToPage = (linkUrl: string) => {
     if (pageParam) params.page = pageParam
     router.get(route('admin.events.show', props.event.id), params, { preserveState: true, preserveScroll: true, only: ['bookings'] })
 }
+
+const hasUnpickedLookup = computed(() =>
+    !!props.bookingcode && props.bookings.data.some(booking => !booking.picked_up_at)
+)
+
+const leaveWarning = 'The bookings have not been marked as picked up yet. Are you sure you want to leave?'
+
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    if (!hasUnpickedLookup.value) return
+    event.preventDefault()
+    // @ts-ignore
+    event.returnValue = leaveWarning
+}
+
+let removeInertiaBeforeListener: (() => void) | undefined
+
+const staysOnThisPage = (url: string) => {
+    try {
+        return new URL(url, window.location.origin).pathname === window.location.pathname
+    } catch {
+        return false
+    }
+}
+
+// beforeunload can't show custom text; intercept the back button via popstate instead.
+const handlePopState = () => {
+    if (!hasUnpickedLookup.value) return
+    if (confirm(leaveWarning)) {
+        window.history.back()
+    } else {
+        window.history.pushState(history.state, '', window.location.href)
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('popstate', handlePopState)
+    if (hasUnpickedLookup.value) {
+        window.history.pushState(history.state, '', window.location.href)
+    }
+    // Inertia v2: return false to cancel a visit.
+    removeInertiaBeforeListener = router.on('before', (event: any) => {
+        const targetUrl = event.detail?.visit?.url?.toString?.() ?? ''
+        if (staysOnThisPage(targetUrl)) return
+        if (hasUnpickedLookup.value && !confirm(leaveWarning)) {
+            return false
+        }
+    })
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('beforeunload', handleBeforeUnload)
+    window.removeEventListener('popstate', handlePopState)
+    removeInertiaBeforeListener?.()
+})
 </script>
 
 <template>
