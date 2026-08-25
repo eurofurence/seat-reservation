@@ -37,6 +37,89 @@ class SeatingCardsTest extends TestCase
         $this->assertSame(90, SeatingCardsController::masterCardMaxHeight(str_repeat('é', 20)));
     }
 
+    public function test_order_card_max_height_for_19_character_event_name()
+    {
+        $this->assertSame(105, SeatingCardsController::orderCardMaxHeight(str_repeat('a', 19)));
+    }
+
+    public function test_order_card_max_height_for_20_character_event_name()
+    {
+        $this->assertSame(90, SeatingCardsController::orderCardMaxHeight(str_repeat('a', 20)));
+    }
+
+    public function test_total_card_count_for_single_block_bookings()
+    {
+        // Master page + 1 order card for the block + 1 card per booking.
+        $bookings = collect([
+            $this->makeBookingStub(1),
+            $this->makeBookingStub(1),
+            $this->makeBookingStub(1),
+        ]);
+
+        $this->assertSame(5, SeatingCardsController::totalCardCount($bookings));
+    }
+
+    public function test_total_card_count_for_multiple_block_bookings()
+    {
+        // Master page + 1 order card per distinct block + 1 card per booking.
+        $bookings = collect([
+            $this->makeBookingStub(1),
+            $this->makeBookingStub(1),
+            $this->makeBookingStub(2),
+            $this->makeBookingStub(2),
+            $this->makeBookingStub(2),
+        ]);
+
+        $this->assertSame(8, SeatingCardsController::totalCardCount($bookings));
+    }
+
+    public function test_sort_bookings_for_printing_groups_blocks_and_winds_rows()
+    {
+        // Sorting orders bookings by block position, then winds seats:
+        // ascending on odd rows, descending on even rows.
+        $bookings = collect([
+            $this->makeSeatingBookingStub('B-r2-s1', blockId: 2, posX: 0, posY: 1, rowOrder: 2, seatNumber: 1),
+            $this->makeSeatingBookingStub('A-r1-s2', blockId: 1, posX: 0, posY: 0, rowOrder: 1, seatNumber: 2),
+            $this->makeSeatingBookingStub('B-r2-s2', blockId: 2, posX: 0, posY: 1, rowOrder: 2, seatNumber: 2),
+            $this->makeSeatingBookingStub('A-r1-s1', blockId: 1, posX: 0, posY: 0, rowOrder: 1, seatNumber: 1),
+        ]);
+
+        $sorted = SeatingCardsController::sortBookingsForPrinting($bookings);
+
+        $this->assertSame(
+            ['A-r1-s1', 'A-r1-s2', 'B-r2-s2', 'B-r2-s1'],
+            $sorted->pluck('label')->values()->all()
+        );
+
+        // master + 2 order cards + 4 bookings.
+        $this->assertSame(7, SeatingCardsController::totalCardCount($sorted));
+    }
+
+    private function makeBookingStub(int $blockId): object
+    {
+        return (object) [
+            'seat' => (object) [
+                'row' => (object) [
+                    'block' => (object) ['id' => $blockId],
+                ],
+            ],
+        ];
+    }
+
+    private function makeSeatingBookingStub(string $label, int $blockId, int $posX, int $posY, int $rowOrder, int $seatNumber): object
+    {
+        return (object) [
+            'label' => $label,
+            'seat' => (object) [
+                'number' => $seatNumber,
+                'row' => (object) [
+                    'order' => $rowOrder,
+                    'block' => (object) ['id' => $blockId, 'position_x' => $posX, 'position_y' => $posY],
+                ],
+            ],
+        ];
+    }
+
     public function test_seating_cards_generates_pdf_download()
     {
         // Create a user with admin permissions
@@ -103,6 +186,39 @@ class SeatingCardsTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('content-type', 'application/pdf');
         $this->assertStringContainsString('seating-cards-conference-2024', $response->headers->get('content-disposition'));
+    }
+
+    public function test_seating_cards_pdf_with_bookings_across_multiple_blocks()
+    {
+        $adminUser = User::factory()->create(['is_admin' => true]);
+
+        $room = Room::factory()->create(['name' => 'Main Hall']);
+        $event = Event::factory()->create(['room_id' => $room->id, 'name' => 'Multi Block Event']);
+
+        $blockA = Block::factory()->create(['room_id' => $room->id, 'name' => 'A', 'type' => 'seating']);
+        $rowA = Row::factory()->create(['block_id' => $blockA->id, 'name' => '1']);
+
+        $blockB = Block::factory()->create(['room_id' => $room->id, 'name' => 'B', 'type' => 'seating']);
+        $rowB = Row::factory()->create(['block_id' => $blockB->id, 'name' => '1']);
+
+        foreach ([$rowA, $rowB] as $row) {
+            for ($i = 1; $i <= 2; $i++) {
+                $seat = Seat::factory()->create(['row_id' => $row->id, 'label' => "S{$i}", 'number' => $i]);
+                Booking::factory()->create([
+                    'event_id' => $event->id,
+                    'seat_id' => $seat->id,
+                    'name' => "Guest {$row->id}-{$i}",
+                    'picked_up_at' => now(),
+                ]);
+            }
+        }
+
+        $response = $this->actingAs($adminUser)
+            ->get(route('admin.events.seating-cards', $event->id));
+
+        // Master page + one order card per block (2) + one card per booking (4) = 7.
+        $response->assertStatus(200);
+        $response->assertHeader('content-type', 'application/pdf');
     }
 
     public function test_seating_cards_requires_admin_access()
@@ -229,6 +345,7 @@ class SeatingCardsTest extends TestCase
         $room = Room::factory()->create();
         $event = Event::factory()->create([
             'room_id' => $room->id,
+            'name' => 'Winter Gala 2026',
         ]);
         $block = Block::factory()->create(['room_id' => $room->id, 'name' => 'A', 'type' => 'seating']);
         $row = Row::factory()->create(['block_id' => $block->id, 'name' => '1']);
@@ -248,5 +365,6 @@ class SeatingCardsTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('Not Picked Up', $html);
+        $this->assertStringContainsString('Winter Gala 2026', $html);
     }
 }

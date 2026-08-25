@@ -32,20 +32,7 @@ class SeatingCardsController extends Controller
             }
 
             // Wind seats by row order so placing the cards is easier and faster for the runners.
-            $bookings = $bookingsQuery->get()->sortBy(function ($booking) {
-                $block = $booking->seat->row->block;
-                $rowOrder = $booking->seat->row->order;
-                $seatNumber = $booking->seat->number;
-
-                $seatSort = $rowOrder % 2 === 1 ? $seatNumber : -$seatNumber;
-
-                return [
-                    $block->position_y,
-                    $block->position_x,
-                    $rowOrder,
-                    $seatSort,
-                ];
-            });
+            $bookings = self::sortBookingsForPrinting($bookingsQuery->get());
 
             if ($bookings->isEmpty()) {
                 return back()->with('error', 'No bookings found for this event to generate seating cards.');
@@ -110,10 +97,17 @@ class SeatingCardsController extends Controller
             $pages = [];
 
             $masterCardMaxheight = self::masterCardMaxHeight($event->name);
+            $orderCardMaxheight = self::orderCardMaxHeight($event->name);
+
+            $totalCards = self::totalCardCount($bookings);
+
+            $currentCard = 1;
 
             $pages[] = view('pdf.master-page', [
+                'pagination' => ($currentCard++).'/'.$totalCards,
                 'event_name' => $event->name,
                 'room_name' => $room->name,
+                'total_bookings' => $bookings->count(),
                 'overview' => $masterCard->render($masterBlocks, $masterStageBlocks, $masterMarkerBlocks, $bookedSeatIds, $mpdf, $masterCardMaxheight),
             ])->render();
 
@@ -128,17 +122,19 @@ class SeatingCardsController extends Controller
                     $previewBlock = $previewBlocks->get($block->id);
 
                     $pages[] = view('pdf.order-card', [
+                        'pagination' => ($currentCard++).'/'.$totalCards,
                         'info' => (object) [
                             'event_name' => $event->name,
                             'block_name' => 'Block '.$block->name,
                         ],
                         'preview' => $previewBlock
-                            ? $orderCard->render($previewBlock, $bookedSeatIds, $mpdf)
+                            ? $orderCard->render($previewBlock, $bookedSeatIds, $mpdf, $orderCardMaxheight)
                             : null,
                     ])->render();
                 }
 
                 $pages[] = view('pdf.seating-card-single', [
+                    'pagination' => ($currentCard++).'/'.$totalCards,
                     'booking' => $booking,
                     'event' => $event,
                 ])->render();
@@ -172,5 +168,53 @@ class SeatingCardsController extends Controller
     public static function masterCardMaxHeight(string $eventName): int
     {
         return Str::length($eventName) > 19 ? 90 : 110;
+    }
+
+    // ponytail: 19-char cutoff is a rough heuristic, not measured PDF layout. Upgrade
+    // path: measure the actual rendered text width and size the order card from that.
+    public static function orderCardMaxHeight(string $eventName): int
+    {
+        return Str::length($eventName) > 19 ? 90 : 105;
+    }
+
+    // Master overview page + one order-card page per distinct block + one card per booking.
+    public static function totalCardCount(iterable $bookings): int
+    {
+        $total = 1;
+        $currentBlockId = null;
+
+        foreach ($bookings as $booking) {
+            $blockId = $booking->seat->row->block->id;
+
+            if ($blockId !== $currentBlockId) {
+                $currentBlockId = $blockId;
+
+                $total++;
+            }
+
+            $total++;
+        }
+
+        return $total;
+    }
+
+    // Order bookings by block position, then wind seats by row order (ascending on odd
+    // rows, descending on even) so placing the cards is faster for the runners.
+    public static function sortBookingsForPrinting($bookings)
+    {
+        return $bookings->sortBy(function ($booking) {
+            $block = $booking->seat->row->block;
+            $rowOrder = $booking->seat->row->order;
+            $seatNumber = $booking->seat->number;
+
+            $seatSort = $rowOrder % 2 === 1 ? $seatNumber : -$seatNumber;
+
+            return [
+                $block->position_y,
+                $block->position_x,
+                $rowOrder,
+                $seatSort,
+            ];
+        });
     }
 }
