@@ -741,6 +741,31 @@ class BookingControllerTest extends TestCase
     }
 
     /** @test */
+    public function admin_manual_bookings_appear_as_booked_on_show_layout()
+    {
+        $booking = Booking::factory()->create([
+            'user_id' => $this->user->id,
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[0]->id,
+        ]);
+
+        Booking::factory()->create([
+            'user_id' => null,
+            'type' => 'admin',
+            'event_id' => $this->event->id,
+            'seat_id' => $this->seats[1]->id,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('bookings.show', [$this->event, $booking]));
+
+        $props = $response->getOriginalContent()->getData()['page']['props'];
+
+        $this->assertContains($this->seats[1]->id, $props['bookedSeats']);
+        $this->assertEquals([$this->seats[0]->id], $props['userBookedSeats']);
+    }
+
+    /** @test */
     public function user_cannot_view_other_users_booking()
     {
         $otherUser = User::factory()->create();
