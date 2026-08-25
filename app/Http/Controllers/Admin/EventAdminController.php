@@ -137,7 +137,7 @@ class EventAdminController extends Controller
             $bookingsQuery->where('booking_code', strtoupper($bookingCode));
         }
         // Apply search filter if provided (but not if booking code is set)
-        elseif ($search = $request->get('search')) {
+        elseif (is_string($search = $request->get('search')) && $search !== '') {
             $bookingsQuery->where(function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('comment', 'like', "%{$search}%")
@@ -148,12 +148,17 @@ class EventAdminController extends Controller
                     ->orWhereHas('seat.row.block', function ($q) use ($search) {
                         $q->where('name', 'like', "%{$search}%");
                     })
-                    ->orWhereHas('seat.row', function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%");
-                    })
                     ->orWhereHas('seat', function ($q) use ($search) {
                         $q->where('label', 'like', "%{$search}%");
                     });
+
+                // Only match rows when the search includes a number, so a bare
+                // "Row" doesn't return every booking in the event.
+                if (preg_match('/\d/', $search)) {
+                    $query->orWhereHas('seat.row', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    });
+                }
             });
         }
 
