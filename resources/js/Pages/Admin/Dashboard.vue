@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { nextTick, onMounted, ref } from 'vue'
 import { Head, useForm, usePoll } from '@inertiajs/vue3'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card'
@@ -38,11 +39,21 @@ const bookingCodeForm = useForm({
   booking_code: ''
 })
 
+const bookingCodeInput = ref<InstanceType<typeof Input> | null>(null)
+
+const focusBookingCode = () => nextTick(() => bookingCodeInput.value?.focus())
+
+onMounted(focusBookingCode)
+
 const lookupBookingCode = () => {
   bookingCodeForm.post(route('admin.lookup-booking-code'), {
     preserveScroll: true,
     onSuccess: () => {
       bookingCodeForm.reset()
+    },
+    onError: () => {
+      bookingCodeForm.reset('booking_code')
+      focusBookingCode()
     }
   })
 }
@@ -126,6 +137,7 @@ usePoll(5000, {}, {
               <div class="flex gap-2 mt-1">
                 <Input
                   id="booking_code"
+                  ref="bookingCodeInput"
                   v-model="bookingCodeForm.booking_code"
                   type="text"
                   placeholder="e.g. A7B"
