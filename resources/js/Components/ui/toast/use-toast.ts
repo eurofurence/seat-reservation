@@ -28,7 +28,14 @@ export function useToast() {
       duration: 5000,
       ...toast
     }
-    
+
+    // Keep only one info/success toast so rapid actions don't stack toasts over the UI.
+    if ((newToast.variant ?? 'default') === 'default' && newToast.duration && newToast.duration > 0) {
+      state.toasts = state.toasts.filter(
+        t => t.variant === 'destructive' || t.variant === 'warning' || !t.duration
+      )
+    }
+
     state.toasts.push(newToast)
 
     if (newToast.duration && newToast.duration > 0) {
@@ -55,7 +62,8 @@ export function useToast() {
     return addToast({
       title,
       description,
-      variant: 'default'
+      variant: 'default',
+      duration: 2500,
     })
   }
 
@@ -81,7 +89,8 @@ export function useToast() {
     return addToast({
       title,
       description,
-      variant: 'default'
+      variant: 'default',
+      duration: 2500,
     })
   }
 
