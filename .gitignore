@@ -27,3 +27,6 @@ test-results/.last-run.json
 playwright-report/index.html
 tests/e2e/.auth/user.json
 playwright-report/
+graphify-out/cache/
+graphify-out/.cloud-cta-shown
+graphify-out/.graphify_root
