@@ -8,7 +8,7 @@ import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Textarea } from '@/Components/ui/textarea'
 import { Alert } from '@/Components/ui/alert'
-import { ArrowLeft, Calendar, MapPin, Clock, AlertCircle, Check } from 'lucide-vue-next'
+import { ArrowLeft, Calendar, MapPin, Clock, AlertCircle, Check } from '@lucide/vue'
 import { fmt } from "@/lib/datetime"
 import TimezoneNote from "@/Components/TimezoneNote.vue"
 

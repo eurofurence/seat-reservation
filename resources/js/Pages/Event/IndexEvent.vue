@@ -5,7 +5,7 @@ import Layout from "@/Layouts/Layout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
-import { ArrowLeft, Volume2, Calendar, MapPin, Clock, Users, Search } from 'lucide-vue-next'
+import { ArrowLeft, Volume2, Calendar, MapPin, Clock, Users, Search } from '@lucide/vue'
 import { fmt } from "@/lib/datetime"
 import TimezoneNote from "@/Components/TimezoneNote.vue"
 

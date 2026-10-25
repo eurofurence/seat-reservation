@@ -2,7 +2,7 @@
 import { Head } from '@inertiajs/vue3'
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card'
 import { Alert, AlertDescription } from '@/Components/ui/alert'
-import { InfoIcon, CheckCircle2 } from 'lucide-vue-next'
+import { InfoIcon, CheckCircle2 } from '@lucide/vue'
 import { Button } from '@/Components/ui/button'
 import { Link } from '@inertiajs/vue3'
 import { fmt } from '@/lib/datetime'

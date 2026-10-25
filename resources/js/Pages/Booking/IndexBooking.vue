@@ -5,7 +5,7 @@ import Layout from "@/Layouts/Layout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
-import { Clock, MapPin, User, Plus, Search, LogOut, CheckCircle, AlertCircle, Info, Settings } from 'lucide-vue-next'
+import { Clock, MapPin, User, Plus, Search, LogOut, CheckCircle, AlertCircle, Info, Settings } from '@lucide/vue'
 import dayjs, { fmt } from "@/lib/datetime"
 import { getSeatInfo } from "@/lib/bookingDisplay"
 import type { Booking, Paginator } from "@/types/booking"

@@ -14,7 +14,7 @@ import { DialogContent } from '@/Components/ui/dialog'
 import { DialogHeader } from '@/Components/ui/dialog'
 import { DialogTitle } from '@/Components/ui/dialog'
 import { DialogTrigger } from '@/Components/ui/dialog'
-import { Plus, Edit, Trash2, MapPin } from 'lucide-vue-next'
+import { Plus, Edit, Trash2, MapPin } from '@lucide/vue'
 
 defineOptions({ layout: AdminLayout })
 

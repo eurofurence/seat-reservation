@@ -7,7 +7,7 @@ import { CardTitle } from '@/Components/ui/card'
 import { CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
-import { ArrowLeft } from 'lucide-vue-next'
+import { ArrowLeft } from '@lucide/vue'
 import { router } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })

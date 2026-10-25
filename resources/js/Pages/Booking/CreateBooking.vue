@@ -6,7 +6,7 @@ import SeatLayout from "@/Components/SeatLayout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
-import { ArrowLeft, AlertCircle, Calendar, MapPin, Clock, ArrowRight, Settings } from 'lucide-vue-next'
+import { ArrowLeft, AlertCircle, Calendar, MapPin, Clock, ArrowRight, Settings } from '@lucide/vue'
 import { fmt } from "@/lib/datetime"
 import TimezoneNote from "@/Components/TimezoneNote.vue"
 

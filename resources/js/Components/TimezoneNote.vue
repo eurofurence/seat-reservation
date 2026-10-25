@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import dayjs, { APP_TIMEZONE } from '@/lib/datetime';
-import { InfoIcon } from 'lucide-vue-next'
+import { InfoIcon } from '@lucide/vue'
 
 // Europe/Berlin is CET (+01:00) in winter and CEST (+02:00) under DST.
 const abbreviation = computed(() =>

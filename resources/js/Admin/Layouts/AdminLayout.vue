@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
-import { Calendar, Home, MapPin, Menu, X, ChevronRight, ArrowLeft } from 'lucide-vue-next'
+import { Calendar, Home, MapPin, Menu, X, ChevronRight, ArrowLeft } from '@lucide/vue'
 import dayjs, { fmt } from '@/lib/datetime'
 import { Button } from '@/Components/ui/button'
 import ToastProvider from '@/Components/ToastProvider.vue'

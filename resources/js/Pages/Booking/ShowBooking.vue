@@ -24,7 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
   Settings
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import dayjs, { fmt } from "@/lib/datetime"
 
 defineOptions({layout: Layout})
