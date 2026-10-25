@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Http\Middleware\VerifyCsrfToken;
 use Tests\TestCase;
 
 class LoginCsrfTest extends TestCase
@@ -28,7 +29,7 @@ class LoginCsrfTest extends TestCase
     public function test_csrf_error_returns_proper_inertia_response()
     {
         // Simulate a CSRF token mismatch by making a request without a valid token
-        $response = $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class)
+        $response = $this->withoutMiddleware(VerifyCsrfToken::class)
             ->post(route('auth.login.redirect'), [], [
                 'HTTP_X-Inertia' => 'true',
                 'HTTP_X-Inertia-Version' => '1.0.0',

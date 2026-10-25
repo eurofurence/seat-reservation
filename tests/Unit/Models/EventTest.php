@@ -9,13 +9,14 @@ use App\Models\Room;
 use App\Models\Row;
 use App\Models\Seat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class EventTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function event_calculates_tickets_left_with_max_tickets_set()
     {
         $room = Room::factory()->create();
@@ -42,7 +43,7 @@ class EventTest extends TestCase
         $this->assertEquals(7, $event->calculateTicketsLeft());
     }
 
-    /** @test */
+    #[Test]
     public function event_calculates_tickets_left_using_seat_count_when_no_max_tickets()
     {
         $room = Room::factory()->create();
@@ -70,7 +71,7 @@ class EventTest extends TestCase
         $this->assertEquals(3, $event->calculateTicketsLeft());
     }
 
-    /** @test */
+    #[Test]
     public function event_returns_zero_tickets_left_when_overbooked()
     {
         $room = Room::factory()->create();
@@ -96,7 +97,7 @@ class EventTest extends TestCase
         $this->assertEquals(0, $event->calculateTicketsLeft());
     }
 
-    /** @test */
+    #[Test]
     public function event_uses_tickets_field_as_fallback_for_max_tickets()
     {
         $room = Room::factory()->create();
@@ -120,7 +121,7 @@ class EventTest extends TestCase
         $this->assertEquals(7, $event->calculateTicketsLeft());
     }
 
-    /** @test */
+    #[Test]
     public function event_calculates_tickets_left_without_crashing_when_room_is_missing()
     {
         // room_id is non-nullable in the schema, so this can't happen for a persisted

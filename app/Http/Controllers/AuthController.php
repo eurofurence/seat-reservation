@@ -30,7 +30,7 @@ class AuthController extends Controller
 
             // Use Interia location instead
             return Inertia::location($url->getTargetUrl());
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Log the error and redirect back with a helpful message
             \Log::error('OAuth login error: '.$e->getMessage());
 

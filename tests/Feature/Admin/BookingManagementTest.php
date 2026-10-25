@@ -10,6 +10,7 @@ use App\Models\Row;
 use App\Models\Seat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingManagementTest extends TestCase
@@ -42,7 +43,7 @@ class BookingManagementTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_toggle_pickup_status_on_and_off()
     {
         $response = $this->actingAs($this->admin)
@@ -68,7 +69,7 @@ class BookingManagementTest extends TestCase
         $this->assertNull($this->booking->fresh()->picked_up_at);
     }
 
-    /** @test */
+    #[Test]
     public function toggle_pickup_validates_input_and_rejects_bookings_of_other_events()
     {
         $this->actingAs($this->admin)
@@ -88,7 +89,7 @@ class BookingManagementTest extends TestCase
         $this->assertNull($this->booking->fresh()->picked_up_at);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_update_a_booking()
     {
         $response = $this->actingAs($this->admin)
@@ -105,7 +106,7 @@ class BookingManagementTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function update_booking_validates_input_and_rejects_bookings_of_other_events()
     {
         $this->actingAs($this->admin)
@@ -121,7 +122,7 @@ class BookingManagementTest extends TestCase
         $this->assertSame('Original Name', $this->booking->fresh()->name);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_delete_a_booking()
     {
         $response = $this->actingAs($this->admin)
@@ -131,7 +132,7 @@ class BookingManagementTest extends TestCase
         $this->assertDatabaseMissing('bookings', ['id' => $this->booking->id]);
     }
 
-    /** @test */
+    #[Test]
     public function delete_booking_rejects_bookings_of_other_events()
     {
         $otherEvent = Event::factory()->create(['room_id' => $this->event->room_id]);
@@ -143,7 +144,7 @@ class BookingManagementTest extends TestCase
         $this->assertDatabaseHas('bookings', ['id' => $this->booking->id]);
     }
 
-    /** @test */
+    #[Test]
     public function guests_and_non_admins_cannot_manage_bookings()
     {
         $this->delete(route('admin.events.delete-booking', [$this->event, $this->booking]))

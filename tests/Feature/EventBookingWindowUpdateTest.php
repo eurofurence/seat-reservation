@@ -11,13 +11,14 @@ use App\Models\Seat;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class EventBookingWindowUpdateTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function admin_moving_booking_starts_at_to_the_future_blocks_further_booking()
     {
         $user = User::factory()->create(['is_admin' => false]);

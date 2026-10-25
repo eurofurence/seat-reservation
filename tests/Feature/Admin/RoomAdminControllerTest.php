@@ -9,6 +9,7 @@ use App\Models\Seat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class RoomAdminControllerTest extends TestCase
@@ -23,7 +24,7 @@ class RoomAdminControllerTest extends TestCase
         $this->admin = User::factory()->admin()->create();
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_rooms_index()
     {
         $this->actingAs($this->admin);
@@ -49,7 +50,7 @@ class RoomAdminControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_create_room()
     {
         $this->actingAs($this->admin);
@@ -69,7 +70,7 @@ class RoomAdminControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function room_creation_validates_required_fields()
     {
         $this->actingAs($this->admin);
@@ -79,7 +80,7 @@ class RoomAdminControllerTest extends TestCase
         $response->assertSessionHasErrors(['name']);
     }
 
-    /** @test */
+    #[Test]
     public function room_name_has_max_length_validation()
     {
         $this->actingAs($this->admin);
@@ -91,7 +92,7 @@ class RoomAdminControllerTest extends TestCase
         $response->assertSessionHasErrors(['name']);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_room_edit_page()
     {
         $this->actingAs($this->admin);
@@ -109,7 +110,7 @@ class RoomAdminControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_update_room()
     {
         $this->actingAs($this->admin);
@@ -129,7 +130,7 @@ class RoomAdminControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function room_update_validates_required_fields()
     {
         $this->actingAs($this->admin);
@@ -142,7 +143,7 @@ class RoomAdminControllerTest extends TestCase
         $response->assertSessionHasErrors(['name']);
     }
 
-    /** @test */
+    #[Test]
     public function room_update_validates_max_length()
     {
         $this->actingAs($this->admin);
@@ -155,7 +156,7 @@ class RoomAdminControllerTest extends TestCase
         $response->assertSessionHasErrors(['name']);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_delete_room()
     {
         $this->actingAs($this->admin);
@@ -169,7 +170,7 @@ class RoomAdminControllerTest extends TestCase
         $this->assertDatabaseMissing('rooms', ['id' => $room->id]);
     }
 
-    /** @test */
+    #[Test]
     public function delete_room_cascades_to_related_models()
     {
         $this->actingAs($this->admin);
@@ -191,7 +192,7 @@ class RoomAdminControllerTest extends TestCase
         $this->assertDatabaseMissing('seats', ['id' => $seat->id]);
     }
 
-    /** @test */
+    #[Test]
     public function rooms_index_shows_correct_seat_counts()
     {
         $this->actingAs($this->admin);
@@ -224,7 +225,7 @@ class RoomAdminControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function room_not_found_returns_404()
     {
         $this->actingAs($this->admin);
@@ -239,7 +240,7 @@ class RoomAdminControllerTest extends TestCase
         $response->assertNotFound();
     }
 
-    /** @test */
+    #[Test]
     public function non_admin_cannot_access_room_admin_routes()
     {
         $user = User::factory()->create(['is_admin' => false]);
@@ -263,7 +264,7 @@ class RoomAdminControllerTest extends TestCase
         $response->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_users_cannot_access_room_admin_routes()
     {
         $room = Room::factory()->create();

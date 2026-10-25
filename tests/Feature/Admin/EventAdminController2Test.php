@@ -12,6 +12,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class EventAdminController2Test extends TestCase
@@ -29,7 +30,7 @@ class EventAdminController2Test extends TestCase
         $this->room = Room::factory()->create();
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_event_index_with_events()
     {
         $this->actingAs($this->admin);
@@ -58,7 +59,7 @@ class EventAdminController2Test extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_create_event_with_all_fields()
     {
         $this->actingAs($this->admin);
@@ -83,7 +84,7 @@ class EventAdminController2Test extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_create_event_with_minimal_fields()
     {
         $this->actingAs($this->admin);
@@ -104,7 +105,7 @@ class EventAdminController2Test extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_update_event_details()
     {
         $this->actingAs($this->admin);
@@ -128,7 +129,7 @@ class EventAdminController2Test extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_delete_event()
     {
         $this->actingAs($this->admin);
@@ -142,7 +143,7 @@ class EventAdminController2Test extends TestCase
         $this->assertDatabaseMissing('events', ['id' => $event->id]);
     }
 
-    /** @test */
+    #[Test]
     public function event_delete_cascades_to_bookings()
     {
         $this->actingAs($this->admin);
@@ -163,7 +164,7 @@ class EventAdminController2Test extends TestCase
         $this->assertDatabaseMissing('bookings', ['id' => $booking->id]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_event_show_page_with_bookings()
     {
         $this->actingAs($this->admin);
@@ -196,7 +197,7 @@ class EventAdminController2Test extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function event_show_includes_booking_search_functionality()
     {
         $this->actingAs($this->admin);
@@ -219,7 +220,7 @@ class EventAdminController2Test extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_export_bookings_as_csv()
     {
         $this->actingAs($this->admin);
@@ -250,7 +251,7 @@ class EventAdminController2Test extends TestCase
         $this->assertStringContainsString('A1', $content);
     }
 
-    /** @test */
+    #[Test]
     public function csv_export_handles_special_characters()
     {
         $this->actingAs($this->admin);
@@ -277,7 +278,7 @@ class EventAdminController2Test extends TestCase
         $this->assertStringContainsString('"John ""Johnny"" Doe"', $content);
     }
 
-    /** @test */
+    #[Test]
     public function export_includes_unpicked_bookings_by_default()
     {
         $this->actingAs($this->admin);
@@ -302,7 +303,7 @@ class EventAdminController2Test extends TestCase
         $this->assertStringContainsString(',No,', $content);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_export_all_bookings_across_events()
     {
         $this->actingAs($this->admin);
@@ -341,7 +342,7 @@ class EventAdminController2Test extends TestCase
         $this->assertStringContainsString('Unpicked Guy', $content);
     }
 
-    /** @test */
+    #[Test]
     public function export_all_includes_unpicked_bookings_by_default()
     {
         $this->actingAs($this->admin);
@@ -366,7 +367,7 @@ class EventAdminController2Test extends TestCase
         $this->assertStringContainsString(',No,', $content);
     }
 
-    /** @test */
+    #[Test]
     public function non_admin_cannot_export_all_bookings()
     {
         $user = User::factory()->create(['is_admin' => false]);
@@ -376,7 +377,7 @@ class EventAdminController2Test extends TestCase
         $response->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function event_validation_requires_name_and_room()
     {
         $this->actingAs($this->admin);
@@ -386,7 +387,7 @@ class EventAdminController2Test extends TestCase
         $response->assertSessionHasErrors(['name', 'room_id']);
     }
 
-    /** @test */
+    #[Test]
     public function event_validation_requires_valid_room()
     {
         $this->actingAs($this->admin);
@@ -399,7 +400,7 @@ class EventAdminController2Test extends TestCase
         $response->assertSessionHasErrors(['room_id']);
     }
 
-    /** @test */
+    #[Test]
     public function event_validation_requires_positive_max_tickets()
     {
         $this->actingAs($this->admin);
@@ -413,7 +414,7 @@ class EventAdminController2Test extends TestCase
         $response->assertSessionHasErrors(['max_tickets']);
     }
 
-    /** @test */
+    #[Test]
     public function event_validation_requires_valid_dates()
     {
         $this->actingAs($this->admin);
@@ -428,7 +429,7 @@ class EventAdminController2Test extends TestCase
         $response->assertSessionHasErrors(['starts_at', 'reservation_ends_at']);
     }
 
-    /** @test */
+    #[Test]
     public function event_validation_rejects_reservation_deadline_after_event_start()
     {
         $this->actingAs($this->admin);
@@ -444,7 +445,7 @@ class EventAdminController2Test extends TestCase
         $this->assertDatabaseMissing('events', ['name' => 'Test Event']);
     }
 
-    /** @test */
+    #[Test]
     public function event_validation_rejects_booking_start_after_reservation_deadline()
     {
         $this->actingAs($this->admin);
@@ -461,7 +462,7 @@ class EventAdminController2Test extends TestCase
         $this->assertDatabaseMissing('events', ['name' => 'Test Event']);
     }
 
-    /** @test */
+    #[Test]
     public function event_validation_rejects_booking_start_after_event_start()
     {
         $this->actingAs($this->admin);
@@ -477,7 +478,7 @@ class EventAdminController2Test extends TestCase
         $this->assertDatabaseMissing('events', ['name' => 'Test Event']);
     }
 
-    /** @test */
+    #[Test]
     public function event_validation_accepts_correctly_ordered_dates()
     {
         $this->actingAs($this->admin);
@@ -494,7 +495,7 @@ class EventAdminController2Test extends TestCase
         $this->assertDatabaseHas('events', ['name' => 'Test Event']);
     }
 
-    /** @test */
+    #[Test]
     public function non_admin_cannot_access_events_routes()
     {
         $user = User::factory()->create(['is_admin' => false]);

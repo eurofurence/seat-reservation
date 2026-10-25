@@ -12,6 +12,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AdminControllerTest extends TestCase
@@ -26,7 +27,7 @@ class AdminControllerTest extends TestCase
         $this->admin = User::factory()->admin()->create();
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_dashboard()
     {
         $this->actingAs($this->admin);
@@ -40,7 +41,7 @@ class AdminControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_shows_correct_statistics()
     {
         $this->actingAs($this->admin);
@@ -81,7 +82,7 @@ class AdminControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_shows_zero_statistics_when_no_data()
     {
         $this->actingAs($this->admin);
@@ -97,7 +98,7 @@ class AdminControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_counts_only_future_events_as_upcoming()
     {
         $this->actingAs($this->admin);
@@ -131,7 +132,7 @@ class AdminControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_includes_events_without_start_date()
     {
         $this->actingAs($this->admin);
@@ -157,7 +158,7 @@ class AdminControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_counts_bookings_across_all_events()
     {
         $this->actingAs($this->admin);
@@ -197,7 +198,7 @@ class AdminControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function non_admin_cannot_access_dashboard()
     {
         $user = User::factory()->create(['is_admin' => false]);
@@ -207,14 +208,14 @@ class AdminControllerTest extends TestCase
         $response->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_user_cannot_access_dashboard()
     {
         $response = $this->get(route('admin.dashboard'));
         $response->assertRedirect('/auth/login');
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_handles_large_numbers_correctly()
     {
         $this->actingAs($this->admin);

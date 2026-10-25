@@ -12,13 +12,14 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingCoreTest extends TestCase
 {
     use RefreshDatabase, WithFaker;
 
-    /** @test */
+    #[Test]
     public function admin_can_create_manual_booking()
     {
         // Create authenticated admin user
@@ -83,7 +84,7 @@ class BookingCoreTest extends TestCase
         $this->assertEquals(2, Booking::where('event_id', $event->id)->count());
     }
 
-    /** @test */
+    #[Test]
     public function manual_booking_requires_guest_name()
     {
         $user = User::factory()->admin()->create();
@@ -104,7 +105,7 @@ class BookingCoreTest extends TestCase
         $response->assertSessionHasErrors(['guest_name']);
     }
 
-    /** @test */
+    #[Test]
     public function cannot_double_book_same_seat()
     {
         $user = User::factory()->admin()->create();

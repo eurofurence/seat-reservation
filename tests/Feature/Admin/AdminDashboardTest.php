@@ -11,6 +11,7 @@ use App\Models\Seat;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AdminDashboardTest extends TestCase
@@ -56,7 +57,7 @@ class AdminDashboardTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_dashboard()
     {
         $response = $this->actingAs($this->admin)
@@ -65,7 +66,7 @@ class AdminDashboardTest extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_lookup_booking_code_and_redirect_to_event()
     {
         $response = $this->actingAs($this->admin)
@@ -79,7 +80,7 @@ class AdminDashboardTest extends TestCase
         ]));
     }
 
-    /** @test */
+    #[Test]
     public function admin_receives_error_for_invalid_booking_code()
     {
         $response = $this->actingAs($this->admin)
@@ -91,7 +92,7 @@ class AdminDashboardTest extends TestCase
             ->assertSessionHasErrors(['booking_code' => 'No booking found with this code.']);
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_lookup_requires_exact_three_character_format()
     {
         $response = $this->actingAs($this->admin)
@@ -109,7 +110,7 @@ class AdminDashboardTest extends TestCase
         $response->assertSessionHasErrors('booking_code');
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_lookup_is_case_insensitive()
     {
         $response = $this->actingAs($this->admin)
@@ -123,7 +124,7 @@ class AdminDashboardTest extends TestCase
         ]));
     }
 
-    /** @test */
+    #[Test]
     public function regular_users_cannot_access_admin_dashboard()
     {
         $response = $this->actingAs($this->user)
@@ -132,7 +133,7 @@ class AdminDashboardTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function regular_users_cannot_use_booking_code_lookup()
     {
         $response = $this->actingAs($this->user)
@@ -143,7 +144,7 @@ class AdminDashboardTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function guests_cannot_access_admin_dashboard()
     {
         $response = $this->get(route('admin.dashboard'));
@@ -151,7 +152,7 @@ class AdminDashboardTest extends TestCase
         $response->assertRedirect('/auth/login');
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_lookup_finds_correct_event_when_multiple_exist()
     {
         // Create another event with a different booking
