@@ -62,7 +62,16 @@ scoping to a single file/project while iterating on one spec (see above).
 - `admin/manual-booking.spec.ts` - the admin panel's separate manual-booking
   flow still bypasses those guards on purpose, its success toast shows the
   real guest name, and reverting a picked-up ticket asks for confirmation
+- `admin/booking-code-lookup.spec.ts` - looking up a booking by its 3-char code
+  from the admin dashboard, marking it picked up, and the inline error for a
+  code that doesn't exist
+- `admin/booking-edit-delete.spec.ts` - editing a booking row's name and
+  deleting a booking from the event show page's table
+- `admin/room-layout-editor.spec.ts` - the floor-plan editor: adding a seating
+  block (auto-placed), saving the layout, and deleting a block
 - `user/booking-flow.spec.ts` - happy-path seat booking to confirmation
+- `user/booking-management.spec.ts` - editing a booking's name and canceling
+  the reservation from the user's own "Manage Reservation" page
 - `user/seat-selection.spec.ts` - seat-picker edge cases (deselect, max-seats
   cap, blank-name client-side validation, 24-char name limit server-side)
 - `user/booking-window.spec.ts` - browsing before the booking window opens

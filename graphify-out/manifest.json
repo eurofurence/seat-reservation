@@ -19,16 +19,16 @@
     "semantic_hash": "ea1ef846c3f6406c799dd9eb1f3446f0"
   },
   ".github/workflows/docker.yml": {
-    "mtime": 1782469576.446895,
-    "seen": 1792962017.7191055,
-    "ast_hash": "6992e1e4b5badffd6fb87b5920c30c9b",
-    "semantic_hash": "6992e1e4b5badffd6fb87b5920c30c9b"
+    "mtime": 1792962969.8226128,
+    "seen": 1792963247.182238,
+    "ast_hash": "2b6e66d3c27bd7847190d16906b6d38c",
+    "semantic_hash": ""
   },
   ".github/workflows/laravel.yml": {
-    "mtime": 1792961771.0523438,
-    "seen": 1792962017.719131,
-    "ast_hash": "59d8391e1dd0d9b5fc67b7f0ab1911d9",
-    "semantic_hash": "59d8391e1dd0d9b5fc67b7f0ab1911d9"
+    "mtime": 1792963229.2255754,
+    "seen": 1792963247.182241,
+    "ast_hash": "49b9bc6902463dbfdbe51e1c2730e6a6",
+    "semantic_hash": ""
   },
   "app/Booking/BookingCsvExporter.php": {
     "mtime": 1785247822.0842369,
@@ -805,10 +805,10 @@
     "semantic_hash": "f9eb68cbdd67e7b057ac64eec9f892de"
   },
   "docker-compose.yml": {
-    "mtime": 1787222121.1099086,
-    "seen": 1792962017.7226732,
-    "ast_hash": "8740cc76dcfc26e13eca3db96d122141",
-    "semantic_hash": "8740cc76dcfc26e13eca3db96d122141"
+    "mtime": 1792963031.3488011,
+    "seen": 1792963247.1823983,
+    "ast_hash": "2e231fb539fa5fcdc297c3821b7cf651",
+    "semantic_hash": ""
   },
   "jsconfig.json": {
     "mtime": 1782250276.6120298,
@@ -817,10 +817,10 @@
     "semantic_hash": "24194890df450fb51c8ce7a3ba2cdaab"
   },
   "package.json": {
-    "mtime": 1786626257.2561207,
-    "seen": 1792962017.7227106,
-    "ast_hash": "ef4c7fce325560e4e1d6b059207bbbc4",
-    "semantic_hash": "ef4c7fce325560e4e1d6b059207bbbc4"
+    "mtime": 1792962603.1658533,
+    "seen": 1792963247.1824005,
+    "ast_hash": "2616284e7f8da2ef85d425ff3ffe2256",
+    "semantic_hash": ""
   },
   "postcss.config.js": {
     "mtime": 1782250276.6130297,
@@ -3577,10 +3577,10 @@
     "semantic_hash": "3cacd5ed04b532d304fc2e6af3e053ea"
   },
   "routes/web.php": {
-    "mtime": 1792961738.355456,
-    "seen": 1792962017.737186,
-    "ast_hash": "77bd63af44eb846f1bf70e615d16d7fe",
-    "semantic_hash": "77bd63af44eb846f1bf70e615d16d7fe"
+    "mtime": 1792962628.7648907,
+    "seen": 1792963247.1829245,
+    "ast_hash": "a8602011489c4e660e247d96d88fbc0f",
+    "semantic_hash": ""
   },
   "storage/fonts/DejaVuSans-Bold.ufm.json": {
     "mtime": 1782250276.6370304,
@@ -3782,5 +3782,179 @@
     "seen": 1792962017.7381194,
     "ast_hash": "2b7fe48ec6afda2a194b6749635646ea",
     "semantic_hash": "2b7fe48ec6afda2a194b6749635646ea"
+  },
+  "app/Console/Commands/SeedE2EData.php": {
+    "mtime": 1792962628.7645466,
+    "seen": 1792963247.1822596,
+    "ast_hash": "229a108f6b0b117502faa9dfefccd947",
+    "semantic_hash": ""
+  },
+  "playwright.config.ts": {
+    "mtime": 1792962628.7645466,
+    "seen": 1792963247.1824014,
+    "ast_hash": "ac8c3c4a1d7da0e6b6239c1d010e2359",
+    "semantic_hash": ""
+  },
+  "tests/e2e/admin/booking-code-lookup.spec.ts": {
+    "mtime": 1792962628.7381816,
+    "seen": 1792963247.182982,
+    "ast_hash": "2a89870042d31827623032640434b6e7",
+    "semantic_hash": ""
+  },
+  "tests/e2e/admin/booking-parity.spec.ts": {
+    "mtime": 1792962628.686675,
+    "seen": 1792963247.1829832,
+    "ast_hash": "4433273aa67c96a5b39b2e29b6841af2",
+    "semantic_hash": ""
+  },
+  "tests/e2e/admin/event-form-validation.spec.ts": {
+    "mtime": 1792962628.7557583,
+    "seen": 1792963247.1829844,
+    "ast_hash": "c122378bf80c84c5554631c5a5c28059",
+    "semantic_hash": ""
+  },
+  "tests/e2e/admin/events-crud.spec.ts": {
+    "mtime": 1792962628.6579697,
+    "seen": 1792963247.1829858,
+    "ast_hash": "cce5b893d0f3c6011eb9ecfec7584b84",
+    "semantic_hash": ""
+  },
+  "tests/e2e/admin/manual-booking.spec.ts": {
+    "mtime": 1792962628.6938844,
+    "seen": 1792963247.1829867,
+    "ast_hash": "34d86710f15d074e55a623d363f8c63f",
+    "semantic_hash": ""
+  },
+  "tests/e2e/admin/rooms-crud.spec.ts": {
+    "mtime": 1792962628.6590178,
+    "seen": 1792963247.182988,
+    "ast_hash": "c50156d3c9175714821aa0e1140acf27",
+    "semantic_hash": ""
+  },
+  "tests/e2e/admin/smoke.spec.ts": {
+    "mtime": 1792962628.7650862,
+    "seen": 1792963247.1829891,
+    "ast_hash": "e848c1628f2514d437af379ba02f7cea",
+    "semantic_hash": ""
+  },
+  "tests/e2e/auth.setup.ts": {
+    "mtime": 1792962628.7654364,
+    "seen": 1792963247.1829898,
+    "ast_hash": "9fa3c5935558d495d87bb8076506c9f4",
+    "semantic_hash": ""
+  },
+  "tests/e2e/guest/login.spec.ts": {
+    "mtime": 1792962628.6591873,
+    "seen": 1792963247.1829913,
+    "ast_hash": "901c661de260ff8d286106d0cb26ff6f",
+    "semantic_hash": ""
+  },
+  "tests/e2e/user/booking-flow.spec.ts": {
+    "mtime": 1792962628.765577,
+    "seen": 1792963247.182993,
+    "ast_hash": "69bb19a899e54be9fdfdcbb74cc419b1",
+    "semantic_hash": ""
+  },
+  "tests/e2e/user/booking-window.spec.ts": {
+    "mtime": 1792962628.7657084,
+    "seen": 1792963247.182994,
+    "ast_hash": "3e0b07b4154bde1626883040dfa7f1ea",
+    "semantic_hash": ""
+  },
+  "tests/e2e/user/seat-conflict-redirect.spec.ts": {
+    "mtime": 1792962628.702972,
+    "seen": 1792963247.1829963,
+    "ast_hash": "2fd23bd5e526fd935e701d7326466430",
+    "semantic_hash": ""
+  },
+  "tests/e2e/user/seat-selection.spec.ts": {
+    "mtime": 1792962628.7475817,
+    "seen": 1792963247.182997,
+    "ast_hash": "3b21114a89dceca3cc0af99deeeb9ce8",
+    "semantic_hash": ""
+  },
+  "tests/e2e/user/ui-polish.spec.ts": {
+    "mtime": 1792962628.7205033,
+    "seen": 1792963247.1829984,
+    "ast_hash": "47d7872e8d4b82d658c20925a45f4ece",
+    "semantic_hash": ""
+  },
+  ".claude/CLAUDE.md": {
+    "mtime": 1792962001.6595464,
+    "seen": 1792963247.1830053,
+    "ast_hash": "9b31786b637be3c13978bec4c2330752",
+    "semantic_hash": ""
+  },
+  ".github/copilot-instructions.md": {
+    "mtime": 1784293721.893181,
+    "seen": 1792963247.1830075,
+    "ast_hash": "2d922daa034b7081de0bcd1a1fd01040",
+    "semantic_hash": ""
+  },
+  "BOOKING_IMPORT_GUIDE.md": {
+    "mtime": 1786488464.7864766,
+    "seen": 1792963247.183011,
+    "ast_hash": "ab0c69b10f095b34e4b4bc98fd6c27b6",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1792962001.6602426,
+    "seen": 1792963247.1830122,
+    "ast_hash": "864448a410760d794ae56cd64b15f757",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1792962628.7299638,
+    "seen": 1792963247.183014,
+    "ast_hash": "83176b8564e224dcc70b5bc5cf362d19",
+    "semantic_hash": ""
+  },
+  "public/robots.txt": {
+    "mtime": 1782250276.6211824,
+    "seen": 1792963247.1830149,
+    "ast_hash": "b6216d61c03e6ce0c9aea6ca7808f7ca",
+    "semantic_hash": ""
+  },
+  "tests/e2e/README.md": {
+    "mtime": 1792963988.9690804,
+    "seen": 1792964019.909785,
+    "ast_hash": "9d2207a522757e5773c48ebefe9a492f",
+    "semantic_hash": ""
+  },
+  "public/images/seating_card.svg": {
+    "mtime": 1782250276.6150298,
+    "seen": 1792963247.1830175,
+    "ast_hash": "3b8d6e148c4ed4525e729456c420d893",
+    "semantic_hash": ""
+  },
+  "resources/assets/images/seating_card.png": {
+    "mtime": 1792961771.0003593,
+    "seen": 1792963247.183019,
+    "ast_hash": "b8f58d32560a16a163567367e5521a63",
+    "semantic_hash": ""
+  },
+  "resources/assets/images/seating_card.svg": {
+    "mtime": 1792961771.0009449,
+    "seen": 1792963247.1830206,
+    "ast_hash": "2f6782bfc990772a0a22eb74a7b9847c",
+    "semantic_hash": ""
+  },
+  "tests/e2e/admin/booking-edit-delete.spec.ts": {
+    "mtime": 1792963598.6201186,
+    "seen": 1792964019.9097538,
+    "ast_hash": "c3d344545c76ca1b9a0f51d874368b24",
+    "semantic_hash": ""
+  },
+  "tests/e2e/admin/room-layout-editor.spec.ts": {
+    "mtime": 1792963874.7635188,
+    "seen": 1792964019.909761,
+    "ast_hash": "c129f8e810168d977510c81f41d702ff",
+    "semantic_hash": ""
+  },
+  "tests/e2e/user/booking-management.spec.ts": {
+    "mtime": 1792963671.7641675,
+    "seen": 1792964019.909769,
+    "ast_hash": "ace8d13bf6b52536d9709e5dbf818f57",
+    "semantic_hash": ""
   }
 }
