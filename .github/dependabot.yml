@@ -1,23 +1,25 @@
+# schedule.interval is mandatory, so "yearly" is used to minimize automatic runs.
+# Trigger checks anytime via Insights > Dependency graph > Dependabot > "Check for updates" (ignores the schedule).
 version: 2
 updates:
   - package-ecosystem: "composer"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "yearly"
     open-pull-requests-limit: 10
 
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "yearly"
     open-pull-requests-limit: 10
 
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "yearly"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "yearly"
