@@ -136,15 +136,15 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Start app server
-        run: php artisan serve --host=127.0.0.1 --port=80 &
+        run: php artisan serve --host=127.0.0.1 --port=8000 &
 
       - name: Wait for app server
-        run: timeout 30 bash -c 'until curl -sf http://127.0.0.1:80 -o /dev/null; do sleep 1; done'
+        run: timeout 30 bash -c 'until curl -sf http://127.0.0.1:8000 -o /dev/null; do sleep 1; done'
 
       - name: Run Playwright tests
         run: npm run test:e2e
         env:
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:80
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8000
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
