@@ -3,11 +3,12 @@
 namespace Tests\Unit;
 
 use App\Booking\SeatAssigner;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 class SeatAssignerTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function contiguous_room_run_does_not_cross_block_boundaries()
     {
         // Two adjacent blocks with exactly 1 free seat each at the seam. A naive room-wide
@@ -30,7 +31,7 @@ class SeatAssignerTest extends TestCase
         $this->assertSame([10], $assigner->findContiguousRoomRun($seatIdsByBlock, $unavailable, 1));
     }
 
-    /** @test */
+    #[Test]
     public function contiguous_room_run_returns_first_fitting_block()
     {
         $seatIdsByBlock = [

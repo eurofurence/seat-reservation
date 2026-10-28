@@ -3,11 +3,12 @@
 namespace Tests\Unit;
 
 use App\Models\Booking;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 class BookingUnitTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function booking_has_correct_fillable_attributes()
     {
         $booking = new Booking;
@@ -25,7 +26,7 @@ class BookingUnitTest extends TestCase
         $this->assertEquals($expected, $booking->getFillable());
     }
 
-    /** @test */
+    #[Test]
     public function booking_has_correct_default_type()
     {
         $booking = new Booking;
@@ -39,7 +40,7 @@ class BookingUnitTest extends TestCase
         $this->assertTrue(in_array('type', $booking->getFillable()));
     }
 
-    /** @test */
+    #[Test]
     public function booking_name_can_be_set()
     {
         $booking = new Booking;

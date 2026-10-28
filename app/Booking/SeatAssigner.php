@@ -8,23 +8,24 @@ use App\Models\Event;
 use App\Models\Room;
 use App\Models\Row;
 use App\Models\Seat;
+use Illuminate\Support\Collection;
 
 class SeatAssigner
 {
     // ponytail: cached per room for one assignment pass, never invalidated - safe since
     // nothing mutates seats mid-pass.
-    /** @var array<int, \Illuminate\Support\Collection<int, Block>> */
+    /** @var array<int, Collection<int, Block>> */
     private array $blocksCache = [];
 
-    /** @var array<int, \Illuminate\Support\Collection<int, Block>> */
+    /** @var array<int, Collection<int, Block>> */
     private array $stageBlocksCache = [];
 
-    private function blocksFor(Room $room): \Illuminate\Support\Collection
+    private function blocksFor(Room $room): Collection
     {
         return $this->blocksCache[$room->id] ??= $room->blocks()->with('rows.seats')->get();
     }
 
-    private function stageBlocksFor(Room $room): \Illuminate\Support\Collection
+    private function stageBlocksFor(Room $room): Collection
     {
         return $this->stageBlocksCache[$room->id] ??= $room->stageBlocks()->get()->filter(
             fn (Block $stage) => $stage->position_x !== null && $stage->position_y !== null
@@ -177,7 +178,7 @@ class SeatAssigner
     }
 
     /** Rows front-to-back, unless $nearRowName names a real row - then nearest-first, ties toward the back. */
-    private function orderRowsNearest(\Illuminate\Support\Collection $rows, ?string $nearRowName): \Illuminate\Support\Collection
+    private function orderRowsNearest(Collection $rows, ?string $nearRowName): Collection
     {
         $rows = $rows->values();
 

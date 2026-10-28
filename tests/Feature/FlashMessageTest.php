@@ -10,13 +10,14 @@ use App\Models\Row;
 use App\Models\Seat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class FlashMessageTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function flash_message_is_shared_once_then_cleared()
     {
         $user = User::factory()->create(['is_admin' => false]);

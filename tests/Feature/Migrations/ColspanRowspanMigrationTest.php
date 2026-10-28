@@ -5,6 +5,7 @@ namespace Tests\Feature\Migrations;
 use App\Models\Room;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
 use Tests\TestCase;
 
@@ -40,7 +41,7 @@ class ColspanRowspanMigrationTest extends TestCase
         ], $overrides));
     }
 
-    /** @test */
+    #[Test]
     public function merge_joins_adjacent_stage_and_comment_blocks_but_leaves_seating_alone(): void
     {
         $room = Room::factory()->create();
@@ -66,7 +67,7 @@ class ColspanRowspanMigrationTest extends TestCase
         $this->assertSame(4, DB::table('blocks')->where('room_id', $room->id)->count());
     }
 
-    /** @test */
+    #[Test]
     public function rollback_splits_stage_and_comment_blocks_but_not_a_spanned_seating_block(): void
     {
         $room = Room::factory()->create();

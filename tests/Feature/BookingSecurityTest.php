@@ -10,6 +10,7 @@ use App\Models\Row;
 use App\Models\Seat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingSecurityTest extends TestCase
@@ -73,7 +74,7 @@ class BookingSecurityTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_view_another_users_booking()
     {
         $response = $this->actingAs($this->user1)
@@ -97,7 +98,7 @@ class BookingSecurityTest extends TestCase
             );
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_update_another_users_booking()
     {
         $response = $this->actingAs($this->user1)
@@ -115,7 +116,7 @@ class BookingSecurityTest extends TestCase
         $this->assertNull($this->user2Booking->comment);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_delete_another_users_booking()
     {
         $response = $this->actingAs($this->user1)
@@ -131,7 +132,7 @@ class BookingSecurityTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_only_sees_their_own_bookings_in_index()
     {
         $response = $this->actingAs($this->user1)
@@ -164,7 +165,7 @@ class BookingSecurityTest extends TestCase
             );
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_access_another_users_booking_confirmation()
     {
         $response = $this->actingAs($this->user1)
@@ -184,7 +185,7 @@ class BookingSecurityTest extends TestCase
             );
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_any_users_booking()
     {
         // Admin can view user1's booking
@@ -214,7 +215,7 @@ class BookingSecurityTest extends TestCase
             );
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_update_any_users_booking()
     {
         $response = $this->actingAs($this->admin)
@@ -232,7 +233,7 @@ class BookingSecurityTest extends TestCase
         $this->assertEquals('Admin Note', $this->user1Booking->comment);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_delete_any_users_booking()
     {
         $response = $this->actingAs($this->admin)
@@ -247,7 +248,7 @@ class BookingSecurityTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_update_booking_after_reservation_deadline()
     {
         // Set the event reservation deadline to the past
@@ -267,7 +268,7 @@ class BookingSecurityTest extends TestCase
         $this->assertEquals('User 1 Booking', $this->user1Booking->name);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_delete_booking_after_reservation_deadline()
     {
         // Set the event reservation deadline to the past
@@ -286,7 +287,7 @@ class BookingSecurityTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_update_booking_after_ticket_pickup()
     {
         // Mark the ticket as picked up
@@ -306,7 +307,7 @@ class BookingSecurityTest extends TestCase
         $this->assertEquals('User 1 Booking', $this->user1Booking->name);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_delete_booking_after_ticket_pickup()
     {
         // Mark the ticket as picked up
@@ -325,7 +326,7 @@ class BookingSecurityTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function guest_cannot_access_any_booking_routes()
     {
         // Index
@@ -351,7 +352,7 @@ class BookingSecurityTest extends TestCase
         $response->assertRedirect(route('auth.login'));
     }
 
-    /** @test */
+    #[Test]
     public function concurrent_users_cannot_interfere_with_each_other()
     {
         // Create a third user

@@ -13,6 +13,17 @@ class Event extends Model
 
     protected $guarded = [];
 
+    protected $fillable = [
+        'room_id',
+        'name',
+        'reservation_ends_at',
+        'starts_at',
+        'booking_starts_at',
+        'tickets',
+        'max_tickets',
+        'notifications_sent',
+    ];
+
     protected $casts = [
         'starts_at' => 'datetime',
         'reservation_ends_at' => 'datetime',

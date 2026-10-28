@@ -50,6 +50,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Session Serialization
+    |--------------------------------------------------------------------------
+    |
+    | JSON avoids unserialize() on session data, guarding against PHP
+    | object-injection gadget chains if APP_KEY ever leaks. Switching from
+    | 'php' invalidates all active sessions on deploy (one-time logout).
+    |
+    */
+
+    'serialization' => 'json',
+
+    /*
+    |--------------------------------------------------------------------------
     | Session File Location
     |--------------------------------------------------------------------------
     |

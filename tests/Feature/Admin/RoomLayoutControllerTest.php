@@ -9,6 +9,7 @@ use App\Models\Seat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class RoomLayoutControllerTest extends TestCase
@@ -26,7 +27,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->room = Room::factory()->create();
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_room_layout_editor()
     {
         $this->actingAs($this->admin);
@@ -52,7 +53,7 @@ class RoomLayoutControllerTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function room_layout_migrates_old_stage_position()
     {
         $this->actingAs($this->admin);
@@ -80,7 +81,7 @@ class RoomLayoutControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_update_room_layout()
     {
         $this->actingAs($this->admin);
@@ -168,7 +169,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertEquals(18, $totalSeats);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_validates_required_fields()
     {
         $this->actingAs($this->admin);
@@ -189,7 +190,7 @@ class RoomLayoutControllerTest extends TestCase
         $response->assertSessionHasErrors(['blocks.0.name', 'blocks.0.position_x', 'blocks.0.rotation']);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_rejects_overlapping_blocks_across_collections()
     {
         $this->actingAs($this->admin);
@@ -215,7 +216,7 @@ class RoomLayoutControllerTest extends TestCase
         $response->assertSessionHasErrors(['stageBlocks.0.position_x', 'blocks.0.position_x']);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_rejects_overlapping_blocks_within_a_collection()
     {
         $this->actingAs($this->admin);
@@ -233,7 +234,7 @@ class RoomLayoutControllerTest extends TestCase
         $response->assertSessionHasErrors(['blocks.0.position_x', 'blocks.1.position_x']);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_allows_adjacent_non_overlapping_blocks()
     {
         $this->actingAs($this->admin);
@@ -251,7 +252,7 @@ class RoomLayoutControllerTest extends TestCase
         $response->assertSessionDoesntHaveErrors();
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_creates_block_from_temp_id_and_returns_mapping()
     {
         $this->actingAs($this->admin);
@@ -286,7 +287,7 @@ class RoomLayoutControllerTest extends TestCase
         $response->assertSessionHas('blockIdMap', ['temp-1' => $realId]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_returns_id_mapping_for_new_stage_and_marker_blocks()
     {
         $this->actingAs($this->admin);
@@ -322,7 +323,7 @@ class RoomLayoutControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_rejects_block_id_from_another_room()
     {
         $this->actingAs($this->admin);
@@ -348,7 +349,7 @@ class RoomLayoutControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_rejects_invalid_block_ids()
     {
         $this->actingAs($this->admin);
@@ -368,7 +369,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseMissing('blocks', ['name' => 'Nope']);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_create_new_seating_block()
     {
         $this->actingAs($this->admin);
@@ -390,7 +391,7 @@ class RoomLayoutControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function create_block_validates_name()
     {
         $this->actingAs($this->admin);
@@ -402,7 +403,7 @@ class RoomLayoutControllerTest extends TestCase
         $response->assertSessionHasErrors(['name']);
     }
 
-    /** @test */
+    #[Test]
     public function create_block_sets_correct_order()
     {
         $this->actingAs($this->admin);
@@ -421,7 +422,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertEquals(4, $newBlock->order); // Should be max order + 1
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_delete_seating_block()
     {
         $this->actingAs($this->admin);
@@ -441,7 +442,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseMissing('seats', ['id' => $seat->id]);
     }
 
-    /** @test */
+    #[Test]
     public function cannot_delete_non_existent_block()
     {
         $this->actingAs($this->admin);
@@ -452,7 +453,7 @@ class RoomLayoutControllerTest extends TestCase
         $response->assertSessionHas('error', 'Block not found.');
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_creates_new_stage_blocks()
     {
         $this->actingAs($this->admin);
@@ -494,7 +495,7 @@ class RoomLayoutControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_deletes_removed_stage_blocks()
     {
         $this->actingAs($this->admin);
@@ -535,7 +536,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseMissing('blocks', ['id' => $stageBlock2->id]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_reconciles_marker_blocks()
     {
         $this->actingAs($this->admin);
@@ -613,7 +614,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseMissing('blocks', ['id' => $removedComment->id]);
     }
 
-    /** @test */
+    #[Test]
     public function reconcile_updates_order_on_existing_blocks()
     {
         $this->actingAs($this->admin);
@@ -637,7 +638,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseHas('blocks', ['id' => $stage1->id, 'order' => 1]);
     }
 
-    /** @test */
+    #[Test]
     public function reconcile_deletes_all_blocks_when_empty_array_submitted()
     {
         $this->actingAs($this->admin);
@@ -661,7 +662,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseHas('blocks', ['id' => $seating->id]);
     }
 
-    /** @test */
+    #[Test]
     public function reconcile_assigns_contiguous_order_to_new_and_existing_blocks()
     {
         $this->actingAs($this->admin);
@@ -685,7 +686,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseHas('blocks', ['name' => 'B', 'order' => 2]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_validates_marker_block_type()
     {
         $this->actingAs($this->admin);
@@ -701,7 +702,7 @@ class RoomLayoutControllerTest extends TestCase
         ])->assertSessionHasErrors('markerBlocks.0.type');
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_validates_marker_block_rotation()
     {
         $this->actingAs($this->admin);
@@ -717,7 +718,7 @@ class RoomLayoutControllerTest extends TestCase
         ])->assertSessionHasErrors('markerBlocks.0.rotation');
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_rejects_marker_block_id_from_another_room()
     {
         $this->actingAs($this->admin);
@@ -737,7 +738,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseHas('blocks', ['id' => $foreignMarker->id, 'room_id' => $other->id]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_editor_includes_marker_blocks_in_page_props()
     {
         $this->actingAs($this->admin);
@@ -753,7 +754,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertEquals('Pillar', $props['markerBlocks'][1]['name']);
     }
 
-    /** @test */
+    #[Test]
     public function row_recreation_deletes_old_structure()
     {
         $this->actingAs($this->admin);
@@ -799,7 +800,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertEquals(5, $newSeats);
     }
 
-    /** @test */
+    #[Test]
     public function omitting_stage_blocks_preserves_existing_stage_blocks()
     {
         $this->actingAs($this->admin);
@@ -816,7 +817,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseHas('blocks', ['id' => $stage->id]);
     }
 
-    /** @test */
+    #[Test]
     public function omitting_marker_blocks_preserves_existing_marker_blocks()
     {
         $this->actingAs($this->admin);
@@ -833,7 +834,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseHas('blocks', ['id' => $entrance->id]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_rejects_comment_marker_with_negative_x()
     {
         $this->actingAs($this->admin);
@@ -849,7 +850,7 @@ class RoomLayoutControllerTest extends TestCase
         ])->assertSessionHasErrors('markerBlocks.0');
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_rejects_entrance_marker_with_both_coordinates_negative()
     {
         $this->actingAs($this->admin);
@@ -865,7 +866,7 @@ class RoomLayoutControllerTest extends TestCase
         ])->assertSessionHasErrors('markerBlocks.0');
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_rejects_marker_coordinates_outside_grid()
     {
         $this->actingAs($this->admin);
@@ -890,7 +891,7 @@ class RoomLayoutControllerTest extends TestCase
         ])->assertSessionHasErrors('markerBlocks.0.position_y');
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_accepts_temp_id_for_new_stage_and_marker_blocks()
     {
         $this->actingAs($this->admin);
@@ -912,7 +913,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseHas('blocks', ['room_id' => $this->room->id, 'type' => 'entrance', 'name' => 'Door']);
     }
 
-    /** @test */
+    #[Test]
     public function non_admin_cannot_access_layout_routes()
     {
         $user = User::factory()->create(['is_admin' => false]);
@@ -932,7 +933,7 @@ class RoomLayoutControllerTest extends TestCase
         $response->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_persists_colspan_and_rowspan()
     {
         $this->actingAs($this->admin);
@@ -957,7 +958,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseHas('blocks', ['id' => $seatingBlock->id, 'colspan' => 4, 'rowspan' => 2]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_defaults_colspan_and_rowspan_to_one()
     {
         $this->actingAs($this->admin);
@@ -980,7 +981,7 @@ class RoomLayoutControllerTest extends TestCase
         $this->assertDatabaseHas('blocks', ['id' => $seatingBlock->id, 'colspan' => 1, 'rowspan' => 1]);
     }
 
-    /** @test */
+    #[Test]
     public function layout_update_validates_span_range()
     {
         $this->actingAs($this->admin);

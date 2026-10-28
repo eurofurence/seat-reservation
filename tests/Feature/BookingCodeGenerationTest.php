@@ -11,6 +11,7 @@ use App\Models\Seat;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingCodeGenerationTest extends TestCase
@@ -48,7 +49,7 @@ class BookingCodeGenerationTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function regular_user_gets_booking_code_when_creating_booking()
     {
         $seatData = [
@@ -76,7 +77,7 @@ class BookingCodeGenerationTest extends TestCase
         $this->assertEquals('online', $booking->type);
     }
 
-    /** @test */
+    #[Test]
     public function admin_user_gets_booking_code_through_user_interface()
     {
         $seatData = [
@@ -104,7 +105,7 @@ class BookingCodeGenerationTest extends TestCase
         $this->assertEquals('online', $booking->type);
     }
 
-    /** @test */
+    #[Test]
     public function multiple_seats_same_booking_get_same_booking_code()
     {
         $seatData = [
@@ -132,7 +133,7 @@ class BookingCodeGenerationTest extends TestCase
         $this->assertEquals($bookings[0]->booking_code, $bookings[1]->booking_code, 'Both seats should have same booking code');
     }
 
-    /** @test */
+    #[Test]
     public function different_bookings_get_different_booking_codes()
     {
         // First booking
@@ -167,7 +168,7 @@ class BookingCodeGenerationTest extends TestCase
         $this->assertNotEquals($firstBooking->booking_code, $secondBooking->booking_code, 'Different bookings should have different codes');
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_generation_handles_existing_codes()
     {
         // Create a booking with code 'AA'
@@ -195,7 +196,7 @@ class BookingCodeGenerationTest extends TestCase
         $this->assertNotEquals('AA', $booking->booking_code, 'Should generate different code than existing AA');
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_is_returned_in_index_controller()
     {
         // Create a booking with code
@@ -238,7 +239,7 @@ class BookingCodeGenerationTest extends TestCase
         $this->assertEquals('B5', $bookingCode, 'Booking code should be included in response');
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_is_returned_in_show_controller()
     {
         $booking = Booking::factory()->create([
@@ -261,7 +262,7 @@ class BookingCodeGenerationTest extends TestCase
         $this->assertEquals('C7', $bookingData->booking_code ?? $bookingData['booking_code'], 'Booking code should be included in show response');
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_uniqueness_stress_test()
     {
         $generatedCodes = [];
@@ -312,7 +313,7 @@ class BookingCodeGenerationTest extends TestCase
         $this->assertGreaterThan(0.8, $uniqueRate, 'Should have high uniqueness rate for booking codes');
     }
 
-    /** @test */
+    #[Test]
     public function booking_without_code_does_not_break_display()
     {
         // Create booking without booking code (like admin booking)
@@ -334,7 +335,7 @@ class BookingCodeGenerationTest extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_format_validation()
     {
         // Test that generated codes match expected format

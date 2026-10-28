@@ -4,14 +4,16 @@ namespace Tests\Unit\Models;
 
 use App\Models\Block;
 use App\Models\Room;
+use App\Models\Row;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BlockTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function seating_scope_filters_seating_blocks()
     {
         $room = Room::factory()->create();
@@ -30,7 +32,7 @@ class BlockTest extends TestCase
         $this->assertFalse($seatingBlocks->contains($stageBlock));
     }
 
-    /** @test */
+    #[Test]
     public function stage_scope_filters_stage_blocks()
     {
         $room = Room::factory()->create();
@@ -49,7 +51,7 @@ class BlockTest extends TestCase
         $this->assertFalse($stageBlocks->contains($seatingBlock));
     }
 
-    /** @test */
+    #[Test]
     public function block_has_room_relationship()
     {
         $room = Room::factory()->create(['name' => 'Test Room']);
@@ -58,7 +60,7 @@ class BlockTest extends TestCase
         $this->assertEquals('Test Room', $block->room->name);
     }
 
-    /** @test */
+    #[Test]
     public function marker_scope_filters_entrance_and_comment_blocks()
     {
         $room = Room::factory()->create();
@@ -77,7 +79,7 @@ class BlockTest extends TestCase
         $this->assertFalse($markers->contains($stage));
     }
 
-    /** @test */
+    #[Test]
     public function room_marker_blocks_relation_returns_entrance_and_comment_blocks()
     {
         $room = Room::factory()->create();
@@ -96,16 +98,16 @@ class BlockTest extends TestCase
         $this->assertEquals($comment->id, $markers->first()->id); // ordered by 'order'
     }
 
-    /** @test */
+    #[Test]
     public function block_has_rows_relationship_ordered_by_order()
     {
         $room = Room::factory()->create();
         $block = Block::factory()->seating()->create(['room_id' => $room->id]);
 
         // Create rows in random order but set specific order values
-        $row3 = \App\Models\Row::factory()->create(['block_id' => $block->id, 'order' => 3, 'name' => 'Row C']);
-        $row1 = \App\Models\Row::factory()->create(['block_id' => $block->id, 'order' => 1, 'name' => 'Row A']);
-        $row2 = \App\Models\Row::factory()->create(['block_id' => $block->id, 'order' => 2, 'name' => 'Row B']);
+        $row3 = Row::factory()->create(['block_id' => $block->id, 'order' => 3, 'name' => 'Row C']);
+        $row1 = Row::factory()->create(['block_id' => $block->id, 'order' => 1, 'name' => 'Row A']);
+        $row2 = Row::factory()->create(['block_id' => $block->id, 'order' => 2, 'name' => 'Row B']);
 
         $rows = $block->rows;
 

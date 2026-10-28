@@ -9,13 +9,14 @@ use App\Models\Room;
 use App\Models\Row;
 use App\Models\Seat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class SeatTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function seat_can_check_if_booked_for_event()
     {
         $room = Room::factory()->create();
@@ -41,7 +42,7 @@ class SeatTest extends TestCase
         $this->assertFalse($seat->isBookedForEvent($otherEvent->id));
     }
 
-    /** @test */
+    #[Test]
     public function seat_can_generate_full_label()
     {
         $room = Room::factory()->create();
@@ -63,7 +64,7 @@ class SeatTest extends TestCase
         $this->assertEquals('Block A-Row 1-A1', $fullLabel);
     }
 
-    /** @test */
+    #[Test]
     public function seat_name_accessor_returns_label_when_name_is_null()
     {
         $room = Room::factory()->create();

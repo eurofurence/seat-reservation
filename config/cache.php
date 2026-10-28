@@ -108,4 +108,18 @@ return [
 
     'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_cache_'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Serializable Classes
+    |--------------------------------------------------------------------------
+    |
+    | Restricts unserialize() to no objects at all (false), guarding against
+    | PHP object-injection gadget chains if APP_KEY ever leaks. Only plain
+    | arrays/scalars are cached in this app (see ImportSessionStore), so no
+    | class needs to be allow-listed here.
+    |
+    */
+
+    'serializable_classes' => false,
+
 ];

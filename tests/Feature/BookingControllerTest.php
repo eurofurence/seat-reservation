@@ -11,6 +11,7 @@ use App\Models\Seat;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingControllerTest extends TestCase
@@ -50,7 +51,7 @@ class BookingControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_view_their_bookings_index()
     {
         $booking = Booking::factory()->create([
@@ -65,7 +66,7 @@ class BookingControllerTest extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function user_can_view_create_booking_page()
     {
         $response = $this->actingAs($this->user)
@@ -74,7 +75,7 @@ class BookingControllerTest extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function user_can_create_booking_with_booking_code()
     {
         $seatData = [
@@ -104,7 +105,7 @@ class BookingControllerTest extends TestCase
         $this->assertEquals(1, $bookings->pluck('booking_code')->unique()->count());
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_create_booking_with_booking_code()
     {
         $seatData = [
@@ -125,7 +126,7 @@ class BookingControllerTest extends TestCase
         $this->assertEquals(3, strlen($booking->booking_code), 'Booking code should be 3 characters');
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_book_more_than_two_seats_per_event()
     {
         // Create existing bookings for user
@@ -155,7 +156,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseCount('bookings', 2); // No new booking created
     }
 
-    /** @test */
+    #[Test]
     public function admin_cannot_book_more_than_two_seats_per_event_through_user_interface()
     {
         Booking::factory()->create([
@@ -180,7 +181,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseCount('bookings', 2); // No new booking created
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_book_already_booked_seats()
     {
         // Create existing booking
@@ -204,7 +205,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseCount('bookings', 1); // No new booking created
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_book_after_reservation_deadline()
     {
         $this->event->update([
@@ -224,7 +225,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'The reservation period for this event has ended.');
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_view_create_page_for_event_that_has_ended()
     {
         $this->event->update([
@@ -239,7 +240,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'This event has already taken place.');
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_book_after_event_has_ended()
     {
         $this->event->update([
@@ -258,7 +259,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function admin_cannot_book_after_reservation_deadline_through_user_interface()
     {
         $this->event->update(['reservation_ends_at' => Carbon::now()->subHour()]);
@@ -273,7 +274,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function admin_cannot_view_or_book_after_event_has_ended_through_user_interface()
     {
         $this->event->update(['starts_at' => Carbon::now()->subHour()]);
@@ -293,7 +294,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'This event has already taken place.');
     }
 
-    /** @test */
+    #[Test]
     public function user_can_view_create_page_before_booking_starts_at_but_it_is_marked_not_open()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
@@ -306,7 +307,7 @@ class BookingControllerTest extends TestCase
         $this->assertFalse($props['event']['is_booking_open']);
     }
 
-    /** @test */
+    #[Test]
     public function booked_seats_are_hidden_from_layout_before_booking_starts_at()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
@@ -324,7 +325,7 @@ class BookingControllerTest extends TestCase
         $this->assertEmpty($props['bookedSeats']);
     }
 
-    /** @test */
+    #[Test]
     public function booked_seats_are_shown_in_layout_once_booking_starts_at_has_passed()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->subMinute()]);
@@ -342,7 +343,7 @@ class BookingControllerTest extends TestCase
         $this->assertEquals([$this->seats[0]->id], $props['bookedSeats']);
     }
 
-    /** @test */
+    #[Test]
     public function admin_does_not_see_booked_seats_in_layout_before_booking_starts_at_through_user_interface()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
@@ -360,7 +361,7 @@ class BookingControllerTest extends TestCase
         $this->assertEmpty($props['bookedSeats']);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_proceed_past_seat_selection_before_booking_starts_at()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
@@ -372,7 +373,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'Booking for this event is not yet open.');
     }
 
-    /** @test */
+    #[Test]
     public function user_can_proceed_to_validation_page_with_selected_seats()
     {
         $response = $this->actingAs($this->user)
@@ -384,7 +385,7 @@ class BookingControllerTest extends TestCase
         $this->assertEquals([$this->seats[0]->id, $this->seats[1]->id], $props['seatIds']);
     }
 
-    /** @test */
+    #[Test]
     public function validation_page_rejects_seats_already_booked_by_someone_else()
     {
         Booking::factory()->create([
@@ -399,7 +400,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'Sorry, one or more of your selected seats were just booked by someone else. Please choose different seats.');
     }
 
-    /** @test */
+    #[Test]
     public function validation_page_rejects_selection_exceeding_remaining_tickets()
     {
         $this->event->update(['max_tickets' => 2]);
@@ -415,7 +416,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'Not enough tickets available for this event.');
     }
 
-    /** @test */
+    #[Test]
     public function validation_page_rejects_selection_exceeding_per_user_limit()
     {
         Booking::factory()->create([
@@ -431,7 +432,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'You can only book a maximum of 2 seats per event.');
     }
 
-    /** @test */
+    #[Test]
     public function sold_out_event_redirects_away_from_seat_selection()
     {
         $this->event->update(['max_tickets' => 1]);
@@ -447,7 +448,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'This event is sold out.');
     }
 
-    /** @test */
+    #[Test]
     public function user_at_booking_limit_is_redirected_from_seat_selection()
     {
         foreach ([0, 1] as $i) {
@@ -465,7 +466,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'You have already booked the maximum number of seats for this event.');
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_redirects_to_bookings_index()
     {
         $this->actingAs($this->user)
@@ -473,7 +474,7 @@ class BookingControllerTest extends TestCase
             ->assertRedirect(route('bookings.index'));
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_store_booking_before_booking_starts_at()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
@@ -493,7 +494,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_book_once_booking_starts_at_has_passed()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->subMinute()]);
@@ -512,7 +513,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseCount('bookings', 1);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_book_when_booking_starts_at_is_null()
     {
         $this->assertNull($this->event->booking_starts_at);
@@ -530,7 +531,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseCount('bookings', 1);
     }
 
-    /** @test */
+    #[Test]
     public function admin_cannot_proceed_or_book_before_booking_starts_at_through_user_interface()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
@@ -555,7 +556,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function events_index_includes_events_whose_booking_has_not_started()
     {
         $this->event->update(['booking_starts_at' => Carbon::now()->addHour()]);
@@ -579,7 +580,7 @@ class BookingControllerTest extends TestCase
         $this->assertTrue($eventIds->contains($openEvent->id));
     }
 
-    /** @test */
+    #[Test]
     public function events_index_includes_events_with_no_reservation_deadline()
     {
         $noDeadlineEvent = Event::factory()->create([
@@ -600,7 +601,7 @@ class BookingControllerTest extends TestCase
         $this->assertTrue($eventIds->contains($noDeadlineEvent->id));
     }
 
-    /** @test */
+    #[Test]
     public function events_index_excludes_events_whose_deadline_has_passed()
     {
         $closedEvent = Event::factory()->create([
@@ -621,7 +622,7 @@ class BookingControllerTest extends TestCase
         $this->assertFalse($eventIds->contains($closedEvent->id));
     }
 
-    /** @test */
+    #[Test]
     public function events_index_excludes_events_that_have_already_started()
     {
         $startedEvent = Event::factory()->create([
@@ -642,7 +643,7 @@ class BookingControllerTest extends TestCase
         $this->assertFalse($eventIds->contains($startedEvent->id));
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_book_when_no_tickets_left()
     {
         $this->event->update(['max_tickets' => 1]);
@@ -666,7 +667,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'Not enough tickets available for this event.');
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_is_generated_for_users()
     {
         $seatData = [
@@ -685,7 +686,7 @@ class BookingControllerTest extends TestCase
         $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}$/', $booking->booking_code);
     }
 
-    /** @test */
+    #[Test]
     public function booking_codes_are_unique_within_session()
     {
         // Create first booking
@@ -725,7 +726,7 @@ class BookingControllerTest extends TestCase
         $this->assertEquals(3, strlen($secondBookingCode));
     }
 
-    /** @test */
+    #[Test]
     public function user_can_view_individual_booking()
     {
         $booking = Booking::factory()->create([
@@ -740,7 +741,7 @@ class BookingControllerTest extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_view_other_users_booking()
     {
         $otherUser = User::factory()->create();
@@ -757,7 +758,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'You are not authorized to view this booking.');
     }
 
-    /** @test */
+    #[Test]
     public function user_can_update_their_booking()
     {
         $booking = Booking::factory()->create([
@@ -784,7 +785,7 @@ class BookingControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_update_other_users_booking()
     {
         $otherUser = User::factory()->create();
@@ -803,7 +804,7 @@ class BookingControllerTest extends TestCase
             ->assertSessionHas('error', 'You are not allowed to update this booking!');
     }
 
-    /** @test */
+    #[Test]
     public function user_can_delete_their_booking()
     {
         $booking = Booking::factory()->create([
@@ -821,7 +822,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseMissing('bookings', ['id' => $booking->id]);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_delete_other_users_booking()
     {
         $otherUser = User::factory()->create();
@@ -840,7 +841,7 @@ class BookingControllerTest extends TestCase
         $this->assertDatabaseHas('bookings', ['id' => $booking->id]);
     }
 
-    /** @test */
+    #[Test]
     public function booking_validation_requires_valid_seats()
     {
         $response = $this->actingAs($this->user)
@@ -853,7 +854,7 @@ class BookingControllerTest extends TestCase
         $response->assertSessionHasErrors(['seats.0.seat_id']);
     }
 
-    /** @test */
+    #[Test]
     public function booking_validation_requires_seat_names()
     {
         $response = $this->actingAs($this->user)
@@ -866,7 +867,7 @@ class BookingControllerTest extends TestCase
         $response->assertSessionHasErrors(['seats.0.name']);
     }
 
-    /** @test */
+    #[Test]
     public function booking_update_validation_works_correctly()
     {
         $booking = Booking::factory()->create([
@@ -884,7 +885,7 @@ class BookingControllerTest extends TestCase
         $response->assertSessionHasErrors(['name']);
     }
 
-    /** @test */
+    #[Test]
     public function guests_cannot_access_booking_routes()
     {
         $booking = Booking::factory()->create([
@@ -909,7 +910,7 @@ class BookingControllerTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_generation_handles_collisions()
     {
         // Create a booking with code 'AA'

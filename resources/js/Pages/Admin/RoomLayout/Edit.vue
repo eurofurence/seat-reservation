@@ -7,7 +7,7 @@ import { Card } from '@/Components/ui/card'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { useToast } from '@/Components/ui/toast'
-import { Trash2, RotateCw, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, TriangleAlert, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { Trash2, RotateCw, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, TriangleAlert, ChevronDown, ChevronRight } from '@lucide/vue'
 import type {
   BlockId, Orientation, MarkerType,
   PropBlock, PropStageBlock, PropMarkerBlock,

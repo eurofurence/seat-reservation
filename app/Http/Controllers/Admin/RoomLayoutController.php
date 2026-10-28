@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Room;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -338,7 +339,7 @@ class RoomLayoutController extends Controller
     /**
      * Delete blocks in $scope absent from $submitted, then update-or-create the rest.
      *
-     * @param  \Illuminate\Database\Eloquent\Relations\HasMany  $scope
+     * @param  HasMany  $scope
      * @param  array<int,array<string,mixed>>  $submitted
      */
     private function reconcileBlocks(Room $room, $scope, array $submitted, callable $attributes, array &$blockIdMap = []): void

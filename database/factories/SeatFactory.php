@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Row;
+use App\Models\Seat;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Seat>
+ * @extends Factory<Seat>
  */
 class SeatFactory extends Factory
 {

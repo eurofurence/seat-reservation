@@ -4,7 +4,7 @@ import Layout from "@/Layouts/Layout.vue"
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Alert } from '@/Components/ui/alert'
-import { User, Info, LogIn, AlertCircle } from 'lucide-vue-next'
+import { User, Info, LogIn, AlertCircle } from '@lucide/vue'
 
 defineOptions({layout: Layout})
 

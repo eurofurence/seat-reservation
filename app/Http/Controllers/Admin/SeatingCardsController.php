@@ -10,6 +10,7 @@ use App\Services\Svg\MasterCardSvgGenerator;
 use App\Services\Svg\OrderCardSvgGenerator;
 use App\Services\Svg\SvgUtilities;
 use Illuminate\Support\Str;
+use Mpdf\Mpdf;
 
 class SeatingCardsController extends Controller
 {
@@ -83,7 +84,7 @@ class SeatingCardsController extends Controller
                 ->get();
 
             // mPDF configuration with custom Zhurzh font
-            $mpdf = new \Mpdf\Mpdf([
+            $mpdf = new Mpdf([
                 'format' => 'A4-L',
                 'margin_left' => 0,
                 'margin_right' => 0,

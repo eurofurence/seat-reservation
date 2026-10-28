@@ -11,13 +11,14 @@ use App\Models\Seat;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingCodeIntegrationTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function end_to_end_booking_code_flow_for_regular_user()
     {
         // Create a regular user
@@ -86,7 +87,7 @@ class BookingCodeIntegrationTest extends TestCase
         echo "SUCCESS: Regular user booking generated code: {$booking->booking_code}\n";
     }
 
-    /** @test */
+    #[Test]
     public function end_to_end_booking_code_flow_for_admin_user()
     {
         // Create an admin user
@@ -143,7 +144,7 @@ class BookingCodeIntegrationTest extends TestCase
         echo "SUCCESS: Admin user booking through user interface got code: {$booking->booking_code}\n";
     }
 
-    /** @test */
+    #[Test]
     public function multiple_regular_users_get_different_booking_codes()
     {
         // Create multiple regular users
@@ -193,7 +194,7 @@ class BookingCodeIntegrationTest extends TestCase
         echo "SUCCESS: User1 got code '{$booking1->booking_code}', User2 got code '{$booking2->booking_code}'\n";
     }
 
-    /** @test */
+    #[Test]
     public function booking_code_generation_stress_test()
     {
         $codes = [];
@@ -242,7 +243,7 @@ class BookingCodeIntegrationTest extends TestCase
         $this->assertGreaterThan(0.7, $uniqueRate, 'Uniqueness rate should be > 70%, got '.round($uniqueRate * 100, 1).'%');
     }
 
-    /** @test */
+    #[Test]
     public function verify_current_database_state()
     {
         echo "\n=== CURRENT DATABASE STATE ===\n";

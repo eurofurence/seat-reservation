@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import Panzoom from '@panzoom/panzoom'
 import SeatBlock from './SeatBlock.vue'
-import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from 'lucide-vue-next'
+import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from '@lucide/vue'
 import type { LayoutBlock, PropStageBlock, PropMarkerBlock, Orientation, Seat } from '@/types/layout'
 
 interface GridCellNamed { type: 'stage' | 'comment'; name: string; colSpan?: number; rowSpan?: number }

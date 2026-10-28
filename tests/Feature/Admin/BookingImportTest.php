@@ -13,6 +13,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingImportTest extends TestCase
@@ -94,7 +95,7 @@ class BookingImportTest extends TestCase
         return $response->getOriginalContent()->getData()['page']['props'];
     }
 
-    /** @test */
+    #[Test]
     public function exact_seat_rows_are_booked_after_confirm()
     {
         $admin = $this->actingAsAdmin();
@@ -131,7 +132,7 @@ class BookingImportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_display_name_column_is_surfaced_on_the_proposal()
     {
         $this->actingAsAdmin();
@@ -157,7 +158,7 @@ class BookingImportTest extends TestCase
         $this->assertNull($byName['No Name Guest']['user_display_name']);
     }
 
-    /** @test */
+    #[Test]
     public function edited_guest_name_is_booked_and_still_passes_the_quota_guard()
     {
         $this->actingAsAdmin();
@@ -187,7 +188,7 @@ class BookingImportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function imported_bookings_are_not_marked_picked_up_automatically()
     {
         $this->actingAsAdmin();
@@ -211,7 +212,7 @@ class BookingImportTest extends TestCase
         $this->assertNull($booking->picked_up_at);
     }
 
-    /** @test */
+    #[Test]
     public function blank_seat_rows_fill_a_whole_deeper_row_instead_of_spanning_a_row_boundary_when_it_fits()
     {
         $this->actingAsAdmin();
@@ -242,7 +243,7 @@ class BookingImportTest extends TestCase
         $this->assertEqualsCanonicalizing([$seatB1->id, $seatB2->id], $props['proposal'][0]['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function blank_seat_rows_span_a_row_boundary_only_when_no_single_row_fits_the_quantity()
     {
         $this->actingAsAdmin();
@@ -271,7 +272,7 @@ class BookingImportTest extends TestCase
         $this->assertEqualsCanonicalizing([$seatA2->id, $seatB1->id, $seatB2->id], $props['proposal'][0]['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function blank_seat_rows_distribute_row_by_row_across_blocks_instead_of_draining_one_block_first()
     {
         $this->actingAsAdmin();
@@ -317,7 +318,7 @@ class BookingImportTest extends TestCase
         $this->assertEqualsCanonicalizing($leftSeats[2]->pluck('id')->all(), $byName['Guest Four']['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function auto_assign_defaults_to_center_block_when_none_specified()
     {
         $this->actingAsAdmin();
@@ -341,7 +342,7 @@ class BookingImportTest extends TestCase
         $this->assertEmpty(array_intersect($assignedIds, $leftSeats->pluck('id')->all()));
     }
 
-    /** @test */
+    #[Test]
     public function auto_assign_center_default_fuzzy_matches_a_block_named_front_center()
     {
         $this->actingAsAdmin();
@@ -378,7 +379,7 @@ class BookingImportTest extends TestCase
         $this->assertEmpty(array_intersect($assignedIds, $leftSeats->pluck('id')->all()));
     }
 
-    /** @test */
+    #[Test]
     public function auto_assign_overflows_to_other_blocks_front_row_before_center_back_rows()
     {
         $this->actingAsAdmin();
@@ -425,7 +426,7 @@ class BookingImportTest extends TestCase
         $this->assertEmpty(array_intersect($assignedIds, $centerRow2Seats->pluck('id')->all()));
     }
 
-    /** @test */
+    #[Test]
     public function auto_assign_uses_an_explicit_preferred_block()
     {
         $this->actingAsAdmin();
@@ -445,7 +446,7 @@ class BookingImportTest extends TestCase
         $this->assertContains($assignedIds[0], $rightSeats->pluck('id')->all());
     }
 
-    /** @test */
+    #[Test]
     public function auto_assign_leaves_guest_unplaced_when_preferred_block_does_not_exist()
     {
         $this->actingAsAdmin();
@@ -468,7 +469,7 @@ class BookingImportTest extends TestCase
         $this->assertStringContainsString("Block 'fromt' was not found", $guest['unresolved_reason']);
     }
 
-    /** @test */
+    #[Test]
     public function auto_assign_leaves_guest_unresolved_when_preferred_block_lacks_capacity()
     {
         $this->actingAsAdmin();
@@ -493,7 +494,7 @@ class BookingImportTest extends TestCase
         $this->assertStringContainsString("Block 'left' doesn't have 3 contiguous free seat(s)", $guest['unresolved_reason']);
     }
 
-    /** @test */
+    #[Test]
     public function mixed_exact_and_auto_rows_do_not_overlap()
     {
         $this->actingAsAdmin();
@@ -515,7 +516,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals([$seatA2->id], $props['proposal'][1]['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function ambiguous_partial_seat_columns_auto_assign_instead_of_aborting()
     {
         $this->actingAsAdmin();
@@ -563,7 +564,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals(3, Booking::where('event_id', $event->id)->count());
     }
 
-    /** @test */
+    #[Test]
     public function unmatched_exact_seat_reaches_preview_as_unresolved_instead_of_aborting()
     {
         $this->actingAsAdmin();
@@ -605,7 +606,7 @@ class BookingImportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function import_exceeding_room_capacity_is_rejected_entirely()
     {
         $this->actingAsAdmin();
@@ -627,7 +628,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function import_is_not_limited_by_the_events_ticket_cap()
     {
         $this->actingAsAdmin();
@@ -648,7 +649,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals(2, $props['proposal'][0]['requested_seats']);
     }
 
-    /** @test */
+    #[Test]
     public function confirm_rejects_booking_fewer_seats_than_requested()
     {
         $this->actingAsAdmin();
@@ -690,7 +691,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals(3, Booking::where('event_id', $event->id)->where('name', 'Jane Smith')->count());
     }
 
-    /** @test */
+    #[Test]
     public function confirm_rejects_the_same_seat_assigned_more_than_once()
     {
         $this->actingAsAdmin();
@@ -718,7 +719,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function confirm_rejects_seats_that_belong_to_another_room()
     {
         $this->actingAsAdmin();
@@ -744,7 +745,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function confirm_rejects_a_payload_that_no_longer_matches_the_pending_preview()
     {
         $this->actingAsAdmin();
@@ -768,7 +769,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function collision_at_confirm_reassigns_only_the_affected_guest()
     {
         $this->actingAsAdmin();
@@ -818,7 +819,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals([$seatB1->id], $guestB['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function duplicate_exact_seat_reference_becomes_unresolved_for_the_second_row()
     {
         $this->actingAsAdmin();
@@ -840,7 +841,7 @@ class BookingImportTest extends TestCase
         $this->assertTrue($props['proposal'][1]['unresolved']);
     }
 
-    /** @test */
+    #[Test]
     public function already_booked_exact_seat_becomes_unresolved_instead_of_aborting()
     {
         $this->actingAsAdmin();
@@ -869,7 +870,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 1); // only the pre-existing one
     }
 
-    /** @test */
+    #[Test]
     public function reimporting_a_csv_flags_guests_already_booked_by_name_and_skips_them_on_confirm()
     {
         $this->actingAsAdmin();
@@ -919,7 +920,7 @@ class BookingImportTest extends TestCase
         $this->assertSame(1, Booking::where('name', 'Jane Doe')->count());
     }
 
-    /** @test */
+    #[Test]
     public function reimport_flags_a_seat_count_mismatch_for_an_already_booked_guest()
     {
         $this->actingAsAdmin();
@@ -945,7 +946,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals([$seatA1->id], $jane['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function reimport_surfaces_the_csv_seat_preference_for_an_already_booked_guest()
     {
         $this->actingAsAdmin();
@@ -970,7 +971,7 @@ class BookingImportTest extends TestCase
         $this->assertNull($jane['preferred_row_name']);
     }
 
-    /** @test */
+    #[Test]
     public function skipping_a_fully_resolved_new_guest_excludes_them_from_this_confirm()
     {
         $this->actingAsAdmin();
@@ -1008,7 +1009,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseMissing('bookings', ['name' => 'Skip Me']);
     }
 
-    /** @test */
+    #[Test]
     public function skipping_an_unresolved_guest_lets_confirm_proceed_without_booking_them()
     {
         $this->actingAsAdmin();
@@ -1043,7 +1044,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseMissing('bookings', ['name' => 'Frank Ghost']);
     }
 
-    /** @test */
+    #[Test]
     public function skipping_an_already_booked_guest_leaves_their_existing_booking_untouched()
     {
         $this->actingAsAdmin();
@@ -1084,7 +1085,7 @@ class BookingImportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function editing_an_already_booked_guests_name_on_confirm_bulk_renames_their_existing_booking()
     {
         $this->actingAsAdmin();
@@ -1119,7 +1120,7 @@ class BookingImportTest extends TestCase
         $this->assertSame('new note', $existing->comment);
     }
 
-    /** @test */
+    #[Test]
     public function rejected_confirm_leaves_an_already_booked_guests_pending_rename_and_seat_change_uncommitted()
     {
         $this->actingAsAdmin();
@@ -1161,7 +1162,7 @@ class BookingImportTest extends TestCase
         $this->assertSame($seatA1->id, $existing->seat_id);
     }
 
-    /** @test */
+    #[Test]
     public function confirm_adds_a_new_seat_for_an_already_booked_guest_whose_csv_now_requests_more()
     {
         $this->actingAsAdmin();
@@ -1193,7 +1194,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseHas('bookings', ['event_id' => $event->id, 'seat_id' => $seatA2->id, 'name' => 'Jane Doe']);
     }
 
-    /** @test */
+    #[Test]
     public function confirm_frees_a_seat_for_an_already_booked_guest_whose_csv_now_requests_fewer()
     {
         $this->actingAsAdmin();
@@ -1226,7 +1227,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseMissing('bookings', ['id' => $keptBooking->id]);
     }
 
-    /** @test */
+    #[Test]
     public function confirm_allows_more_seats_than_requested()
     {
         $this->actingAsAdmin();
@@ -1253,7 +1254,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals(2, Booking::where('event_id', $event->id)->where('name', 'Solo Guest')->count());
     }
 
-    /** @test */
+    #[Test]
     public function malformed_csv_header_is_rejected()
     {
         $this->actingAsAdmin();
@@ -1272,7 +1273,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function non_csv_file_upload_is_rejected()
     {
         $this->actingAsAdmin();
@@ -1289,7 +1290,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function csv_with_utf8_bom_is_accepted()
     {
         $this->actingAsAdmin();
@@ -1308,7 +1309,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals('Bom Guest', $props['proposal'][0]['guest_name']);
     }
 
-    /** @test */
+    #[Test]
     public function overlong_guest_name_and_comment_are_capped_and_still_import()
     {
         $this->actingAsAdmin();
@@ -1340,7 +1341,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseHas('bookings', ['name' => str_repeat('N', 255)]);
     }
 
-    /** @test */
+    #[Test]
     public function csv_without_optional_columns_still_imports()
     {
         $this->actingAsAdmin();
@@ -1362,7 +1363,7 @@ class BookingImportTest extends TestCase
         $this->assertCount(1, $props['proposal'][0]['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function csv_with_extra_unrelated_column_still_imports()
     {
         $this->actingAsAdmin();
@@ -1385,7 +1386,7 @@ class BookingImportTest extends TestCase
         $this->assertCount(1, $props['proposal'][0]['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function single_event_import_honors_an_optional_event_column_and_skips_other_events_rows()
     {
         $this->actingAsAdmin();
@@ -1415,7 +1416,7 @@ class BookingImportTest extends TestCase
         $this->assertNotContains('Other Event Guest', $names);
     }
 
-    /** @test */
+    #[Test]
     public function single_event_import_rejects_a_csv_whose_event_column_never_matches()
     {
         $this->actingAsAdmin();
@@ -1434,7 +1435,7 @@ class BookingImportTest extends TestCase
         $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$event->id}"));
     }
 
-    /** @test */
+    #[Test]
     public function number_of_seats_column_expands_auto_assign_quantity()
     {
         $this->actingAsAdmin();
@@ -1454,7 +1455,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals(3, $props['proposal'][0]['requested_seats']);
     }
 
-    /** @test */
+    #[Test]
     public function blank_number_of_seats_defaults_to_one()
     {
         $this->actingAsAdmin();
@@ -1472,7 +1473,7 @@ class BookingImportTest extends TestCase
         $this->assertCount(1, $props['proposal'][0]['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function non_numeric_number_of_seats_rejects_the_whole_import()
     {
         $this->actingAsAdmin();
@@ -1493,7 +1494,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function number_of_seats_exceeding_room_capacity_rejects_the_whole_import()
     {
         $this->actingAsAdmin();
@@ -1517,7 +1518,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function non_admin_cannot_access_import_routes()
     {
         $user = User::factory()->create(['is_admin' => false]);
@@ -1532,7 +1533,7 @@ class BookingImportTest extends TestCase
         $this->post(route('admin.events.import-bookings.confirm', $event->id), [])->assertForbidden();
     }
 
-    /** @test */
+    #[Test]
     public function import_template_has_expected_headers()
     {
         $this->actingAsAdmin();
@@ -1546,7 +1547,7 @@ class BookingImportTest extends TestCase
         $this->assertStringStartsWith("Guest Name,Comment,Block,Row,Seat,Number of Seats,Timestamp\n", $response->getContent());
     }
 
-    /** @test */
+    #[Test]
     public function global_import_processes_multiple_events_one_at_a_time_then_completes()
     {
         $admin = $this->actingAsAdmin();
@@ -1611,7 +1612,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 2);
     }
 
-    /** @test */
+    #[Test]
     public function import_state_survives_a_slow_admin_who_only_views_pages_past_one_cache_lifetime()
     {
         $admin = $this->actingAsAdmin();
@@ -1681,7 +1682,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 2);
     }
 
-    /** @test */
+    #[Test]
     public function abandoning_a_global_import_midway_books_nothing()
     {
         $this->actingAsAdmin();
@@ -1722,7 +1723,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function global_import_rejects_unmatched_event_name_upfront()
     {
         $this->actingAsAdmin();
@@ -1747,7 +1748,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function global_import_rejects_bad_number_of_seats_in_a_later_event_upfront()
     {
         $this->actingAsAdmin();
@@ -1789,7 +1790,7 @@ class BookingImportTest extends TestCase
         $this->assertNull(app(ImportSessionStore::class)->get("import_proposal:{$eventOne->id}"));
     }
 
-    /** @test */
+    #[Test]
     public function global_import_matches_event_names_ignoring_case_whitespace_and_symbols()
     {
         $this->actingAsAdmin();
@@ -1814,7 +1815,7 @@ class BookingImportTest extends TestCase
         $this->assertEquals('Alice', $props['proposal'][0]['guest_name']);
     }
 
-    /** @test */
+    #[Test]
     public function global_import_rejects_when_two_events_normalize_to_the_same_name()
     {
         $this->actingAsAdmin();
@@ -1846,7 +1847,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function global_import_template_has_event_column()
     {
         $this->actingAsAdmin();
@@ -1880,7 +1881,7 @@ class BookingImportTest extends TestCase
         return [$room, $row1Seats, $row2Seats];
     }
 
-    /** @test */
+    #[Test]
     public function row_preferred_shape_seats_the_guest_inside_their_row()
     {
         $this->actingAsAdmin();
@@ -1904,7 +1905,7 @@ class BookingImportTest extends TestCase
         $this->assertSame('1', $guest['preferred_row_name']);
     }
 
-    /** @test */
+    #[Test]
     public function row_preferred_falls_back_to_block_when_row_is_full()
     {
         $this->actingAsAdmin();
@@ -1940,7 +1941,7 @@ class BookingImportTest extends TestCase
         $this->assertSame([$row2Seats[0]->id, $row2Seats[1]->id], $guest['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function row_preferred_block_fallback_prefers_rows_nearest_the_requested_row()
     {
         $this->actingAsAdmin();
@@ -1985,7 +1986,7 @@ class BookingImportTest extends TestCase
         $this->assertEmpty(array_intersect($guest['seat_ids'], $rows[1]->pluck('id')->all()));
     }
 
-    /** @test */
+    #[Test]
     public function row_preferred_block_fallback_keeps_the_group_in_one_row_instead_of_splitting_across_rows()
     {
         $this->actingAsAdmin();
@@ -2024,7 +2025,7 @@ class BookingImportTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function block_preferred_keeps_the_group_in_one_row_instead_of_splitting_across_rows()
     {
         $this->actingAsAdmin();
@@ -2061,7 +2062,7 @@ class BookingImportTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function row_preferred_leaves_guest_unresolved_when_block_is_full()
     {
         $this->actingAsAdmin();
@@ -2093,7 +2094,7 @@ class BookingImportTest extends TestCase
         $this->assertEmpty(array_intersect($guest['seat_ids'], $bSeats->pluck('id')->all()));
     }
 
-    /** @test */
+    #[Test]
     public function row_only_preference_with_no_block_is_honored_against_the_default_center_block()
     {
         $this->actingAsAdmin();
@@ -2121,7 +2122,7 @@ class BookingImportTest extends TestCase
         $this->assertEmpty(array_diff($guest['seat_ids'], $centerSeats->pluck('id')->all()));
     }
 
-    /** @test */
+    #[Test]
     public function row_only_preference_is_unresolved_when_no_center_block_exists()
     {
         $this->actingAsAdmin();
@@ -2144,7 +2145,7 @@ class BookingImportTest extends TestCase
         $this->assertStringContainsString("Row '2' was not found in this room", $guest['unresolved_reason']);
     }
 
-    /** @test */
+    #[Test]
     public function row_only_preference_is_unresolved_not_aborted_when_seats_remain_but_not_contiguously()
     {
         $this->actingAsAdmin();
@@ -2183,7 +2184,7 @@ class BookingImportTest extends TestCase
         $this->assertEmpty($guest['seat_ids']);
     }
 
-    /** @test */
+    #[Test]
     public function block_preferred_is_unresolved_not_aborted_when_the_block_is_full_but_seats_remain_elsewhere()
     {
         $this->actingAsAdmin();
@@ -2215,7 +2216,7 @@ class BookingImportTest extends TestCase
         $this->assertSame('center', $guest['preferred_block_name']);
     }
 
-    /** @test */
+    #[Test]
     public function preference_that_genuinely_cannot_fit_anywhere_still_aborts_the_whole_import()
     {
         $this->actingAsAdmin();
@@ -2238,7 +2239,7 @@ class BookingImportTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    /** @test */
+    #[Test]
     public function oldest_timestamp_wins_the_preferred_row_when_two_guests_compete()
     {
         $this->actingAsAdmin();
@@ -2269,7 +2270,7 @@ class BookingImportTest extends TestCase
         $this->assertNotEmpty(array_intersect($byName['Bob Later']['seat_ids'], $row2Seats->pluck('id')->all()));
     }
 
-    /** @test */
+    #[Test]
     public function guests_without_timestamp_are_served_after_timestamped_guests()
     {
         $this->actingAsAdmin();
@@ -2298,7 +2299,7 @@ class BookingImportTest extends TestCase
         $this->assertNotSame('row', $byName['Blank Time']['fallback_level_used']);
     }
 
-    /** @test */
+    #[Test]
     public function timestamp_column_alias_submitted_at_is_recognized()
     {
         $this->actingAsAdmin();
@@ -2323,7 +2324,7 @@ class BookingImportTest extends TestCase
         $this->assertEmpty(array_diff($byName['Earlier']['seat_ids'], $row1Seats->pluck('id')->all()));
     }
 
-    /** @test */
+    #[Test]
     public function unparseable_timestamp_is_treated_as_missing()
     {
         $this->actingAsAdmin();
@@ -2373,7 +2374,7 @@ class BookingImportTest extends TestCase
         return [$room, $mkRow($left, 4), $mkRow($center, 4), $mkRow($right, 4)];
     }
 
-    /** @test */
+    #[Test]
     public function left_of_stage_block_fills_right_to_left()
     {
         $this->actingAsAdmin();
@@ -2397,7 +2398,7 @@ class BookingImportTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function right_of_stage_block_fills_left_to_right()
     {
         $this->actingAsAdmin();
@@ -2421,7 +2422,7 @@ class BookingImportTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function center_block_fills_its_first_row_plainly()
     {
         $this->actingAsAdmin();
@@ -2445,7 +2446,7 @@ class BookingImportTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function center_block_deeper_row_fills_from_the_emptier_edge()
     {
         $this->actingAsAdmin();
@@ -2485,7 +2486,7 @@ class BookingImportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function autoplace_endpoint_reruns_backend_assignment_for_one_guest()
     {
         $this->actingAsAdmin();
@@ -2508,7 +2509,7 @@ class BookingImportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function autoplace_endpoint_rejects_a_quantity_the_room_cannot_fit()
     {
         $this->actingAsAdmin();

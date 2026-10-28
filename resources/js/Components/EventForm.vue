@@ -32,7 +32,16 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const form = useForm({
+interface EventFormFields {
+  name: string
+  room_id: string
+  starts_at: string
+  reservation_ends_at: string
+  booking_starts_at: string
+  max_tickets: string | number
+}
+
+const form = useForm<EventFormFields>({
   name: props.event?.name || '',
   room_id: props.event?.room_id ? props.event.room_id.toString() : '',
   starts_at: props.event?.starts_at || '',
@@ -44,7 +53,7 @@ const form = useForm({
 const isEditMode = computed(() => !!props.event?.id)
 
 const submitForm = () => {
-  form.transform((data) => ({
+  form.transform((data: EventFormFields) => ({
     ...data,
     starts_at: data.starts_at || null,
     reservation_ends_at: data.reservation_ends_at || null,

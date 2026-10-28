@@ -12,6 +12,12 @@ class Room extends Model
 
     protected $guarded = [];
 
+    protected $fillable = [
+        'name',
+        'stage_x',
+        'stage_y',
+    ];
+
     protected $casts = [
         'stage_x' => 'integer',
         'stage_y' => 'integer',
