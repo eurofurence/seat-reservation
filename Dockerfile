@@ -29,7 +29,7 @@ RUN rm -f composer.lock composer.json && COMPOSER_ALLOW_SUPERUSER=1 composer req
 ######################################################
 # NodeJS Stage
 ######################################################
-FROM node:22-bookworm as vite
+FROM node:25-bookworm as vite
 WORKDIR /app
 COPY package.json package-lock.json vite.config.js postcss.config.js ./
 RUN npm install
