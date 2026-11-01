@@ -236,18 +236,18 @@ guest's name/comment here renames their existing booking; if you change their na
 
 ## Ready-made test files
 
-Example CSVs are included in [examples/booking-import/](examples/booking-import/) for
+Example CSVs are included in this directory for
 trying this out locally. The basic and invalid examples below assume a
 room with a block `A` containing rows `A`/`B`/`C` (seats `1`–`5`) — create one, or edit the
 `Block`/`Row`/`Seat` values to match an existing room's seat map (visible on the event page,
 or in an "Export Bookings" CSV, which uses the same column names):
 
-- **[booking-import-example.csv](examples/booking-import/booking-import-example.csv)**:
+- **[booking-import-example.csv](booking-import-example.csv)**:
   - Alice Anderson → exact seats A-A-1 and A-A-2
   - Bob Baker → exact seat A-B-5
   - Carol Carter → 2 auto-assigned seats
   - Dave Davis → 3 auto-assigned seats (enough to span a row boundary)
-- **[booking-import-example-invalid.csv](examples/booking-import/booking-import-example-invalid.csv)** — two rows demonstrating the two remaining ways
+- **[booking-import-example-invalid.csv](booking-import-example-invalid.csv)** — two rows demonstrating the two remaining ways
   a row can behave badly:
   - a blank `Guest Name` — this is the **one** row-level problem that still rejects the whole
     import (there's no guest to fix it for on the review screen). Remove this row to try the

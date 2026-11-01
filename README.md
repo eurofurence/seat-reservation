@@ -29,7 +29,7 @@ Each **Event** belongs to a **Room** and accepts **Bookings**, where a booking l
 - Booking management: manual booking, mark as picked up, edit or delete a booking
 - Bulk booking import via CSV: book many seats/guests at once, with exact seat picks or
   automatic contiguous-seat assignment, reviewed and adjustable on a seat map before anything
-  is booked — see [BOOKING_IMPORT_GUIDE.md](BOOKING_IMPORT_GUIDE.md)
+  is booked — see [booking import guide](docs/booking-import/README.md)
 - Booking-code lookup for quick guest check-in
 - CSV export of bookings
 - Seating-card PDF generation, with an option to include or exclude unpicked-up bookings
@@ -49,7 +49,7 @@ The following rules are enforced in the current application behavior.
 - Booking codes (user booking flow): every successful booking flow generates a 3-character alphanumeric code (`A-Z`, `0-9`), reused across all seats in that same submission.
 - Booking code uniqueness: generated codes are checked against existing bookings and regenerated on collision.
 - Manual admin bookings: bookings created from admin manual booking use type `admin`, have no `user_id`, and do not get a booking code.
-- Bulk booking import: same `admin`/no-code/no-`user_id` shape as manual admin bookings, does not enforce the event's `max_tickets` cap (only real seat availability), and never books fewer seats than a guest's CSV-requested quantity — see [BOOKING_IMPORT_GUIDE.md](BOOKING_IMPORT_GUIDE.md).
+- Bulk booking import: same `admin`/no-code/no-`user_id` shape as manual admin bookings, does not enforce the event's `max_tickets` cap (only real seat availability), and never books fewer seats than a guest's CSV-requested quantity — see [booking import guide](docs/booking-import/README.md).
 - Booking ownership/permissions: regular users can view, update, or cancel only their own bookings; admins can manage any booking.
 - Update/cancel restrictions: regular users cannot update or cancel once reservation has ended or ticket pickup has been marked.
 
