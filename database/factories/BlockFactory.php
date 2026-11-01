@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class BlockFactory extends Factory
 {
+    private static int $cell = 0;
+
     /**
      * Define the model's default state.
      *
@@ -18,12 +20,17 @@ class BlockFactory extends Factory
      */
     public function definition(): array
     {
+        // Distinct 1x1 cells cycling through the bottom two grid rows (unused by hardcoded test
+        // positions), so blocks resubmitted to the layout update never trip the overlap check.
+        // ponytail: repeats after 24 blocks; widen the band if a test ever needs more.
+        $cell = self::$cell++ % 24;
+
         return [
             'room_id' => Room::factory(),
             'name' => fake()->randomElement(['Block A', 'Block B', 'Block C', 'Main Floor', 'Balcony']),
             'type' => 'seating',
-            'position_x' => fake()->numberBetween(0, 11),
-            'position_y' => fake()->numberBetween(0, 7),
+            'position_x' => 11 - $cell % 12,
+            'position_y' => 7 - intdiv($cell, 12),
             'rotation' => fake()->randomElement([0, 90, 180, 270]),
             'order' => fake()->numberBetween(0, 10),
         ];
