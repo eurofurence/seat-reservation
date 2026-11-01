@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {Head, router, useForm} from '@inertiajs/vue3'
-import {ref, computed, nextTick, watch} from 'vue'
+import {ref, computed, nextTick, watch, onMounted, onBeforeUnmount} from 'vue'
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
 import SeatLayout from '@/Components/SeatLayout.vue'
 import BookingIdentityCell from '@/Components/Admin/BookingIdentityCell.vue'
@@ -374,6 +374,47 @@ const navigateToPage = (linkUrl: string) => {
     if (pageParam) params.page = pageParam
     router.get(route('admin.events.show', props.event.id), params, { preserveState: true, preserveScroll: true, only: ['bookings'] })
 }
+
+const hasUnpickedLookup = computed(() =>
+    !!props.bookingcode && props.bookings.data.some(booking => !booking.picked_up_at)
+)
+
+const leaveWarning = 'The bookings have not been marked as picked up yet. Are you sure you want to leave?'
+
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    if (!hasUnpickedLookup.value) return
+    event.preventDefault()
+    // @ts-ignore
+    event.returnValue = leaveWarning
+}
+
+let removeInertiaBeforeListener: (() => void) | undefined
+
+const staysOnThisPage = (url: string) => {
+    try {
+        return new URL(url, window.location.origin).pathname === window.location.pathname
+    } catch {
+        return false
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    // Browser back/forward (popstate) can't be cancelled, so only Inertia GET visits to
+    // another page are guarded; mutations like the pickup toggle must never be blocked.
+    removeInertiaBeforeListener = router.on('before', (event: any) => {
+        const visit = event.detail?.visit
+        if (visit?.method !== 'get' || staysOnThisPage(visit.url?.toString?.() ?? '')) return
+        if (hasUnpickedLookup.value && !confirm(leaveWarning)) {
+            return false
+        }
+    })
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('beforeunload', handleBeforeUnload)
+    removeInertiaBeforeListener?.()
+})
 </script>
 
 <template>
