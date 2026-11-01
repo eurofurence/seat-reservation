@@ -198,7 +198,7 @@ Uses `defineOptions({ layout: AdminLayout })` for automatic layout wrapping:
 
 ```vue
 <script setup lang="ts">
-import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -254,7 +254,7 @@ Room (stage_x, stage_y positioning)
 
 ### Vue Components
 - `resources/js/Pages/Admin/` - Admin page components
-- `resources/js/Admin/Layouts/AdminLayout.vue` - Main admin layout
+- `resources/js/Layouts/AdminLayout.vue` - Main admin layout
 - `resources/js/Components/ui/` - shadcn/vue components
 - `resources/js/lib/utils.ts` - Utility functions
 

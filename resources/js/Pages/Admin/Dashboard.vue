@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm, usePoll } from '@inertiajs/vue3'
-import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card'
 import { Table } from '@/Components/ui/table'
 import { Badge } from '@/Components/ui/badge'
