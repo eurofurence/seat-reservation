@@ -50,12 +50,30 @@ test('admin looks up a user booking by its code and marks it picked up', async (
   const row = page.getByRole('row', { name: /Pickup Lookup Guest/ })
   await expect(row).toBeVisible()
 
-  // Going unpicked -> picked up needs no confirmation (only reverting does), so
-  // checking the box should persist and re-render as checked after the reload.
+  // While the looked-up booking is unpicked, leaving asks first; cancelling stays put.
+  const dialogs: string[] = []
+  page.on('dialog', dialog => {
+    dialogs.push(dialog.message())
+    dialog.dismiss()
+  })
+  await page.getByRole('button', { name: 'Rooms' }).click()
+  await expect.poll(() => dialogs.length).toBe(1)
+  expect(dialogs[0]).toContain('not been marked as picked up')
+  await expect(page).toHaveURL(new RegExp(`bookingcode=${code}`))
+
+  // Going unpicked -> picked up needs no confirmation (only reverting does), and the
+  // leave guard must not intercept the pickup POST, so checking the box should
+  // persist and re-render as checked after the reload.
   const checkbox = row.locator('input[type="checkbox"]')
   await expect(checkbox).not.toBeChecked()
   await checkbox.check()
   await expect(checkbox).toBeChecked()
+  expect(dialogs).toHaveLength(1)
+
+  // Once picked up, navigation is no longer guarded.
+  await page.getByRole('button', { name: 'Rooms' }).click()
+  await expect(page).toHaveURL(/\/admin\/rooms$/)
+  expect(dialogs).toHaveLength(1)
 })
 
 test('looking up a non-existent booking code shows an inline error', async ({ page }) => {

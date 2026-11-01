@@ -398,26 +398,13 @@ const staysOnThisPage = (url: string) => {
     }
 }
 
-// beforeunload can't show custom text; intercept the back button via popstate instead.
-const handlePopState = () => {
-    if (!hasUnpickedLookup.value) return
-    if (confirm(leaveWarning)) {
-        window.history.back()
-    } else {
-        window.history.pushState(history.state, '', window.location.href)
-    }
-}
-
 onMounted(() => {
     window.addEventListener('beforeunload', handleBeforeUnload)
-    window.addEventListener('popstate', handlePopState)
-    if (hasUnpickedLookup.value) {
-        window.history.pushState(history.state, '', window.location.href)
-    }
-    // Inertia v2: return false to cancel a visit.
+    // Browser back/forward (popstate) can't be cancelled, so only Inertia GET visits to
+    // another page are guarded; mutations like the pickup toggle must never be blocked.
     removeInertiaBeforeListener = router.on('before', (event: any) => {
-        const targetUrl = event.detail?.visit?.url?.toString?.() ?? ''
-        if (staysOnThisPage(targetUrl)) return
+        const visit = event.detail?.visit
+        if (visit?.method !== 'get' || staysOnThisPage(visit.url?.toString?.() ?? '')) return
         if (hasUnpickedLookup.value && !confirm(leaveWarning)) {
             return false
         }
@@ -426,7 +413,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener('beforeunload', handleBeforeUnload)
-    window.removeEventListener('popstate', handlePopState)
     removeInertiaBeforeListener?.()
 })
 </script>
