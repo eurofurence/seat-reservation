@@ -65,6 +65,10 @@ class AuthController extends Controller
 
     public function logout()
     {
+        Auth::logout();
+        Session::invalidate();
+        Session::regenerateToken();
+
         return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout');
     }
 
@@ -72,6 +76,7 @@ class AuthController extends Controller
     public function logoutCallback()
     {
         Auth::logout();
-        Session::flush();
+        Session::invalidate();
+        Session::regenerateToken();
     }
 }
