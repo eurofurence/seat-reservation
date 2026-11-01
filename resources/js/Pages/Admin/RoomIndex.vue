@@ -9,6 +9,7 @@ import { CardContent } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Table } from '@/Components/ui/table'
+import { ROOM_NAME_MAX } from '@/lib/validation'
 import { Dialog } from '@/Components/ui/dialog'
 import { DialogContent } from '@/Components/ui/dialog'
 import { DialogHeader } from '@/Components/ui/dialog'
@@ -71,7 +72,7 @@ const cancelDelete = () => {
 
 <template>
   <Head :title="title" />
-  
+
   <div>
     <div class="flex justify-end items-center mb-6">
       <Button @click="showCreateModal = true">
@@ -79,7 +80,7 @@ const cancelDelete = () => {
         Create Room
       </Button>
     </div>
-    
+
     <!-- Rooms Table -->
     <Card>
       <CardContent class="p-0">
@@ -137,7 +138,7 @@ const cancelDelete = () => {
         </Table>
       </CardContent>
     </Card>
-    
+
     <!-- Create Room Modal -->
     <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <Card class="w-full max-w-md">
@@ -151,6 +152,7 @@ const cancelDelete = () => {
               <Input
                 v-model="createForm.name"
                 placeholder="Enter room name"
+                :maxlength="ROOM_NAME_MAX"
                 @keyup.enter="createRoom"
               />
             </div>
@@ -166,7 +168,7 @@ const cancelDelete = () => {
         </CardContent>
       </Card>
     </div>
-    
+
     <!-- Delete Room Dialog -->
     <Dialog :open="showDeleteDialog" @update:open="showDeleteDialog = $event">
       <DialogContent class="sm:max-w-md">
@@ -175,7 +177,7 @@ const cancelDelete = () => {
         </DialogHeader>
         <div class="space-y-4">
           <p class="text-sm text-gray-600">
-            Are you sure you want to delete the room <strong>"{{ roomToDelete?.name }}"</strong>? 
+            Are you sure you want to delete the room <strong>"{{ roomToDelete?.name }}"</strong>?
             This action cannot be undone and will also delete all blocks, rows, and seats in this room.
           </p>
           <div class="flex justify-end gap-2">

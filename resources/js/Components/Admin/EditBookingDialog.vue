@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/Components/ui/dialog'
@@ -6,11 +6,13 @@ import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Textarea } from '@/Components/ui/textarea'
 import { Label } from '@/Components/ui/label'
+import { GUEST_NAME_MAX, ADMIN_COMMENT_MAX } from '@/lib/validation'
+import type { Booking } from '@/types/booking'
 
-const props = defineProps({
-    eventId: [Number, String],
-    booking: Object,
-})
+const props = defineProps<{
+    eventId: number | string
+    booking?: Booking | null
+}>()
 
 const open = defineModel('open', { type: Boolean, default: false })
 
@@ -35,7 +37,7 @@ watch(() => props.booking, (booking) => {
 }, { immediate: true })
 
 const save = () => {
-    if (!form.name.trim()) return
+    if (!form.name.trim() || !props.booking) return
 
     form.put(route('admin.events.update-booking', [props.eventId, props.booking.id]), {
         onSuccess: () => {
@@ -58,6 +60,7 @@ const save = () => {
                         id="edit-name"
                         v-model="form.name"
                         placeholder="Name or team"
+                        :maxlength="GUEST_NAME_MAX"
                         class="mt-1"
                     />
                     <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
@@ -72,6 +75,7 @@ const save = () => {
                         id="edit-comment"
                         v-model="form.comment"
                         placeholder="Additional notes..."
+                        :maxlength="ADMIN_COMMENT_MAX"
                         class="mt-1"
                         rows="3"
                     />
