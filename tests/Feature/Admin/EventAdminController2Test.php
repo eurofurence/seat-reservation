@@ -268,25 +268,14 @@ class EventAdminController2Test extends TestCase
     }
 
     #[Test]
-    public function booking_search_ignores_array_valued_input()
+    public function booking_search_rejects_array_valued_input()
     {
         $this->actingAs($this->admin);
         $event = Event::factory()->create(['room_id' => $this->room->id]);
 
-        $block = Block::factory()->seating()->create(['room_id' => $this->room->id]);
-        $row = Row::factory()->create(['block_id' => $block->id]);
-        $seat1 = Seat::factory()->create(['row_id' => $row->id, 'label' => 'A1']);
-        $seat2 = Seat::factory()->create(['row_id' => $row->id, 'label' => 'A2']);
-
-        Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat1->id, 'name' => 'John Doe']);
-        Booking::factory()->create(['event_id' => $event->id, 'seat_id' => $seat2->id, 'name' => 'Jane Smith']);
-
-        $response = $this->get(route('admin.events.show', $event->id).'?search[]=John');
-
-        $response->assertOk();
-
-        $props = $response->getOriginalContent()->getData()['page']['props'];
-        $this->assertCount(2, $props['bookings']['data']);
+        $this->getJson(route('admin.events.show', $event->id).'?search[]=John')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('search');
     }
 
     #[Test]
