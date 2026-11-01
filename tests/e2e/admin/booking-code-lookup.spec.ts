@@ -61,10 +61,18 @@ test('admin looks up a user booking by its code and marks it picked up', async (
 test('looking up a non-existent booking code shows an inline error', async ({ page }) => {
   await page.goto('/admin')
 
+  // The lookup field is focused on load so a code can be typed straight away.
+  const input = page.locator('#booking_code')
+  await expect(input).toBeFocused()
+
   // "ZZZ" is a valid 3-char shape but seeded fixtures never generate it.
-  await page.locator('#booking_code').fill('ZZZ')
+  await input.fill('ZZZ')
   await page.getByRole('button', { name: 'Lookup' }).click()
 
   await expect(page.getByText('No booking found with this code.')).toBeVisible()
   await expect(page).toHaveURL(/\/admin$/)
+
+  // After the error only the code is cleared, and focus returns for the next try.
+  await expect(input).toHaveValue('')
+  await expect(input).toBeFocused()
 })
