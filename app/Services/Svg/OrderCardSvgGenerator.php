@@ -48,7 +48,7 @@ class OrderCardSvgGenerator
      *
      * @param  array<int,bool>  $bookedSeatIds  Set of booked seat IDs.
      */
-    public function render(Block $block, array $bookedSeatIds, Mpdf $mpdf): string
+    public function render(Block $block, array $bookedSeatIds, Mpdf $mpdf, int $maxHeight = 105): string
     {
         $this->rows = $block->rows->sortBy('order')->values();
         if ($this->rows->isEmpty()) {
@@ -77,7 +77,7 @@ class OrderCardSvgGenerator
         [$path, $turnArrows] = $this->windingPath();
         $arrows = $this->arrows($turnArrows, $mpdf);
 
-        $scale = min(195 / $width, 105 / $height);
+        $scale = min(195 / $width, $maxHeight / $height);
 
         return $this->svg->document($width, $height, $width * $scale, $height * $scale, $path.$boxes.$arrows);
     }
