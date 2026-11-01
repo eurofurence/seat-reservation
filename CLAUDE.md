@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-This application uses **Laravel 12 + Inertia.js + Vue 3** with **shadcn/vue** components. The core domain models represent a hierarchical seating structure:
+This application uses **Laravel 13 + Inertia.js 3 + Vue 3** with **shadcn/vue** components. The core domain models represent a hierarchical seating structure:
 
 - **Room** → contains multiple **Blocks** (seating sections)
 - **Block** → contains multiple **Rows** (with positioning/rotation)
