@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-This application uses **Laravel 12 + Inertia.js + Vue 3** with **shadcn/vue** components. The core domain models represent a hierarchical seating structure:
+This application uses **Laravel 13 + Inertia.js 3 + Vue 3** with **shadcn/vue** components. The core domain models represent a hierarchical seating structure:
 
 - **Room** → contains multiple **Blocks** (seating sections)
 - **Block** → contains multiple **Rows** (with positioning/rotation)
@@ -198,7 +198,7 @@ Uses `defineOptions({ layout: AdminLayout })` for automatic layout wrapping:
 
 ```vue
 <script setup lang="ts">
-import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -254,7 +254,7 @@ Room (stage_x, stage_y positioning)
 
 ### Vue Components
 - `resources/js/Pages/Admin/` - Admin page components
-- `resources/js/Admin/Layouts/AdminLayout.vue` - Main admin layout
+- `resources/js/Layouts/AdminLayout.vue` - Main admin layout
 - `resources/js/Components/ui/` - shadcn/vue components
 - `resources/js/lib/utils.ts` - Utility functions
 

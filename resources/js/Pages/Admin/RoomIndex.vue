@@ -1,7 +1,7 @@
 <script setup>
 import { Head, router, useForm, Link } from '@inertiajs/vue3'
 import { ref } from 'vue'
-import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card } from '@/Components/ui/card'
 import { CardHeader } from '@/Components/ui/card'
 import { CardTitle } from '@/Components/ui/card'

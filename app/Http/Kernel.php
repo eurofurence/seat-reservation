@@ -65,11 +65,6 @@ class Kernel extends HttpKernel
             HandleInertiaRequests::class,
             PreventStaleCache::class,
         ],
-
-        'api' => [
-            ThrottleRequests::class.':api',
-            SubstituteBindings::class,
-        ],
     ];
 
     /**
