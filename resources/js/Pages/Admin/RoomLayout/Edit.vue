@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
-import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Button } from '@/Components/ui/button'
 import { Card } from '@/Components/ui/card'
 import { Input } from '@/Components/ui/input'

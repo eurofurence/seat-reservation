@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3'
-import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 import SeatLayout from '@/Components/SeatLayout.vue'
 import ImportGuestList from '@/Components/Admin/ImportGuestList.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card'

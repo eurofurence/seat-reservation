@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {Head, router, useForm} from '@inertiajs/vue3'
 import {ref, computed, nextTick, watch} from 'vue'
-import AdminLayout from '@/Admin/Layouts/AdminLayout.vue'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 import SeatLayout from '@/Components/SeatLayout.vue'
 import BookingIdentityCell from '@/Components/Admin/BookingIdentityCell.vue'
 import { Card } from '@/Components/ui/card'
