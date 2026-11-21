@@ -15,7 +15,7 @@
             @endif
         </div>
         <div class="block-name">
-            Layout
+            Layout - {{ $total_bookings }} bookings
         </div>
         @if(!empty($overview))
             <div class="block-preview master-overview">
