@@ -266,17 +266,14 @@ class BookingController extends Controller
             ->select('id', 'room_id', 'name', 'type', 'position_x', 'position_y', 'rotation', 'colspan', 'rowspan', 'order')
             ->get();
 
-        // Get user's booked seat IDs for highlighting
-        $userBookedSeats = Booking::where('event_id', $event->id)
-            ->where('user_id', auth()->id())
-            ->pluck('seat_id')
-            ->toArray();
+        // Split this event's booked seats into the user's own (for highlighting) and everyone else's
+        $userId = auth()->id();
+        [$ownBookings, $otherBookings] = Booking::where('event_id', $event->id)
+            ->get(['seat_id', 'user_id'])
+            ->partition(fn ($booking) => $booking->user_id === $userId);
 
-        // Get all other booked seat IDs (excluding user's seats) for this event
-        $bookedSeats = Booking::where('event_id', $event->id)
-            ->where('user_id', '!=', auth()->id())
-            ->pluck('seat_id')
-            ->toArray();
+        $userBookedSeats = $ownBookings->pluck('seat_id')->all();
+        $bookedSeats = $otherBookings->pluck('seat_id')->all();
 
         return Inertia::render('Booking/ShowBooking', [
             'event' => $event,
