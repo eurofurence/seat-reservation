@@ -216,21 +216,9 @@ const processManualBooking = () => {
     manualBookingForm.value.isProcessing = true
 
     form.post(route('admin.events.manual-booking', props.event.id), {
-        onSuccess: () => {
-            // Reset form and clear selected seats
-            manualBookingForm.value = { guestName: '', comment: '', isProcessing: false }
-            selectedSeats.value = []
-
-            // Clear selected seats from URL by navigating without the selected_seats parameter
-            const params: QueryParams = {}
-            if (props.search) params.search = props.search
-            if (props.booking_id) params.booking_id = props.booking_id
-
-            router.get(route('admin.events.show', props.event.id), params, {
-                preserveState: false, // Don't preserve state to force a full reload
-                preserveScroll: true
-            })
-        },
+        // The redirect already carries fresh bookings; a full-reload visit here would
+        // remount the page and close any Edit/Delete dialog opened in the meantime.
+        onSuccess: clearManualBooking,
         onFinish: () => {
             manualBookingForm.value.isProcessing = false
         }
