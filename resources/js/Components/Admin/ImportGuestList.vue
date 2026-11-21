@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui/card'
 import { Badge } from '@/Components/ui/badge'
 import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
+import { GUEST_NAME_MAX, ADMIN_COMMENT_MAX } from '@/lib/validation'
 
 // One entry of the review screen's editable import proposal (see useImportProposal.js's
 // cloneProposal - guest_name/comment/seat_ids/skipped are always present, everything else
@@ -131,7 +132,7 @@ const selectGuest = (guest: ImportGuest, index: number) => {
                     <Input
                         v-model="guest.guest_name"
                         placeholder="Guest name"
-                        maxlength="255"
+                        :maxlength="GUEST_NAME_MAX"
                         class="h-7 font-medium"
                         @click.stop
                         @blur="restoreIfEmpty(guest)"
@@ -155,7 +156,7 @@ const selectGuest = (guest: ImportGuest, index: number) => {
                 <Input
                     :model-value="guest.comment ?? ''"
                     placeholder="Comment (optional)"
-                    maxlength="1000"
+                    :maxlength="ADMIN_COMMENT_MAX"
                     class="mt-1.5 h-7 text-xs"
                     @click.stop
                     @update:model-value="(value) => guest.comment = value === '' ? null : String(value)"

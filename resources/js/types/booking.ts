@@ -40,6 +40,7 @@ export interface Booking {
   id: number
   event_id: number
   name?: string | null
+  guest_name?: string | null
   type?: BookingType
   created_by_name?: string | null
   comment?: string | null
